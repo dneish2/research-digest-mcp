@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Local library data must never be committed
+*.db
+archive.json
+saved.json
+read.json
+settings.json
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

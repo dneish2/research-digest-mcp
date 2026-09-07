@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research digest</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand">Research digest<span>your library</span></div>
+    <nav>
+      <button data-view="search" aria-current="true">Search</button>
+      <button data-view="saved">Saved</button>
+      <button data-view="trends">Trends</button>
+      <button data-view="lab">How scoring works</button>
+    </nav>
+    <div class="health" id="health"></div>
+  </aside>
+
+  <main>
+
+    <section class="view on" id="view-search">
+      <h1>Search your library</h1>
+      <p class="sub">
+        Every result shows why it ranked where it did. No model decides the order:
+        the score is arithmetic over the words you searched for.
+      </p>
+      <div class="searchbar">
+        <input id="q" type="search" placeholder="agentic evaluation" autocomplete="off">
+        <button id="go">Search</button>
+      </div>
+      <div class="meta" id="search-meta"></div>
+      <div id="results"></div>
+    </section>
+
+    <section class="view" id="view-saved">
+      <h1>Saved</h1>
+      <p class="sub">Papers you bookmarked, newest first.</p>
+      <div id="saved"></div>
+    </section>
+
+    <section class="view" id="view-trends">
+      <h1>Trends</h1>
+      <p class="sub">
+        Concepts rising and falling across the last two weeks of your own feed.
+        When a week has too few papers this says so, rather than reporting the
+        gap as a decline.
+      </p>
+      <div id="trends"></div>
+    </section>
+
+    <section class="view" id="view-lab">
+      <h1>How scoring works</h1>
+      <p class="sub">
+        Change anything below and watch the score recompute. This is the same
+        function that ranks search results and reading suggestions.
+      </p>
+      <div class="lab">
+        <div>
+          <div class="field">
+            <label for="lab-topics">Your topics (comma separated)</label>
+            <input id="lab-topics" value="agent, evaluation, multi-agent, learning">
+          </div>
+          <div class="field">
+            <label for="lab-title">Paper title</label>
+            <input id="lab-title" value="Agentic evaluation of multi-agent reasoning">
+          </div>
+          <div class="field">
+            <label for="lab-abstract">Abstract</label>
+            <textarea id="lab-abstract">We study deep learning models for agent reliability under evaluation pressure.</textarea>
+          </div>
+          <div class="field">
+            <label for="lab-published">Published (YYYY-MM-DD)</label>
+            <input id="lab-published" value="">
+          </div>
+        </div>
+        <div>
+          <div class="paper">
+            <h2>The arithmetic</h2>
+            <div class="formula" id="lab-formula"></div>
+            <div class="why" id="lab-why"></div>
+          </div>
+          <div class="paper">
+            <h2>The rules</h2>
+            <div class="formula">
+              <div class="r"><span>multi-word topic, appearing verbatim</span><span>1.00</span></div>
+              <div class="r"><span>single distinctive word</span><span>0.60</span></div>
+              <div class="r"><span>single common word</span><span>0.20</span></div>
+              <div class="r"><span>3 or more topics matched</span><span>+0.30</span></div>
+              <div class="r"><span>exactly 2 topics matched</span><span>+0.15</span></div>
+              <div class="r"><span>published today, decaying over 30 days</span><span>+0.20</span></div>
+            </div>
+            <p class="sub" style="margin:12px 0 0;font-size:.85rem">
+              Common words score 0.20 because a term like "learning" appears in
+              nearly every paper in this field. Without that discount the ranking
+              collapses into noise. The words treated as common are listed below.
+            </p>
+            <div class="chips" id="lab-boiler"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

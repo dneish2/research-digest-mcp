@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "research-digest-mcp"
+version = "1.0.0"
+description = "A personal arXiv library your AI assistant can read, over MCP"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "dneish2" }]
+keywords = ["mcp", "arxiv", "research", "claude", "ai-agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.optional-dependencies]
+embeddings = ["numpy>=1.21", "scikit-learn>=1.0"]
+dev = ["numpy>=1.21", "scikit-learn>=1.0"]
+
+[project.scripts]
+research-digest = "research_digest_mcp.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/dneish2/research-digest-mcp"
+Issues = "https://github.com/dneish2/research-digest-mcp/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+research_digest_mcp = ["static/*"]
