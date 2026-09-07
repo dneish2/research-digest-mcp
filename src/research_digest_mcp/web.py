@@ -24,21 +24,27 @@ from .trends import compute_trends
 STATIC = Path(__file__).parent / "static"
 
 
+NEEDS_EXTRA = ("Similarity search is an optional extra. Install it with "
+               "'pip install research-digest-mcp[embeddings]', then run "
+               "'research-digest embed'.")
+
+
 def _similar(paper_id: str, limit: int):
     try:
         from .similarity import MixedBasis, SimilaritySearch
     except ImportError:
-        return {"status": "unavailable",
-                "message": "Similarity needs numpy. Install: pip install 'research-digest-mcp[embeddings]'"}
+        return {"status": "unavailable", "message": NEEDS_EXTRA}
     try:
         hits = SimilaritySearch().find_similar(paper_id, limit)
     except MixedBasis as exc:
         return {"status": "needs_rebuild", "message": str(exc)}
     except ImportError:
-        return {"status": "unavailable", "message": "Similarity needs numpy."}
+        # numpy is imported lazily inside the search, so the failure can land here too.
+        return {"status": "unavailable", "message": NEEDS_EXTRA}
     if not hits:
         return {"status": "no_embeddings",
-                "message": "No vectors yet. Run: research-digest embed"}
+                "message": "No vectors built yet. Run 'research-digest embed' to enable "
+                           "similarity search across your library."}
     by_id = {p["id"]: p for p in storage.load_papers()}
     return {"status": "ok", "results": [
         {"id": pid, "similarity": s,

@@ -139,9 +139,12 @@ function paperCard(paper, terms) {
     const data = await get('/api/similar', { id: paper.id, limit: 6 });
     holder.textContent = '';
     if (data.status !== 'ok') {
-      holder.appendChild(notice(
-        data.status === 'needs_rebuild' ? 'Similarity is turned off' : 'Not available yet',
-        data.message || ''));
+      const heading = {
+        needs_rebuild: 'Similarity needs rebuilding',
+        no_embeddings: 'No vectors built yet',
+        unavailable: 'Similarity is an optional extra',
+      }[data.status] || 'Similarity unavailable';
+      holder.appendChild(notice(heading, data.message || ''));
       return;
     }
     data.results.forEach((n) => {

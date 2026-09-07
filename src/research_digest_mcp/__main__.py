@@ -20,7 +20,7 @@ from .config import HOME, load_settings, save_settings
 def cmd_fetch(args) -> int:
     from .fetchers import ArxivUnavailable, fetch_settings
     settings = load_settings()
-    print(f"Fetching {', '.join(settings['categories'])} from arXiv...")
+    print(f"Fetching {', '.join(settings['categories'])} from arXiv...", flush=True)
     try:
         result = fetch_settings(settings)
     except ArxivUnavailable as exc:
@@ -51,7 +51,10 @@ def cmd_embed(args) -> int:
         return 1
 
     engine = args.engine or load_settings()["encoder"]
-    print(f"Embedding {len(papers)} papers with {engine} (one fit over the whole library)...")
+    # flush before the work: otherwise a message on stderr overtakes this line
+    # and the error appears above the step it belongs to.
+    print(f"Embedding {len(papers)} papers with {engine} (one fit over the whole library)...",
+          flush=True)
     try:
         result = embed_all(papers, engine)
     except EncoderUnavailable as exc:
