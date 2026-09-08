@@ -7,105 +7,96 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<div class="shell">
 
-  <aside class="side">
-    <div class="brand">Research digest<span>your library</span></div>
-    <nav>
-      <button data-view="search" aria-current="true">Search</button>
-      <button data-view="saved">Saved</button>
-      <button data-view="trends">Trends</button>
-      <button data-view="lab">How scoring works</button>
-    </nav>
-    <div class="health" id="health"></div>
-  </aside>
+<header>
+  <div class="header-top">
+    <a class="logo" href="/">Research <span>digest</span></a>
+    <div class="header-meta" id="header-meta"></div>
+  </div>
 
-  <main>
+  <div class="search-row">
+    <input class="search-input" id="q" type="search"
+           placeholder="Search your library, or press / to focus" autocomplete="off">
+    <button class="btn" id="go">Search</button>
+  </div>
+  <div class="search-status" id="status"></div>
 
-    <section class="view on" id="view-search">
-      <h1>Search your library</h1>
-      <p class="sub">
-        Every result shows why it ranked where it did. No model decides the order:
-        the score is arithmetic over the words you searched for.
-      </p>
-      <div class="searchbar">
-        <input id="q" type="search" placeholder="agentic evaluation" autocomplete="off">
-        <button id="go">Search</button>
-      </div>
-      <div class="meta" id="search-meta"></div>
-      <div id="results"></div>
-    </section>
+  <div class="controls-row">
+    <div class="view-tabs" id="view-tabs">
+      <button class="view-tab active" data-view="grid" title="Papers (1)">Papers</button>
+      <button class="view-tab" data-view="digest" title="Trends (2)">Trends</button>
+      <button class="view-tab" data-view="queue" title="Reading queue (3)">Queue</button>
+      <button class="view-tab" data-view="scoring" title="How scoring works (4)">Scoring</button>
+    </div>
+    <div class="filter-bar" id="filters">
+      <span class="filter-label">When</span>
+      <button class="chip active" data-when="all">All time</button>
+      <button class="chip" data-when="today">Today</button>
+      <button class="chip" data-when="week">This week</button>
+      <button class="chip" data-when="saved">Saved</button>
+    </div>
+    <button class="sort-btn" id="sort" data-sort="score">Sort: best match</button>
+  </div>
+</header>
 
-    <section class="view" id="view-saved">
-      <h1>Saved</h1>
-      <p class="sub">Papers you bookmarked, newest first.</p>
-      <div id="saved"></div>
-    </section>
+<main>
+  <div class="view-panel" id="view-grid">
+    <div class="welcome-hero" id="hero"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="grid-empty" hidden></div>
+  </div>
 
-    <section class="view" id="view-trends">
-      <h1>Trends</h1>
-      <p class="sub">
-        Concepts rising and falling across the last two weeks of your own feed.
-        When a week has too few papers this says so, rather than reporting the
-        gap as a decline.
-      </p>
-      <div id="trends"></div>
-    </section>
+  <div class="view-panel" id="view-digest" hidden></div>
+  <div class="view-panel" id="view-queue" hidden></div>
 
-    <section class="view" id="view-lab">
-      <h1>How scoring works</h1>
-      <p class="sub">
-        Change anything below and watch the score recompute. This is the same
-        function that ranks search results and reading suggestions.
-      </p>
-      <div class="lab">
-        <div>
-          <div class="field">
-            <label for="lab-topics">Your topics (comma separated)</label>
-            <input id="lab-topics" value="agent, evaluation, multi-agent, learning">
-          </div>
-          <div class="field">
-            <label for="lab-title">Paper title</label>
-            <input id="lab-title" value="Agentic evaluation of multi-agent reasoning">
-          </div>
-          <div class="field">
-            <label for="lab-abstract">Abstract</label>
-            <textarea id="lab-abstract">We study deep learning models for agent reliability under evaluation pressure.</textarea>
-          </div>
-          <div class="field">
-            <label for="lab-published">Published (YYYY-MM-DD)</label>
-            <input id="lab-published" value="">
-          </div>
+  <div class="view-panel" id="view-scoring" hidden>
+    <div class="lab">
+      <div>
+        <h2>How a paper gets ranked</h2>
+        <p class="sub">Change anything here and watch the score recompute. This is the same
+          function that orders the grid and the reading suggestions.</p>
+        <div class="field">
+          <label for="lab-topics">Your topics</label>
+          <input id="lab-topics" value="agent, evaluation, multi-agent, learning">
         </div>
-        <div>
-          <div class="paper">
-            <h2>The arithmetic</h2>
-            <div class="formula" id="lab-formula"></div>
-            <div class="why" id="lab-why"></div>
-          </div>
-          <div class="paper">
-            <h2>The rules</h2>
-            <div class="formula">
-              <div class="r"><span>multi-word topic, appearing verbatim</span><span>1.00</span></div>
-              <div class="r"><span>single distinctive word</span><span>0.60</span></div>
-              <div class="r"><span>single common word</span><span>0.20</span></div>
-              <div class="r"><span>3 or more topics matched</span><span>+0.30</span></div>
-              <div class="r"><span>exactly 2 topics matched</span><span>+0.15</span></div>
-              <div class="r"><span>published today, decaying over 30 days</span><span>+0.20</span></div>
-            </div>
-            <p class="sub" style="margin:12px 0 0;font-size:.85rem">
-              Common words score 0.20 because a term like "learning" appears in
-              nearly every paper in this field. Without that discount the ranking
-              collapses into noise. The words treated as common are listed below.
-            </p>
-            <div class="chips" id="lab-boiler"></div>
-          </div>
+        <div class="field">
+          <label for="lab-title">Paper title</label>
+          <input id="lab-title" value="Agentic evaluation of multi-agent reasoning">
+        </div>
+        <div class="field">
+          <label for="lab-abstract">Abstract</label>
+          <textarea id="lab-abstract">We study deep learning models for agent reliability under evaluation pressure.</textarea>
+        </div>
+        <div class="field">
+          <label for="lab-published">Published</label>
+          <input id="lab-published" placeholder="YYYY-MM-DD">
         </div>
       </div>
-    </section>
+      <div>
+        <div class="card">
+          <h3>The arithmetic</h3>
+          <div class="formula" id="lab-formula"></div>
+          <div class="why" id="lab-why"></div>
+        </div>
+        <div class="card">
+          <h3>Words that count for less</h3>
+          <p class="sub">These appear in nearly every paper here, so matching one says little.</p>
+          <div class="chips" id="lab-boiler"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
 
-  </main>
-</div>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="detail-panel" id="panel" aria-hidden="true" aria-label="Paper detail">
+  <div class="detail-head">
+    <span class="detail-kicker" id="d-kicker"></span>
+    <button class="panel-x" id="panel-x" aria-label="Close">&times;</button>
+  </div>
+  <div class="detail-body" id="d-body"></div>
+</aside>
+
 <script src="/app.js"></script>
 </body>
 </html>

@@ -81,6 +81,80 @@ def api(path: str, params: dict) -> dict:
             } for p in every[:limit]],
         }
 
+    if path == "/api/papers":
+        # Browse, as opposed to search. The grid opens on this.
+        from datetime import date, datetime, timedelta
+        papers = storage.load_papers()
+        saved = storage.load_saved()
+        read = storage.load_read()
+        window = one.get("when", "all").lower()
+
+        def day_of(paper):
+            for field in ("first_seen", "published", "updated"):
+                raw = paper.get(field)
+                if raw:
+                    try:
+                        return datetime.strptime(str(raw)[:10], "%Y-%m-%d").date()
+                    except ValueError:
+                        continue
+            return None
+
+        today = date.today()
+        if window == "today":
+            papers = [p for p in papers if day_of(p) == today]
+        elif window == "week":
+            cutoff = today - timedelta(days=7)
+            papers = [p for p in papers if (day_of(p) or date.min) > cutoff]
+        elif window == "saved":
+            papers = [p for p in papers if p["id"] in saved]
+        elif window == "queue":
+            papers = [p for p in papers if p["id"] in saved and p["id"] not in read]
+
+        topics = load_settings()["topics"]
+        for paper in papers:
+            result = score_paper(paper, topics)
+            paper["score"] = result["score"]
+            paper["why"] = result["why"]
+            paper["why_text"] = explain_sentence(result["why"])
+            paper["saved"] = paper["id"] in saved
+            paper["read"] = paper["id"] in read
+
+        if one.get("sort", "score") == "date":
+            papers.sort(key=lambda p: str(day_of(p) or ""), reverse=True)
+        else:
+            papers.sort(key=lambda p: p["score"], reverse=True)
+
+        limit = int(one.get("limit", 120))
+        return {
+            "status": "ok", "window": window, "total": len(papers),
+            "topics": topics,
+            "results": [{
+                "id": p["id"], "title": p.get("title", ""), "url": p.get("url", ""),
+                "published": p.get("published", ""), "category": p.get("primary_category", ""),
+                "abstract": (p.get("abstract") or "")[:600],
+                "concepts": (p.get("concepts") or [])[:6],
+                "score": p["score"], "why": p["why"], "why_text": p["why_text"],
+                "saved": p["saved"], "read": p["read"],
+            } for p in papers[:limit]],
+        }
+
+    if path == "/api/save":
+        pid = one.get("id", "")
+        papers = {p["id"]: p for p in storage.load_papers()}
+        if pid not in papers:
+            return {"status": "error", "message": f"No paper {pid}"}
+        if pid in storage.load_saved():
+            storage.unsave_paper(pid)
+            return {"status": "ok", "saved": False}
+        paper = papers[pid]
+        storage.save_paper(pid, paper.get("title", ""), "", paper.get("concepts") or [])
+        return {"status": "ok", "saved": True}
+
+    if path == "/api/read":
+        pid = one.get("id", "")
+        storage.mark_read(pid)
+        return {"status": "ok", "read": True}
+
     if path == "/api/trends":
         return compute_trends(storage.load_papers())
 
