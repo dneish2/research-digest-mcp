@@ -46,27 +46,41 @@ research-digest search agentic evaluation
 research-digest web                       # browser interface on localhost
 ```
 
-## Connect it to Claude Code
+## Connect it to your agent
+
+**Claude Code**
 
 ```bash
 claude mcp add research-digest -- research-digest mcp
 ```
 
-Then ask Claude things like "search my library for retrieval papers" or "what
-have I saved about multi-agent systems".
+**Codex CLI** — add to `~/.codex/config.toml`:
 
-For a client that wants JSON configuration instead:
+```toml
+[mcp_servers.research-digest]
+command = "research-digest"
+args = ["mcp"]
+```
+
+**GitHub Copilot CLI** — add to `~/.copilot/mcp-config.json`:
 
 ```json
 {
   "mcpServers": {
     "research-digest": {
       "command": "research-digest",
-      "args": ["mcp"]
+      "args": ["mcp"],
+      "tools": ["*"]
     }
   }
 }
 ```
+
+Any other MCP client takes the same two fields: run `research-digest` with the
+argument `mcp`.
+
+Then ask in normal language: "search my library for retrieval papers", "what
+have I saved about multi-agent systems".
 
 Check it responds:
 
