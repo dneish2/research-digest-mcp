@@ -37,6 +37,53 @@ def _concepts(papers: List[Dict[str, Any]]) -> Counter:
     return counter
 
 
+def cross_pollination(papers: List[Dict[str, Any]], lookback_days: int = 90,
+                      today: Optional[date] = None, limit: int = 8) -> List[Dict[str, Any]]:
+    """Concepts turning up in a category they have never appeared in before.
+
+    An idea crossing from one field into another is worth more of your attention
+    than the same idea appearing again where it always does. This counts every
+    (concept, category) pair you have seen historically, then flags recent papers
+    that introduce a pair with no history at all.
+
+    Needs no embeddings, so it works on a plain install.
+    """
+    today = today or date.today()
+    cutoff = today - timedelta(days=lookback_days)
+
+    historical: Counter = Counter()
+    recent: List[Dict[str, Any]] = []
+    for paper in papers:
+        day = _paper_day(paper)
+        if day is None:
+            continue
+        category = paper.get("primary_category") or "uncategorised"
+        pairs = [(str(c).lower(), category) for c in (paper.get("concepts") or [])]
+        if day < cutoff:
+            historical.update(pairs)
+        else:
+            recent.append(paper)
+
+    if not historical or not recent:
+        return []
+
+    out = []
+    for paper in recent:
+        category = paper.get("primary_category") or "uncategorised"
+        novel = [c for c in (paper.get("concepts") or [])
+                 if historical[(str(c).lower(), category)] == 0]
+        if not novel:
+            continue
+        out.append({
+            "id": paper.get("id", ""),
+            "title": paper.get("title", ""),
+            "category": category,
+            "concepts": novel[:3],
+            "note": f"first time “{novel[0]}” shows up in {category}",
+        })
+    return out[:limit]
+
+
 def compute_trends(papers: List[Dict[str, Any]],
                    today: Optional[date] = None) -> Dict[str, Any]:
     today = today or date.today()

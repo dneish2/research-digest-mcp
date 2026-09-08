@@ -193,6 +193,22 @@ async function openPanel(i) {
   btns.appendChild(read);
   body.appendChild(btns);
 
+  if (paper.saved) {
+    body.appendChild(el('div', 'sec', 'Your note'));
+    const note = el('textarea', 'notefield');
+    note.placeholder = 'Why you kept this one.';
+    note.value = paper.note || '';
+    let noteTimer = null;
+    note.addEventListener('input', () => {
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(async () => {
+        const r = await get('/api/note', { id: paper.id, note: note.value });
+        if (r.status === 'ok') paper.note = note.value;
+      }, 500);
+    });
+    body.appendChild(note);
+  }
+
   body.appendChild(el('div', 'sec', 'Similar papers'));
   const holder = el('div');
   holder.textContent = 'Looking...';
@@ -250,6 +266,9 @@ async function loadTrends() {
       });
       out.appendChild(box);
     }
+    // Crossing does not depend on the week-over-week comparison, so it still
+    // has something to say when that comparison cannot be made.
+    renderCrossing(out, data.crossing);
     return;
   }
 
@@ -271,6 +290,31 @@ async function loadTrends() {
   });
   out.appendChild(box);
   if (data.note) out.appendChild(el('p', 'sub', data.note));
+  renderCrossing(out, data.crossing);
+}
+
+/* Concepts turning up somewhere they never have before. */
+function renderCrossing(out, crossing) {
+  if (!crossing || !crossing.length) return;
+  const col = el('div', 'tcol');
+  col.style.marginTop = '18px';
+  col.appendChild(el('h3', null, 'Crossing over'));
+  col.appendChild(el('p', 'sub',
+    'An idea showing up in a field it has not appeared in before, which is usually '
+    + 'worth more attention than the same idea appearing where it always does.'));
+  crossing.forEach((c) => {
+    const row = el('div', 'crossrow');
+    const b = el('button', null, c.title);
+    b.style.cssText = 'border:0;background:none;text-align:left;cursor:pointer;font:inherit;color:inherit;padding:0';
+    b.addEventListener('click', () => {
+      const at = state.papers.findIndex((p) => p.id === c.id);
+      if (at >= 0) { setView('grid'); openPanel(at); }
+    });
+    row.appendChild(b);
+    row.appendChild(el('span', 'n', c.note));
+    col.appendChild(row);
+  });
+  out.appendChild(col);
 }
 
 /* ---------------- queue ---------------- */
@@ -378,6 +422,19 @@ $('#go').addEventListener('click', doSearch);
 $('#q').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') doSearch();
   if (e.key === 'Escape') { $('#q').value = ''; state.query = ''; loadGrid(); }
+});
+
+$('#refresh').addEventListener('click', async () => {
+  const btn = $('#refresh');
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
+  $('#status').textContent = 'Asking arXiv for today’s papers...';
+  const r = await get('/api/refresh');
+  btn.disabled = false;
+  btn.textContent = 'Fetch';
+  $('#status').textContent = r.message || r.status;
+  $('#status').className = 'search-status on';
+  if (r.status === 'ok') { await boot(); }
 });
 
 $('#panel-x').addEventListener('click', closePanel);

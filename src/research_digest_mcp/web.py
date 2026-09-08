@@ -19,7 +19,7 @@ from urllib.parse import parse_qs, urlparse
 from . import storage
 from .config import HOME, load_settings
 from .scoring import BOILERPLATE, score_paper, rank_all, explain_sentence
-from .trends import compute_trends
+from .trends import compute_trends, cross_pollination
 
 STATIC = Path(__file__).parent / "static"
 
@@ -156,7 +156,42 @@ def api(path: str, params: dict) -> dict:
         return {"status": "ok", "read": True}
 
     if path == "/api/trends":
-        return compute_trends(storage.load_papers())
+        papers = storage.load_papers()
+        result = compute_trends(papers)
+        result["crossing"] = cross_pollination(papers)
+        return result
+
+    if path == "/api/note":
+        pid, note = one.get("id", ""), one.get("note", "")
+        saved = storage.load_saved()
+        if pid not in saved:
+            return {"status": "error", "message": "Save the paper first."}
+        entry = saved[pid]
+        storage.save_paper(pid, entry.get("title", ""), note, entry.get("concepts") or [])
+        return {"status": "ok", "note": note}
+
+    if path == "/api/refresh":
+        # Fetch from the browser, so a daily pull does not need the terminal.
+        from .fetchers import ArxivUnavailable, fetch_settings
+        settings = load_settings()
+        try:
+            result = fetch_settings(settings)
+        except ArxivUnavailable as exc:
+            return {"status": "error", "message": str(exc)}
+        if not result["papers"]:
+            return {"status": "error",
+                    "message": "arXiv returned nothing. Nothing was written.",
+                    "errors": result["errors"]}
+        stats = storage.merge_papers(result["papers"], result["run_date"])
+        return {
+            "status": "ok", "fetched": len(result["papers"]),
+            "added": stats["added"], "total": stats["total"],
+            "errors": result["errors"],
+            "message": (f"Fetched {len(result['papers'])}, {stats['added']} new. "
+                        f"Library holds {stats['total']}."
+                        + (" Re-run embed to include them in similarity search."
+                           if stats["added"] else "")),
+        }
 
     if path == "/api/saved":
         from .mcp import tool_get_saved
