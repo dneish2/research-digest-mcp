@@ -1,58 +1,58 @@
 :root{
-  --paper:#f4f2ec;
-  --surface:#fffdf8;
-  --surface-2:#eae7dd;
-  --rule:#d8d3c6;
-  --ink:#171a19;
-  --ink-2:#4a504d;
-  --ink-3:#7d837f;
-  --accent:#0e6f68;
-  --accent-soft:#dcefec;
-  --quant:#a1712a;
-  --quant-soft:#f2e7d2;
-  --rise:#2f7d4f;
-  --fall:#a63d3d;
-  --warn:#8a6d1f;
-  --warn-soft:#f7edd2;
+  --paper:#ffffff;
+  --surface:#f6f8fa;
+  --surface-2:#eaeef2;
+  --rule:#d0d7de;
+  --ink:#1f2328;
+  --ink-2:#59636e;
+  --ink-3:#818b98;
+  --accent:#0969da;
+  --accent-soft:#ddf4ff;
+  --quant:#8250df;
+  --quant-soft:#f0e7ff;
+  --rise:#1a7f37;
+  --fall:#cf222e;
+  --warn:#9a6700;
+  --warn-soft:#fff8c5;
   --f-title:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
   --f-body:"Segoe UI",system-ui,-apple-system,sans-serif;
   --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --paper:#121514;
-    --surface:#1a1e1d;
-    --surface-2:#242a28;
-    --rule:#2f3735;
-    --ink:#e9e6de;
-    --ink-2:#a8b0ac;
-    --ink-3:#767e7a;
-    --accent:#4fd6c9;
-    --accent-soft:#123330;
-    --quant:#e0a94a;
-    --quant-soft:#33280f;
-    --rise:#5cc98a;
-    --fall:#e07a7a;
-    --warn:#e0bd63;
-    --warn-soft:#332b12;
+    --paper:#0d1117;
+    --surface:#161b22;
+    --surface-2:#21262d;
+    --rule:#30363d;
+    --ink:#e6edf3;
+    --ink-2:#8b949e;
+    --ink-3:#6e7681;
+    --accent:#58a6ff;
+    --accent-soft:#0c2d6b;
+    --quant:#bc8cff;
+    --quant-soft:#2d1f4d;
+    --rise:#3fb950;
+    --fall:#f85149;
+    --warn:#d29922;
+    --warn-soft:#3a2d0c;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#121514;
-  --surface:#1a1e1d;
-  --surface-2:#242a28;
-  --rule:#2f3735;
-  --ink:#e9e6de;
-  --ink-2:#a8b0ac;
-  --ink-3:#767e7a;
-  --accent:#4fd6c9;
-  --accent-soft:#123330;
-  --quant:#e0a94a;
-  --quant-soft:#33280f;
-  --rise:#5cc98a;
-  --fall:#e07a7a;
-  --warn:#e0bd63;
-  --warn-soft:#332b12;
+  --paper:#0d1117;
+  --surface:#161b22;
+  --surface-2:#21262d;
+  --rule:#30363d;
+  --ink:#e6edf3;
+  --ink-2:#8b949e;
+  --ink-3:#6e7681;
+  --accent:#58a6ff;
+  --accent-soft:#0c2d6b;
+  --quant:#bc8cff;
+  --quant-soft:#2d1f4d;
+  --rise:#3fb950;
+  --fall:#f85149;
+  --warn:#d29922;
+  --warn-soft:#3a2d0c;
 }
 
 *{box-sizing:border-box}
