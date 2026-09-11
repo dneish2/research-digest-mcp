@@ -90,6 +90,21 @@ TOOLS = [
         },
     },
     {
+        "name": "get_digest",
+        "description": (
+            "Today's top papers against the user's standing topics — a small, dated, "
+            "reproducible pick (default 5, capped per category), not the full ranked "
+            "library. Also written to a markdown file the user can read outside the agent."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "YYYY-MM-DD, default today"},
+                "size": {"type": "integer", "default": 5},
+            },
+        },
+    },
+    {
         "name": "library_status",
         "description": (
             "What is actually in the library right now: paper count, date range, "
@@ -263,6 +278,27 @@ def tool_suggest_reading(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def tool_get_digest(args: Dict[str, Any]) -> Dict[str, Any]:
+    papers = storage.load_papers()
+    if not papers:
+        return _no_library()
+    from .digest import build_digest, write_digest
+    settings = load_settings()
+    result = build_digest(papers, settings["topics"],
+                           for_date=args.get("date"), size=int(args.get("size", 5)))
+    if not result["picks"]:
+        return {"status": "no_match",
+                "message": "Nothing in the library matched your topics today.", "results": []}
+    path = write_digest(result)
+    return {
+        "status": "ok",
+        "date": result["date"],
+        "considered": result["considered"],
+        "path": str(path),
+        "results": [{**_summary(p), "pick_reason": p["pick_reason"]} for p in result["picks"]],
+    }
+
+
 def tool_library_status(args: Dict[str, Any]) -> Dict[str, Any]:
     papers = storage.load_papers()
     settings = load_settings()
@@ -308,6 +344,7 @@ HANDLERS = {
     "get_trends": tool_get_trends,
     "get_saved": tool_get_saved,
     "suggest_reading": tool_suggest_reading,
+    "get_digest": tool_get_digest,
     "library_status": tool_library_status,
 }
 

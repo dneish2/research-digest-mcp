@@ -281,8 +281,8 @@ class TestMcpProtocol(TempHome):
         tools = handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         names = {t["name"] for t in tools["result"]["tools"]}
         self.assertEqual(names, {
-            "search_papers", "get_similar", "get_trends",
-            "get_saved", "suggest_reading", "library_status"})
+            "search_papers", "get_similar", "get_trends", "get_saved",
+            "suggest_reading", "get_digest", "library_status"})
 
     def test_empty_library_explains_itself(self):
         """An empty library must say so, not return [] as if nothing matched."""

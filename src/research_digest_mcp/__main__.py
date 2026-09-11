@@ -4,6 +4,7 @@
     research-digest embed      build vectors for similarity search
     research-digest status     what is in the library
     research-digest search Q   search from the shell
+    research-digest digest     today's top papers, written to a dated file
     research-digest web        open the browser interface
     research-digest mcp        run as an MCP server (what your AI client calls)
 """
@@ -108,6 +109,26 @@ def cmd_search(args) -> int:
     return 0
 
 
+def cmd_digest(args) -> int:
+    from .digest import build_digest, write_digest
+    papers = storage.load_papers()
+    if not papers:
+        print(f"No papers in {HOME}. Run 'research-digest fetch' first.", file=sys.stderr)
+        return 1
+    settings = load_settings()
+    result = build_digest(papers, settings["topics"], for_date=args.date, size=args.size)
+    if not result["picks"]:
+        print(f"Nothing in {len(papers)} papers matched your topics today.", file=sys.stderr)
+        return 1
+    path = write_digest(result)
+    print(f"{result['date']}: {len(result['picks'])} picks from "
+          f"{result['considered']} matches. Wrote {path}\n")
+    for i, paper in enumerate(result["picks"], 1):
+        print(f"{i}. {paper['title']}")
+        print(f"   {paper.get('about', '')}\n")
+    return 0
+
+
 def cmd_web(args) -> int:
     from .web import run
     run(port=args.port, open_browser=not args.no_browser)
@@ -156,6 +177,11 @@ def main(argv=None) -> int:
     embed = sub.add_parser("embed", help="build vectors for similarity search")
     embed.add_argument("--engine", choices=["tfidf-svd", "minilm"], default=None)
     embed.set_defaults(func=cmd_embed)
+
+    digest = sub.add_parser("digest", help="today's top papers, written to a dated file")
+    digest.add_argument("--date", default=None, help="YYYY-MM-DD, default today")
+    digest.add_argument("--size", type=int, default=5)
+    digest.set_defaults(func=cmd_digest)
 
     status = sub.add_parser("status", help="what is in the library")
     status.add_argument("--json", action="store_true")

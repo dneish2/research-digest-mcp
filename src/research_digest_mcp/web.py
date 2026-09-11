@@ -204,6 +204,24 @@ def api(path: str, params: dict) -> dict:
         storage.mark_read(pid)
         return {"status": "ok", "read": True}
 
+    if path == "/api/digest":
+        from .digest import build_digest, write_digest
+        papers = storage.load_papers()
+        if not papers:
+            return {"status": "error", "message": "No papers yet. Fetch first."}
+        settings = load_settings()
+        result = build_digest(papers, settings["topics"], for_date=one.get("date"))
+        digest_path = write_digest(result)
+        return {
+            "status": "ok", "date": result["date"], "considered": result["considered"],
+            "picks": [{
+                "id": p["id"], "title": p.get("title", ""), "url": p.get("url", ""),
+                "published": p.get("published", ""), "category": p.get("primary_category", ""),
+                "about": p.get("about", ""), "pick_reason": p.get("pick_reason", ""),
+            } for p in result["picks"]],
+            "path": str(digest_path),
+        }
+
     if path == "/api/trends":
         papers = storage.load_papers()
         result = compute_trends(papers)
