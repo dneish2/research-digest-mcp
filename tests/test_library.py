@@ -135,6 +135,37 @@ class TestQueryScoring(TempHome):
         ranked = rank_all_query([off_topic, on_topic], ["agentic", "evaluation"])
         self.assertEqual(ranked[0]["id"], "a")
 
+    def test_a_hyphenated_compound_is_reachable_without_the_hyphen_regression(self):
+        """The bug the judge eval surfaced: _WORD keeps "chain-of-thought" whole,
+        so a search for "chain of thought" matched no part of it, while physics
+        papers about an oscillator chain matched "chain" and ranked above it. On
+        the live library that query returned 0 of 10 chain-of-thought papers in
+        its top 10; every one of the five results was a spin-chain paper."""
+        from research_digest_mcp.scoring import rank_all_query
+        cot = {"id": "a", "title": "Faithfulness of chain-of-thought reasoning",
+               "abstract": "", "published": ""}
+        physics = {"id": "b", "title": "An agitated oscillator chain",
+                   "abstract": "A chain of coupled oscillators.", "published": ""}
+        ranked = rank_all_query([physics, cot], ["chain", "of", "thought"])
+        self.assertEqual(ranked[0]["id"], "a")
+
+    def test_a_stopword_inside_a_phrase_does_not_kill_the_phrase_bonus_regression(self):
+        """Stopwords are dropped from term matching, but the exact-phrase bonus
+        was being built from the filtered terms — so "chain of thought" became
+        the phrase "chain thought", which appears in no paper, and every query
+        with a function word inside it silently lost the bonus. That cost
+        precision@5 on 9 of the 11 regression phrases containing one, and on
+        none of the 15 without."""
+        from research_digest_mcp.scoring import score_query
+        exact = {"title": "Bridge the gap between theory and practice",
+                 "abstract": "", "published": ""}
+        scattered = {"title": "A gap, a bridge, and the space between them",
+                     "abstract": "", "published": ""}
+        terms = "bridge the gap between".split()
+        self.assertGreater(score_query(exact, terms)["score"],
+                           score_query(scattered, terms)["score"])
+        self.assertTrue(score_query(exact, terms)["why"]["components"]["phrase_bonus"])
+
 
 class TestAboutSentence(TempHome):
     def test_prefers_the_contribution_sentence(self):

@@ -163,6 +163,22 @@ def score_paper(paper: Dict[str, Any], topics: List[str],
     }
 
 
+def _match_set(text: str) -> set:
+    """Every form a query term can legitimately match in `text`.
+
+    _WORD keeps hyphenated compounds whole, so "chain-of-thought" is a single
+    token and a search for "chain of thought" matched no part of it — while
+    physics papers about an oscillator chain matched on "chain" and ranked
+    above the papers actually about chain-of-thought reasoning. Compounds now
+    also contribute their parts, so a query reaches inside a hyphenated term
+    without the searcher having to guess the author's hyphenation.
+    """
+    words = set(_WORD.findall(text))
+    for word in [w for w in words if "-" in w]:
+        words.update(part for part in word.split("-") if part)
+    return words
+
+
 def score_query(paper: Dict[str, Any], terms: List[str],
                  today: Optional[date] = None) -> Optional[Dict[str, Any]]:
     """Score a paper against free-text search terms.
@@ -171,22 +187,23 @@ def score_query(paper: Dict[str, Any], terms: List[str],
     interest profile, and it ranks differently on purpose. score_paper's breadth
     bonus assumes matching 2-3 of a dozen-odd standing topics is a meaningful
     signal about the paper; fed a 2-3 word search query instead, every result
-    would get the same full bonus regardless of relevance, and results only had
-    to match ANY term to appear at all — a two-word query for "agentic
-    evaluation" could be topped by a paper that only mentions "evaluation" in
-    passing. So here: every term must at least be present for a paper to match
-    at all, papers rank by what fraction of the query they cover, and there is a
+    would get the same full bonus regardless of relevance — a two-word query for
+    "agentic evaluation" could be topped by a paper that only mentions
+    "evaluation" in passing. So here: papers rank by what fraction of the query
+    they cover, weighted by how distinctive each matched term is, and there is a
     small bonus for the exact phrase and for the terms appearing more than once
-    (a paper centrally about the topic, not a glancing mention).
+    (a paper centrally about the topic, not a glancing mention). A paper needs
+    at least one term to appear at all; matching more of them ranks it higher.
 
     Returns None (not a zero score) when nothing matched, so callers can tell
     "did not match this query" apart from "matched, but weakly".
     """
+    raw = [t.lower().strip() for t in terms if t.strip()]
     terms = _significant(terms)
     if not terms:
         return None
     text = paper_text(paper)
-    words = set(_WORD.findall(text))
+    words = _match_set(text)
 
     matched: List[Dict[str, Any]] = []
     weighted = 0.0
@@ -215,12 +232,20 @@ def score_query(paper: Dict[str, Any], terms: List[str],
     coverage = len(matched) / len(terms)
     base = min(weighted / len(terms), 1.0) * BASE_WEIGHT
 
+    # Built from the raw query, not the stopword-filtered terms. Filtering first
+    # was a quiet bug: "chain of thought" became the phrase "chain thought",
+    # which appears in no paper, so every query with a function word inside it
+    # silently lost its exact-phrase bonus. On the 26-phrase regression set that
+    # cost precision@5 on 9 of the 11 phrases containing one, and on none of the
+    # 15 without — 0.708 to 0.531 overall. Stopwords still do not earn match
+    # credit of their own; they just no longer break the phrase they sit in.
     phrase_bonus = 0.0
-    if len(terms) > 1:
-        phrase = " ".join(terms)
-        if phrase in text:
-            phrase_bonus = QUERY_PHRASE_BONUS
-            matched.append({"topic": phrase, "kind": "phrase", "credit": phrase_bonus})
+    if len(raw) > 1:
+        for phrase in (" ".join(raw), "-".join(raw)):
+            if phrase in text:
+                phrase_bonus = QUERY_PHRASE_BONUS
+                matched.append({"topic": phrase, "kind": "phrase", "credit": phrase_bonus})
+                break
 
     extra_mentions = max(occurrences - len(matched), 0)
     tf_bonus = min(extra_mentions * QUERY_TF_STEP, QUERY_TF_CAP)
