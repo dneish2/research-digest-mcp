@@ -30,6 +30,36 @@ BOILERPLATE = {
     "language", "large", "based", "using", "study", "analysis", "problem",
 }
 
+# Plain English function words. BOILERPLATE is deliberately about this field's
+# jargon, not general English, so on its own "of" scores as a *distinctive*
+# word (0.6 credit) — it is not in BOILERPLATE and it is not common ML
+# vocabulary, it is just common. A query like "chain of thought faithfulness"
+# then matches almost every paper on "of" alone, which a preliminary eval
+# caught outright: that exact query scored zero precision because papers with
+# nothing to do with chain-of-thought outranked the ones that were. These are
+# dropped from matching entirely (not merely discounted), the same way a
+# search engine ignores "of" rather than scoring it cheaply.
+STOPWORDS = {
+    "a", "an", "the", "of", "in", "on", "at", "to", "for", "and", "or", "but",
+    "is", "are", "was", "were", "be", "been", "being", "with", "from", "by",
+    "as", "it", "its", "this", "that", "these", "those", "into", "over",
+    "about", "than", "then", "so", "not", "no", "do", "does", "did", "can",
+    "if", "we", "you", "your", "our",
+}
+
+
+def _significant(terms: List[str]) -> List[str]:
+    """Query/topic words worth matching against — lowercased, deduped in
+    order, with plain English function words dropped."""
+    seen, out = set(), []
+    for term in terms:
+        t = term.lower().strip()
+        if not t or t in STOPWORDS or t in seen:
+            continue
+        seen.add(t)
+        out.append(t)
+    return out
+
 PHRASE_HIT = 1.0
 DISTINCT_HIT = 0.6
 COMMON_HIT = 0.2
@@ -40,6 +70,14 @@ RECENCY_DAYS = 30
 BASE_WEIGHT = 0.8
 
 _WORD = re.compile(r"[a-z0-9][a-z0-9\-]*")
+
+# Query-search tuning (see score_query). Deliberately smaller than the profile
+# scorer's breadth bonus: an ad-hoc query should not get the same weight as a
+# standing interest, and these are nudges on top of coverage, not the main signal.
+QUERY_PHRASE_BONUS = 0.35
+QUERY_TF_STEP = 0.02
+QUERY_TF_CAP = 0.15
+
 
 
 def paper_text(paper: Dict[str, Any]) -> str:
@@ -58,7 +96,7 @@ def score_paper(paper: Dict[str, Any], topics: List[str],
     weighted = 0.0
     for topic in topics:
         topic_l = topic.lower().strip()
-        if not topic_l:
+        if not topic_l or topic_l in STOPWORDS:
             continue
         topic_words = topic_l.split()
         if len(topic_words) > 1:
@@ -115,8 +153,107 @@ def score_paper(paper: Dict[str, Any], topics: List[str],
     }
 
 
+def score_query(paper: Dict[str, Any], terms: List[str],
+                 today: Optional[date] = None) -> Optional[Dict[str, Any]]:
+    """Score a paper against free-text search terms.
+
+    This is score_paper's sibling for ad-hoc queries rather than a standing
+    interest profile, and it ranks differently on purpose. score_paper's breadth
+    bonus assumes matching 2-3 of a dozen-odd standing topics is a meaningful
+    signal about the paper; fed a 2-3 word search query instead, every result
+    would get the same full bonus regardless of relevance, and results only had
+    to match ANY term to appear at all — a two-word query for "agentic
+    evaluation" could be topped by a paper that only mentions "evaluation" in
+    passing. So here: every term must at least be present for a paper to match
+    at all, papers rank by what fraction of the query they cover, and there is a
+    small bonus for the exact phrase and for the terms appearing more than once
+    (a paper centrally about the topic, not a glancing mention).
+
+    Returns None (not a zero score) when nothing matched, so callers can tell
+    "did not match this query" apart from "matched, but weakly".
+    """
+    terms = _significant(terms)
+    if not terms:
+        return None
+    text = paper_text(paper)
+    words = set(_WORD.findall(text))
+
+    matched: List[Dict[str, Any]] = []
+    weighted = 0.0
+    occurrences = 0
+    for term in terms:
+        if term not in words:
+            continue
+        common = term in BOILERPLATE
+        credit = COMMON_HIT if common else DISTINCT_HIT
+        weighted += credit
+        matched.append({
+            "topic": term,
+            "kind": "common word" if common else "distinctive word",
+            "credit": credit,
+        })
+        occurrences += text.count(term)
+
+    if not matched:
+        return None
+
+    # Credit-weighted, like score_paper — not a flat "matched N of M" fraction.
+    # Two terms both present is not automatically full marks: a paper matching
+    # two common words in passing should not tie a paper where the terms are
+    # distinctive and central. This is what keeps a glancing off-topic mention
+    # of your search terms from tying the paper actually about them.
+    coverage = len(matched) / len(terms)
+    base = min(weighted / len(terms), 1.0) * BASE_WEIGHT
+
+    phrase_bonus = 0.0
+    if len(terms) > 1:
+        phrase = " ".join(terms)
+        if phrase in text:
+            phrase_bonus = QUERY_PHRASE_BONUS
+            matched.append({"topic": phrase, "kind": "phrase", "credit": phrase_bonus})
+
+    extra_mentions = max(occurrences - len(matched), 0)
+    tf_bonus = min(extra_mentions * QUERY_TF_STEP, QUERY_TF_CAP)
+
+    recency, age_days = 0.0, None
+    published = paper.get("published")
+    if published:
+        try:
+            pub = datetime.strptime(str(published)[:10], "%Y-%m-%d").date()
+            age_days = ((today or date.today()) - pub).days
+            if age_days >= 0:
+                recency = max(0.0, 1.0 - age_days / RECENCY_DAYS) * RECENCY_WEIGHT
+        except ValueError:
+            pass
+
+    total = min(base + phrase_bonus + tf_bonus + recency, 1.0)
+    return {
+        "score": round(total, 4),
+        "why": {
+            "matched": matched,
+            "components": {
+                "base": round(base, 4),
+                "phrase_bonus": round(phrase_bonus, 4),
+                "tf_bonus": round(tf_bonus, 4),
+                "recency": round(recency, 4),
+            },
+            "terms_matched": len([m for m in matched if m["kind"] != "phrase"]),
+            "terms_considered": len(terms),
+            "coverage": round(coverage, 2),
+            "age_days": age_days,
+            "capped": base + phrase_bonus + tf_bonus + recency > 1.0,
+        },
+    }
+
+
 def explain_sentence(why: Dict[str, Any]) -> str:
-    """The derivation as one plain-English line, for the UI and the MCP tools."""
+    """The derivation as one plain-English line, for the UI and the MCP tools.
+
+    Reads either score_paper's component shape (base/breadth_bonus/recency) or
+    score_query's (base/phrase_bonus/tf_bonus/recency) — whichever bonuses are
+    present get a clause, in a fixed order, so the sentence reads the same way
+    regardless of which scorer produced it.
+    """
     matched = why.get("matched", [])
     if not matched:
         return "No topic matched. It ranks on recency alone."
@@ -124,7 +261,11 @@ def explain_sentence(why: Dict[str, Any]) -> str:
     comp = why.get("components", {})
     bits = [f"matched {names}"]
     if comp.get("breadth_bonus"):
-        bits.append(f"+{comp['breadth_bonus']:.2f} for spanning {why['topics_matched']} topics")
+        bits.append(f"+{comp['breadth_bonus']:.2f} for spanning {why.get('topics_matched')} topics")
+    if comp.get("phrase_bonus"):
+        bits.append(f"+{comp['phrase_bonus']:.2f} for matching the exact phrase")
+    if comp.get("tf_bonus"):
+        bits.append(f"+{comp['tf_bonus']:.2f} for how often the terms appear")
     if comp.get("recency"):
         bits.append(f"+{comp['recency']:.2f} for being {why.get('age_days')} days old")
     return "; ".join(bits) + "."
@@ -154,6 +295,23 @@ def rank(papers: List[Dict[str, Any]], topics: List[str],
          limit: int = 20) -> List[Dict[str, Any]]:
     """The top `limit` matches. Use rank_all when you need the true match count."""
     return rank_all(papers, topics)[:limit]
+
+
+def rank_all_query(papers: List[Dict[str, Any]], terms: List[str]) -> List[Dict[str, Any]]:
+    """Free-text search over the library. See score_query for how this differs
+    from rank_all, which is calibrated for the standing topic profile."""
+    scored = []
+    for paper in papers:
+        result = score_query(paper, terms)
+        if result is None:
+            continue
+        record = dict(paper)
+        record["score"] = result["score"]
+        record["why"] = result["why"]
+        record["why_text"] = explain_sentence(result["why"])
+        scored.append(record)
+    scored.sort(key=lambda p: p["score"], reverse=True)
+    return scored
 
 
 CONCEPT_PATTERNS = [

@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import storage
 from .config import HOME, load_settings
-from .scoring import BOILERPLATE, score_paper, rank_all, explain_sentence
+from .scoring import BOILERPLATE, score_paper, rank_all_query, explain_sentence
 from .trends import compute_trends, cross_pollination
 
 STATIC = Path(__file__).parent / "static"
@@ -67,7 +67,7 @@ def api(path: str, params: dict) -> dict:
             return {"status": "ok", "matched": 0, "results": [], "searched": 0}
         papers = storage.load_papers()
         terms = query.lower().split()
-        every = rank_all(papers, terms)
+        every = rank_all_query(papers, terms)
         limit = int(one.get("limit", 25))
         return {
             "status": "ok", "query": query, "terms": terms,

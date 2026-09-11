@@ -16,7 +16,7 @@ from typing import Any, Dict, List
 
 from . import storage
 from .config import HOME, load_settings
-from .scoring import explain_sentence, rank, rank_all, score_paper
+from .scoring import explain_sentence, rank, rank_all, rank_all_query, score_paper
 from .trends import compute_trends
 
 SERVER_NAME = "research-digest"
@@ -73,8 +73,9 @@ TOOLS = [
     {
         "name": "suggest_reading",
         "description": (
-            "Suggest papers on a topic, ranked by the same explainable scorer used "
-            "everywhere else. Falls back to keyword ranking when embeddings are absent."
+            "Suggest unread papers on a topic, ranked by the same explainable keyword "
+            "scorer as search_papers. Keyword-based only — it does not use embeddings, "
+            "even when they are built."
         ),
         "inputSchema": {
             "type": "object",
@@ -137,7 +138,7 @@ def tool_search_papers(args: Dict[str, Any]) -> Dict[str, Any]:
 
     terms = [t for t in query.lower().split() if t]
     limit = int(args.get("limit", 10))
-    every = rank_all(papers, terms)
+    every = rank_all_query(papers, terms)
     ranked = every[:limit]
     return {
         "status": "ok",
@@ -146,9 +147,10 @@ def tool_search_papers(args: Dict[str, Any]) -> Dict[str, Any]:
         "matched": len(every),
         "showing": len(ranked),
         "how": (
-            "Keyword scoring over title, abstract and concept tags. Phrase matches "
-            "score 1.0, distinctive words 0.6, boilerplate words 0.2, plus a bonus "
-            "for matching several of your terms and for recency."
+            "Ranked by how much of your query matched (a distinctive word counts more "
+            "than a common one, the exact phrase counts most) plus how often the terms "
+            "appear and how recent the paper is. Every result must match at least one "
+            "term; matching more of them ranks higher."
         ),
         "results": [_summary(p, abstract=True) for p in ranked],
     }
@@ -237,7 +239,7 @@ def tool_suggest_reading(args: Dict[str, Any]) -> Dict[str, Any]:
     limit = int(args.get("limit", 5))
     read = set(storage.load_read())
     candidates = [p for p in papers if p["id"] not in read]
-    every = rank_all(candidates, topic.lower().split())
+    every = rank_all_query(candidates, topic.lower().split())
     ranked = every[:limit]
 
     method = "keyword scoring"

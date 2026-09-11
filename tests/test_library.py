@@ -92,6 +92,50 @@ class TestScoring(TempHome):
         self.assertEqual(len(rank(papers, ["agentic"], limit=5)), 5)
 
 
+class TestQueryScoring(TempHome):
+    """score_query / rank_all_query: search ranks differently from the standing
+    profile scorer on purpose — see the docstring on score_query."""
+
+    def test_every_term_must_match_at_least_one(self):
+        from research_digest_mcp.scoring import score_query
+        paper = {"title": "a study of agentic systems", "abstract": "", "published": ""}
+        self.assertIsNone(score_query(paper, ["evaluation"]))  # matches nothing
+        self.assertIsNotNone(score_query(paper, ["agentic"]))
+
+    def test_full_coverage_beats_partial_coverage(self):
+        from research_digest_mcp.scoring import score_query
+        both = {"title": "agentic evaluation of language models", "abstract": "",
+                "published": ""}
+        one = {"title": "agentic control of robot arms", "abstract": "", "published": ""}
+        full = score_query(both, ["agentic", "evaluation"])
+        partial = score_query(one, ["agentic", "evaluation"])
+        self.assertGreater(full["score"], partial["score"])
+
+    def test_stopwords_do_not_count_as_a_match_regression(self):
+        """The bug a preliminary eval caught: "of" is not in BOILERPLATE (that
+        list is field jargon, not general English), so it scored as a
+        *distinctive* word — 0.6 credit — and matched almost every paper.
+        "chain of thought faithfulness" scored 0.00 precision@5 because of it."""
+        from research_digest_mcp.scoring import score_query
+        unrelated = {"title": "A Deep Generative Model for Synthesizing Labeled "
+                               "Wireless Signals", "abstract": "", "published": ""}
+        self.assertIsNone(score_query(unrelated, "chain of thought faithfulness".split()))
+
+    def test_glancing_mention_does_not_beat_an_off_topic_hvac_paper_regression(self):
+        """The bug this guards: query terms were fed to score_paper as if they
+        were the standing profile, so an HVAC paper that only said "evaluation"
+        once could still outrank the paper actually about the query."""
+        from research_digest_mcp.scoring import rank_all_query
+        on_topic = {"id": "a", "title": "Agentic Evaluation of Multi-Agent Reasoning",
+                    "abstract": "We evaluate agentic systems on reasoning benchmarks.",
+                    "published": ""}
+        off_topic = {"id": "b", "title": "Large Language Models for HVAC Operations",
+                     "abstract": "We touch briefly on evaluation of the control loop.",
+                     "published": ""}
+        ranked = rank_all_query([off_topic, on_topic], ["agentic", "evaluation"])
+        self.assertEqual(ranked[0]["id"], "a")
+
+
 class TestServeEncoding(TempHome):
     def test_serve_writes_utf8_even_when_stdout_defaults_to_cp1252(self):
         """The Windows bug: without reconfigure(), a cp1252 stdout either raises
