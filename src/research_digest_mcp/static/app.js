@@ -10,10 +10,36 @@ const el = (tag, cls, text) => {
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-async function get(path, params) {
+function humanDate(iso) {
+  if (!iso) return '';
+  const d = new Date(String(iso).slice(0, 10) + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// get() never throws. A network failure, a timeout, or a non-2xx response all
+// resolve to {status: 'error', message}, exactly like a tool reporting its own
+// failure — so every call site's existing `if (data.status !== 'ok')` branch
+// handles "the server is down" the same way it handles "nothing matched",
+// instead of leaving a "Looking..." placeholder that never resolves.
+async function get(path, params, opts) {
   const url = new URL(path, location.origin);
   Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v));
-  return (await fetch(url)).json();
+  const timeoutMs = (opts && opts.timeoutMs) || 8000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) return { status: 'error', message: `Server returned ${res.status}.` };
+    return await res.json();
+  } catch (err) {
+    const message = err && err.name === 'AbortError'
+      ? 'The server did not respond in time.'
+      : 'Could not reach the server. Is research-digest web still running?';
+    return { status: 'error', message };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const state = {
@@ -23,52 +49,59 @@ const state = {
   query: '',
   papers: [],
   index: -1,
-  topics: [],
+  topics: [],       // whatever produced the CURRENT list's ranking (query terms, or profile topics)
+  settingsTopics: [],
 };
 
-/* ---------------- shared bits ---------------- */
+// Detail-panel data, keyed by paper id. Populated by prefetchPaper() on hover
+// or focus, so by the time a card is clicked the panel usually renders from
+// cache instead of waiting on a round trip.
+const paperCache = new Map();
 
-function scoreBar(why, score) {
-  const c = (why && why.components) || {};
-  const wrap = el('div', 'score');
-  wrap.appendChild(el('span', 'num', score.toFixed(3)));
-  const bar = el('div', 'bar');
-  const total = Math.max(score, 0.0001);
-  [['seg-base', c.base], ['seg-breadth', c.breadth_bonus], ['seg-recency', c.recency]]
-    .forEach(([cls, v]) => {
-      if (!v) return;
-      const seg = el('i', cls);
-      seg.style.width = (Math.min(v / total, 1) * 100).toFixed(1) + '%';
-      bar.appendChild(seg);
-    });
-  wrap.appendChild(bar);
-  return wrap;
+function prefetchPaper(id) {
+  if (!id) return null;
+  if (!paperCache.has(id)) {
+    paperCache.set(id, get('/api/paper', { id }));
+  }
+  return paperCache.get(id);
 }
+
+/* ---------------- shared bits ---------------- */
 
 function highlight(text, terms) {
   let html = esc(text);
   (terms || []).forEach((t) => {
     if (!t || t.length < 2) return;
     const safe = t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    html = html.replace(new RegExp(`(${safe})`, 'gi'), '<mark>$1</mark>');
+    html = html.replace(new RegExp(`\\b(${safe})\\b`, 'gi'), '<mark>$1</mark>');
   });
   return html;
 }
 
-function notice(title, body) {
+function notice(title, body, onRetry) {
   const box = el('div', 'note');
   box.appendChild(el('b', null, title));
   const p = el('div');
   p.innerHTML = esc(body).replace(/'([^']+)'/g, '<code>$1</code>');
   box.appendChild(p);
+  if (onRetry) {
+    const retry = el('button', 'retry', 'Retry');
+    retry.type = 'button';
+    retry.addEventListener('click', onRetry);
+    box.appendChild(retry);
+  }
   return box;
 }
 
 /* ---------------- the grid ---------------- */
 
 function paperCard(paper, i) {
-  const card = el('button', 'pcard' + (paper.read ? ' is-read' : ''));
-  card.type = 'button';
+  // An <article>, not a <button>: the star inside it is itself a button, and a
+  // button may not contain interactive content. role="button" + a keydown
+  // handler keeps it operable from the keyboard without that HTML violation.
+  const card = el('article', 'pcard' + (paper.read ? ' is-read' : ''));
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
   card.dataset.i = String(i);
 
   const star = el('button', 'star' + (paper.saved ? ' on' : ''), paper.saved ? '★' : '☆');
@@ -81,20 +114,26 @@ function paperCard(paper, i) {
     paper.saved = r.saved;
     star.className = 'star' + (r.saved ? ' on' : '');
     star.textContent = r.saved ? '★' : '☆';
+    paperCache.delete(paper.id);
   });
   card.appendChild(star);
 
   card.appendChild(el('div', 'meta',
-    [paper.id, paper.published, paper.category].filter(Boolean).join('  ·  ')));
+    [paper.id, humanDate(paper.published), paper.category].filter(Boolean).join('  ·  ')));
   card.appendChild(el('h3', null, paper.title));
-  card.appendChild(scoreBar(paper.why, paper.score));
-  if (paper.why_text) card.appendChild(el('div', 'why', paper.why_text));
+  if (paper.about) card.appendChild(el('p', 'about', paper.about));
 
   const tags = el('div', 'tags');
-  (paper.concepts || []).slice(0, 4).forEach((c) => tags.appendChild(el('span', 'tag', c)));
+  (paper.concepts || []).slice(0, 3).forEach((c) => tags.appendChild(el('span', 'tag', c)));
   card.appendChild(tags);
 
-  card.addEventListener('click', () => openPanel(i));
+  const open = () => openPanel(i);
+  card.addEventListener('click', open);
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+  });
+  card.addEventListener('mouseenter', () => prefetchPaper(paper.id));
+  card.addEventListener('focus', () => prefetchPaper(paper.id));
   return card;
 }
 
@@ -114,14 +153,15 @@ function renderGrid() {
 }
 
 async function loadGrid() {
-  $('#status').textContent = 'Loading...';
+  $('#status').textContent = 'Loading…';
   const data = state.query
     ? await get('/api/search', { q: state.query, limit: 120 })
     : await get('/api/papers', { when: state.when, sort: state.sort, limit: 120 });
 
   if (data.status !== 'ok') {
     $('#grid').textContent = '';
-    $('#grid').appendChild(notice('Could not load', data.message || data.status));
+    $('#grid').appendChild(notice('Could not load your library', data.message || data.status,
+      loadGrid));
     $('#status').textContent = '';
     return;
   }
@@ -143,97 +183,33 @@ function closePanel() {
   state.index = -1;
 }
 
-async function openPanel(i) {
-  const paper = state.papers[i];
-  if (!paper) return;
-  state.index = i;
-  $('#panel').classList.add('open');
-  $('#panel').setAttribute('aria-hidden', 'false');
-  $('#scrim').hidden = false;
-  $('#d-kicker').textContent = `${i + 1} of ${state.papers.length}`;
-
-  const body = $('#d-body');
-  body.textContent = '';
-  body.appendChild(el('h2', null, paper.title));
-  body.appendChild(el('div', 'meta',
-    [paper.id, paper.published, paper.category].filter(Boolean).join('  ·  ')));
-  body.appendChild(scoreBar(paper.why, paper.score));
-  if (paper.why_text) body.appendChild(el('div', 'why', paper.why_text));
-
-  if (paper.abstract) {
-    const abs = el('p', 'abs');
-    abs.innerHTML = highlight(paper.abstract, state.topics);
-    body.appendChild(abs);
-  }
-
-  const btns = el('div', 'rowbtns');
-  const link = el('a', null, 'Open on arXiv');
-  link.href = paper.url || '#';
-  link.target = '_blank';
-  link.rel = 'noopener';
-  btns.appendChild(link);
-
-  const save = el('button', null, paper.saved ? 'Saved' : 'Save');
-  save.addEventListener('click', async () => {
-    const r = await get('/api/save', { id: paper.id });
-    if (r.status !== 'ok') return;
-    paper.saved = r.saved;
-    save.textContent = r.saved ? 'Saved' : 'Save';
-    renderGrid();
-  });
-  btns.appendChild(save);
-
-  const read = el('button', null, paper.read ? 'Read' : 'Mark read');
-  read.addEventListener('click', async () => {
-    await get('/api/read', { id: paper.id });
-    paper.read = true;
-    read.textContent = 'Read';
-    renderGrid();
-  });
-  btns.appendChild(read);
-  body.appendChild(btns);
-
-  if (paper.saved) {
-    body.appendChild(el('div', 'sec', 'Your note'));
-    const note = el('textarea', 'notefield');
-    note.placeholder = 'Why you kept this one.';
-    note.value = paper.note || '';
-    let noteTimer = null;
-    note.addEventListener('input', () => {
-      clearTimeout(noteTimer);
-      noteTimer = setTimeout(async () => {
-        const r = await get('/api/note', { id: paper.id, note: note.value });
-        if (r.status === 'ok') paper.note = note.value;
-      }, 500);
-    });
-    body.appendChild(note);
-  }
-
-  body.appendChild(el('div', 'sec', 'Similar papers'));
-  const holder = el('div');
-  holder.textContent = 'Looking...';
-  body.appendChild(holder);
-
-  const data = await get('/api/similar', { id: paper.id, limit: 6 });
-  holder.textContent = '';
-  if (data.status !== 'ok') {
+function renderSimilar(container, sim) {
+  const holder = el('div', 'simlist');
+  container.appendChild(holder);
+  if (!sim || sim.status !== 'ok') {
     const heading = {
       needs_rebuild: 'Similarity needs rebuilding',
       no_embeddings: 'No vectors built yet',
+      not_found: 'Not embedded yet',
       unavailable: 'Similarity is an optional extra',
-    }[data.status] || 'Similarity unavailable';
-    holder.appendChild(notice(heading, data.message || ''));
+    }[sim && sim.status] || 'Similarity unavailable';
+    holder.appendChild(notice(heading, (sim && sim.message) || ''));
     return;
   }
-  data.results.forEach((n) => {
+  if (!sim.results.length) {
+    holder.appendChild(el('div', 'dim', 'No close neighbours yet.'));
+    return;
+  }
+  sim.results.forEach((n) => {
     const row = el('div', 'nb');
-    row.appendChild(el('span', 's', n.similarity.toFixed(3)));
+    row.appendChild(el('span', 's', n.similarity.toFixed(2)));
     const g = el('span', 'g');
     const fill = el('i');
     fill.style.width = Math.max(2, Math.min(n.similarity, 1) * 100).toFixed(0) + '%';
     g.appendChild(fill);
     row.appendChild(g);
     const jump = el('button', null, n.title);
+    jump.type = 'button';
     jump.addEventListener('click', () => {
       const at = state.papers.findIndex((p) => p.id === n.id);
       if (at >= 0) openPanel(at);
@@ -244,16 +220,134 @@ async function openPanel(i) {
   });
 }
 
+function openScoringFor(data) {
+  closePanel();
+  setView('scoring');
+  $('#lab-title').value = data.title || '';
+  $('#lab-abstract').value = data.abstract || '';
+  $('#lab-published').value = data.published || '';
+  if (state.settingsTopics.length) $('#lab-topics').value = state.settingsTopics.join(', ');
+  runLab();
+}
+
+async function openPanel(i) {
+  const row = state.papers[i];
+  if (!row) return;
+  state.index = i;
+  $('#panel').classList.add('open');
+  $('#panel').setAttribute('aria-hidden', 'false');
+  $('#scrim').hidden = false;
+  $('#d-kicker').textContent = `${i + 1} of ${state.papers.length}`;
+
+  const body = $('#d-body');
+  body.textContent = '';
+  body.appendChild(el('div', 'dload', 'Loading…'));
+
+  const data = await prefetchPaper(row.id);
+  if (state.index !== i) return; // the reader moved to a different paper meanwhile
+  body.textContent = '';
+
+  if (data.status !== 'ok') {
+    body.appendChild(notice('Could not load this paper', data.message || data.status, () => {
+      paperCache.delete(row.id);
+      openPanel(i);
+    }));
+    return;
+  }
+
+  body.appendChild(el('h2', null, data.title));
+  const authors = data.authors || [];
+  const byline = authors.length > 3
+    ? authors.slice(0, 3).join(', ') + ` +${authors.length - 3}`
+    : authors.join(', ');
+  body.appendChild(el('div', 'meta',
+    [data.category, humanDate(data.published), byline].filter(Boolean).join('  ·  ')));
+
+  if (data.about) {
+    body.appendChild(el('div', 'sec', "What it's about"));
+    body.appendChild(el('p', 'about-lead', data.about));
+  }
+
+  body.appendChild(el('div', 'sec', 'Abstract'));
+  const abs = el('p', 'abs');
+  abs.innerHTML = highlight(data.abstract || '', state.topics);
+  body.appendChild(abs);
+
+  body.appendChild(el('div', 'sec', 'Similar'));
+  renderSimilar(body, data.similar);
+
+  const btns = el('div', 'rowbtns');
+  const link = el('a', null, 'Open on arXiv');
+  link.href = data.url || '#';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  btns.appendChild(link);
+
+  const save = el('button', null, data.saved ? 'Saved' : 'Save');
+  save.type = 'button';
+  save.addEventListener('click', async () => {
+    const r = await get('/api/save', { id: data.id });
+    if (r.status !== 'ok') return;
+    data.saved = r.saved;
+    row.saved = r.saved;
+    save.textContent = r.saved ? 'Saved' : 'Save';
+    paperCache.set(data.id, Promise.resolve(data));
+    renderGrid();
+  });
+  btns.appendChild(save);
+
+  const read = el('button', null, data.read ? 'Read' : 'Mark read');
+  read.type = 'button';
+  read.addEventListener('click', async () => {
+    await get('/api/read', { id: data.id });
+    data.read = true;
+    row.read = true;
+    read.textContent = 'Read';
+    paperCache.set(data.id, Promise.resolve(data));
+    renderGrid();
+  });
+  btns.appendChild(read);
+  body.appendChild(btns);
+
+  if (data.saved) {
+    body.appendChild(el('div', 'sec', 'Your note'));
+    const note = el('textarea', 'notefield');
+    note.placeholder = 'Why you kept this one.';
+    note.value = data.note || '';
+    let noteTimer = null;
+    note.addEventListener('input', () => {
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(async () => {
+        const r = await get('/api/note', { id: data.id, note: note.value });
+        if (r.status === 'ok') data.note = note.value;
+      }, 500);
+    });
+    body.appendChild(note);
+  }
+
+  const foot = el('div', 'scorefoot');
+  const why = el('button', 'whylink', `match ${data.score.toFixed(2)} · why? →`);
+  why.type = 'button';
+  why.addEventListener('click', () => openScoringFor(data));
+  foot.appendChild(why);
+  body.appendChild(foot);
+}
+
 /* ---------------- trends ---------------- */
 
 async function loadTrends() {
-  const out = $('#view-digest');
-  out.textContent = 'Loading...';
+  const out = $('#view-trends');
+  out.textContent = 'Loading…';
   const data = await get('/api/trends');
   out.textContent = '';
 
   if (data.status !== 'ok') {
-    out.appendChild(notice('Not enough data to compare', data.reason || data.message || ''));
+    const reason = data.status === 'error'
+      ? (data.message || 'Could not reach the server.')
+      : 'Trends compares this week’s concepts against last week’s — come back '
+        + 'after a few daily fetches and there will be something to compare.';
+    out.appendChild(notice(data.status === 'error' ? 'Could not load trends'
+      : 'Not enough history yet', reason, loadTrends));
     const w = data.window || {};
     if (w.this_week) {
       const box = el('div', 'tcols');
@@ -305,6 +399,7 @@ function renderCrossing(out, crossing) {
   crossing.forEach((c) => {
     const row = el('div', 'crossrow');
     const b = el('button', null, c.title);
+    b.type = 'button';
     b.style.cssText = 'border:0;background:none;text-align:left;cursor:pointer;font:inherit;color:inherit;padding:0';
     b.addEventListener('click', () => {
       const at = state.papers.findIndex((p) => p.id === c.id);
@@ -317,14 +412,70 @@ function renderCrossing(out, crossing) {
   out.appendChild(col);
 }
 
+/* ---------------- digest ---------------- */
+
+async function loadDigest() {
+  const out = $('#view-digest');
+  out.textContent = 'Loading…';
+  const data = await get('/api/digest');
+  out.textContent = '';
+
+  if (data.status !== 'ok') {
+    out.appendChild(notice('Could not load the digest', data.message || data.status, loadDigest));
+    return;
+  }
+
+  out.appendChild(el('h2', null, `Today’s digest — ${data.date}`));
+  out.appendChild(el('p', 'sub',
+    `The top ${data.picks.length} of ${data.considered} papers in your library, one per `
+    + 'category where possible. Deterministic: the same library and topics produce the same '
+    + 'picks, so this is worth skimming once a day rather than re-running.'));
+
+  if (!data.picks.length) {
+    out.appendChild(el('div', 'empty',
+      'Nothing to pick from yet. Fetch some papers first.'));
+    return;
+  }
+
+  const grid = el('div', 'grid');
+  data.picks.forEach((p, i) => {
+    const card = el('article', 'pcard');
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.appendChild(el('div', 'meta',
+      [p.id, humanDate(p.published), p.category].filter(Boolean).join('  ·  ')));
+    card.appendChild(el('h3', null, p.title));
+    if (p.about) card.appendChild(el('p', 'about', p.about));
+    if (p.pick_reason) card.appendChild(el('div', 'why', p.pick_reason));
+    const open = () => {
+      const at = state.papers.findIndex((row) => row.id === p.id);
+      if (at >= 0) { setView('grid'); openPanel(at); }
+      else window.open(p.url || '#', '_blank', 'noopener');
+    };
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    grid.appendChild(card);
+  });
+  out.appendChild(grid);
+
+  const foot = el('p', 'sub');
+  foot.style.marginTop = '18px';
+  foot.textContent = `Also written to ${data.path}.`;
+  out.appendChild(foot);
+}
+
 /* ---------------- queue ---------------- */
 
 async function loadQueue() {
   const out = $('#view-queue');
-  out.textContent = 'Loading...';
+  out.textContent = 'Loading…';
   const data = await get('/api/papers', { when: 'queue', sort: 'score', limit: 120 });
   out.textContent = '';
-  if (!data.results || !data.results.length) {
+  if (data.status !== 'ok') {
+    out.appendChild(notice('Could not load the queue', data.message || data.status, loadQueue));
+    return;
+  }
+  if (!data.results.length) {
     out.appendChild(el('div', 'empty',
       'Nothing queued. Star a paper in the grid and it lands here until you mark it read.'));
     return;
@@ -346,6 +497,12 @@ async function runLab() {
     abstract: $('#lab-abstract').value,
     published: $('#lab-published').value,
   });
+  if (data.status !== 'ok') {
+    $('#lab-formula').textContent = '';
+    $('#lab-formula').appendChild(notice('Could not score this', data.message || data.status));
+    $('#lab-why').textContent = '';
+    return;
+  }
   const c = data.why.components || {};
   const box = $('#lab-formula');
   box.textContent = '';
@@ -378,15 +535,16 @@ async function runLab() {
 
 /* ---------------- views ---------------- */
 
+const VIEWS = ['grid', 'digest', 'trends', 'queue', 'scoring'];
+
 function setView(name) {
   state.view = name;
   document.querySelectorAll('.view-tab').forEach((b) =>
     b.classList.toggle('active', b.dataset.view === name));
-  ['grid', 'digest', 'queue', 'scoring'].forEach((v) => {
-    $('#view-' + v).hidden = v !== name;
-  });
+  VIEWS.forEach((v) => { $('#view-' + v).hidden = v !== name; });
   $('#filters').style.visibility = name === 'grid' ? '' : 'hidden';
-  if (name === 'digest') loadTrends();
+  if (name === 'digest') loadDigest();
+  if (name === 'trends') loadTrends();
   if (name === 'queue') loadQueue();
   if (name === 'scoring') runLab();
 }
@@ -428,13 +586,15 @@ $('#refresh').addEventListener('click', async () => {
   const btn = $('#refresh');
   btn.disabled = true;
   btn.textContent = 'Fetching...';
-  $('#status').textContent = 'Asking arXiv for today’s papers...';
-  const r = await get('/api/refresh');
+  $('#status').textContent = 'Asking arXiv for today’s papers… (can take a couple of minutes)';
+  // arXiv is rate-limited on purpose (one request per category, 3s apart), so
+  // this can run well past a default request timeout — give it room.
+  const r = await get('/api/refresh', {}, { timeoutMs: 240000 });
   btn.disabled = false;
   btn.textContent = 'Fetch';
   $('#status').textContent = r.message || r.status;
   $('#status').className = 'search-status on';
-  if (r.status === 'ok') { await boot(); }
+  if (r.status === 'ok') { paperCache.clear(); await boot(); }
 });
 
 $('#panel-x').addEventListener('click', closePanel);
@@ -445,8 +605,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '/' && !typing) { e.preventDefault(); $('#q').focus(); return; }
   if (typing) return;
   if (e.key === 'Escape') return closePanel();
-  if (['1', '2', '3', '4'].includes(e.key)) {
-    return setView(['grid', 'digest', 'queue', 'scoring'][Number(e.key) - 1]);
+  if (['1', '2', '3', '4', '5'].includes(e.key)) {
+    return setView(VIEWS[Number(e.key) - 1]);
   }
   if (state.index >= 0) {
     if (e.key === 'j' || e.key === 'ArrowDown') {
@@ -471,6 +631,13 @@ document.addEventListener('keydown', (e) => {
 
 async function boot() {
   const s = await get('/api/status');
+  if (s.status !== 'ok') {
+    const hero = $('#hero');
+    hero.textContent = '';
+    hero.appendChild(notice('Could not reach the server', s.message || '', boot));
+    return;
+  }
+
   const meta = $('#header-meta');
   meta.textContent = '';
   const add = (label, value) => {
@@ -484,6 +651,7 @@ async function boot() {
   const emb = s.embeddings || {};
   add('vectors', emb.available === false ? 'not installed'
     : emb.usable ? String(emb.vectors || 0) : 'rebuild');
+  state.settingsTopics = s.topics || [];
 
   const hero = $('#hero');
   hero.textContent = '';
@@ -495,11 +663,12 @@ async function boot() {
   }
   hero.appendChild(el('h1', null, 'Your library'));
   hero.appendChild(el('p', null,
-    'Everything you have fetched, best match first. Open any paper for its abstract and '
-    + 'its nearest neighbours. Press / to search, 1 to 4 to switch views.'));
+    'Everything you have fetched, best match first. Open any paper for what it’s '
+    + 'about and its nearest neighbours. Press / to search, 1 to 5 to switch views.'));
   const sug = el('div', 'suggestion-grid');
   (s.topics || []).slice(0, 7).forEach((t) => {
     const b = el('button', 'suggestion', t);
+    b.type = 'button';
     b.addEventListener('click', () => { $('#q').value = t; doSearch(); });
     sug.appendChild(b);
   });

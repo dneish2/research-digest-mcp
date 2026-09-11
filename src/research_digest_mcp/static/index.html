@@ -25,9 +25,10 @@
   <div class="controls-row">
     <div class="view-tabs" id="view-tabs">
       <button class="view-tab active" data-view="grid" title="Papers (1)">Papers</button>
-      <button class="view-tab" data-view="digest" title="Trends (2)">Trends</button>
-      <button class="view-tab" data-view="queue" title="Reading queue (3)">Queue</button>
-      <button class="view-tab" data-view="scoring" title="How scoring works (4)">Scoring</button>
+      <button class="view-tab" data-view="digest" title="Today's picks (2)">Digest</button>
+      <button class="view-tab view-tab-secondary" data-view="trends" title="Trends (3)">Trends</button>
+      <button class="view-tab view-tab-secondary" data-view="queue" title="Reading queue (4)">Queue</button>
+      <button class="view-tab view-tab-secondary" data-view="scoring" title="How scoring works (5)">Scoring</button>
     </div>
     <div class="filter-bar" id="filters">
       <span class="filter-label">When</span>
@@ -48,6 +49,7 @@
   </div>
 
   <div class="view-panel" id="view-digest" hidden></div>
+  <div class="view-panel" id="view-trends" hidden></div>
   <div class="view-panel" id="view-queue" hidden></div>
 
   <div class="view-panel" id="view-scoring" hidden>
