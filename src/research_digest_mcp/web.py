@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import storage
 from .config import HOME, load_settings
-from .scoring import BOILERPLATE, score_paper, rank_all_query, explain_sentence
+from .scoring import BOILERPLATE, about_sentence, score_paper, rank_all_query, explain_sentence
 from .trends import compute_trends, cross_pollination
 
 STATIC = Path(__file__).parent / "static"
@@ -31,7 +31,7 @@ NEEDS_EXTRA = ("Similarity search is an optional extra. Install it with "
 
 def _similar(paper_id: str, limit: int):
     try:
-        from .similarity import MixedBasis, SimilaritySearch
+        from .similarity import EmbeddingStore, MixedBasis, SimilaritySearch
     except ImportError:
         return {"status": "unavailable", "message": NEEDS_EXTRA}
     try:
@@ -42,9 +42,23 @@ def _similar(paper_id: str, limit: int):
         # numpy is imported lazily inside the search, so the failure can land here too.
         return {"status": "unavailable", "message": NEEDS_EXTRA}
     if not hits:
-        return {"status": "no_embeddings",
-                "message": "No vectors built yet. Run 'research-digest embed' to enable "
-                           "similarity search across your library."}
+        # An empty result can mean two different things and they need different
+        # messages: either nothing has ever been embedded, or this particular
+        # paper just hasn't (it was fetched after the last 'embed' run). Telling
+        # someone to rebuild a store that is actually fine is its own bug.
+        try:
+            store_count = EmbeddingStore().count()
+        except Exception:
+            store_count = 0
+        if store_count == 0:
+            return {"status": "no_embeddings",
+                    "message": "No vectors built yet. Run 'research-digest embed' to enable "
+                               "similarity search across your library."}
+        return {"status": "not_found",
+                "message": (f"This paper was added since the last 'research-digest embed' "
+                             f"({store_count} others are in the store) — run it again to "
+                             f"include this one."),
+                "results": []}
     by_id = {p["id"]: p for p in storage.load_papers()}
     return {"status": "ok", "results": [
         {"id": pid, "similarity": s,
@@ -52,6 +66,41 @@ def _similar(paper_id: str, limit: int):
          "url": by_id.get(pid, {}).get("url", ""),
          "concepts": by_id.get(pid, {}).get("concepts", [])[:5]}
         for pid, s in hits]}
+
+
+def _paper_detail(pid: str) -> dict:
+    """Everything the detail panel needs, in one call: the full record, the
+    lead sentence, and the precomputed similar list. UI-4: before this, opening
+    a paper meant a fetch for the row data (already in hand from the grid) plus
+    a second fetch for 'similar' once the panel was already open. One endpoint
+    means the client can prefetch on hover and render the panel from cache."""
+    papers = {p["id"]: p for p in storage.load_papers()}
+    paper = papers.get(pid)
+    if not paper:
+        return {"status": "error", "message": f"No paper {pid}"}
+    topics = load_settings()["topics"]
+    result = score_paper(paper, topics)
+    saved = storage.load_saved()
+    read = storage.load_read()
+    return {
+        "status": "ok",
+        "id": paper["id"],
+        "title": paper.get("title", ""),
+        "url": paper.get("url", "") or f"https://arxiv.org/abs/{pid}",
+        "published": paper.get("published", ""),
+        "category": paper.get("primary_category", ""),
+        "authors": paper.get("authors") or [],
+        "concepts": paper.get("concepts") or [],
+        "about": about_sentence(paper),
+        "abstract": paper.get("abstract") or "",
+        "score": result["score"],
+        "why": result["why"],
+        "why_text": explain_sentence(result["why"]),
+        "saved": pid in saved,
+        "read": pid in read,
+        "note": (saved.get(pid) or {}).get("note", ""),
+        "similar": _similar(pid, 6),
+    }
 
 
 def api(path: str, params: dict) -> dict:
@@ -75,7 +124,7 @@ def api(path: str, params: dict) -> dict:
             "results": [{
                 "id": p["id"], "title": p.get("title", ""), "url": p.get("url", ""),
                 "published": p.get("published", ""), "category": p.get("primary_category", ""),
-                "abstract": (p.get("abstract") or "")[:420],
+                "about": about_sentence(p),
                 "concepts": (p.get("concepts") or [])[:6],
                 "score": p["score"], "why": p["why"], "why_text": p["why_text"],
             } for p in every[:limit]],
@@ -131,7 +180,7 @@ def api(path: str, params: dict) -> dict:
             "results": [{
                 "id": p["id"], "title": p.get("title", ""), "url": p.get("url", ""),
                 "published": p.get("published", ""), "category": p.get("primary_category", ""),
-                "abstract": (p.get("abstract") or "")[:600],
+                "about": about_sentence(p),
                 "concepts": (p.get("concepts") or [])[:6],
                 "score": p["score"], "why": p["why"], "why_text": p["why_text"],
                 "saved": p["saved"], "read": p["read"],
@@ -199,6 +248,9 @@ def api(path: str, params: dict) -> dict:
 
     if path == "/api/similar":
         return _similar(one.get("id", ""), int(one.get("limit", 8)))
+
+    if path == "/api/paper":
+        return _paper_detail(one.get("id", ""))
 
     if path == "/api/explain":
         # The scoring playground: score arbitrary text against arbitrary topics.

@@ -136,6 +136,33 @@ class TestQueryScoring(TempHome):
         self.assertEqual(ranked[0]["id"], "a")
 
 
+class TestAboutSentence(TempHome):
+    def test_prefers_the_contribution_sentence(self):
+        from research_digest_mcp.scoring import about_sentence
+        paper = {"abstract": "Background varies widely across the field. "
+                              "We propose a verifier-guided framework for the task. "
+                              "Results improve substantially over baselines."}
+        self.assertTrue(about_sentence(paper).startswith("We propose"))
+
+    def test_falls_back_to_first_sentence_with_no_cue(self):
+        from research_digest_mcp.scoring import about_sentence
+        paper = {"abstract": "Reward hacking remains a persistent failure mode. "
+                              "Later sections cover mitigations."}
+        self.assertTrue(about_sentence(paper).startswith("Reward hacking"))
+
+    def test_empty_abstract_is_empty_not_an_error(self):
+        from research_digest_mcp.scoring import about_sentence
+        self.assertEqual(about_sentence({"abstract": ""}), "")
+
+    def test_long_sentence_is_clipped_on_a_word_boundary(self):
+        from research_digest_mcp.scoring import about_sentence
+        long_sentence = "We propose " + ("a very thorough method " * 20) + "for the task."
+        result = about_sentence({"abstract": long_sentence}, max_chars=100)
+        self.assertLessEqual(len(result), 101)  # + the ellipsis character
+        self.assertTrue(result.endswith("…"))
+        self.assertNotIn("  ", result)
+
+
 class TestServeEncoding(TempHome):
     def test_serve_writes_utf8_even_when_stdout_defaults_to_cp1252(self):
         """The Windows bug: without reconfigure(), a cp1252 stdout either raises

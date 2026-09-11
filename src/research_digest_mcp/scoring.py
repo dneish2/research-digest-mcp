@@ -78,6 +78,16 @@ QUERY_PHRASE_BONUS = 0.35
 QUERY_TF_STEP = 0.02
 QUERY_TF_CAP = 0.15
 
+# Sentence-initial phrases that, in an arXiv abstract, almost always introduce
+# the paper's own contribution rather than background or motivation. Checked in
+# order against each sentence; used by about_sentence().
+_ABOUT_CUES = (
+    "we propose", "we present", "we introduce", "we show", "we study",
+    "we demonstrate", "we develop", "we describe", "we design", "we build",
+    "this paper", "this work", "in this paper", "in this work",
+)
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z(])")
+_ABOUT_MAX_CHARS = 220
 
 
 def paper_text(paper: Dict[str, Any]) -> str:
@@ -269,6 +279,35 @@ def explain_sentence(why: Dict[str, Any]) -> str:
     if comp.get("recency"):
         bits.append(f"+{comp['recency']:.2f} for being {why.get('age_days')} days old")
     return "; ".join(bits) + "."
+
+
+def _clip(sentence: str, max_chars: int) -> str:
+    sentence = " ".join(sentence.split())
+    if len(sentence) <= max_chars:
+        return sentence
+    cut = sentence[:max_chars].rsplit(" ", 1)[0].rstrip(",;: ")
+    return cut + "…"
+
+
+def about_sentence(paper: Dict[str, Any], max_chars: int = _ABOUT_MAX_CHARS) -> str:
+    """One plain sentence describing what the paper actually did — pure string
+    work, no model. Most arXiv abstracts contain a sentence that announces the
+    contribution ("We propose...", "This paper presents..."); that sentence is a
+    better lead than the first sentence of the abstract, which is usually
+    background or motivation. Falls back to the first sentence, then to a clip
+    of the raw abstract, so this never returns empty for a paper that has one.
+    """
+    abstract = (paper.get("abstract") or "").strip()
+    if not abstract:
+        return ""
+    sentences = [s.strip() for s in _SENTENCE_SPLIT.split(abstract) if s.strip()]
+    if not sentences:
+        return _clip(abstract, max_chars)
+    for sentence in sentences:
+        low = sentence.lower()
+        if any(low.startswith(cue) for cue in _ABOUT_CUES):
+            return _clip(sentence, max_chars)
+    return _clip(sentences[0], max_chars)
 
 
 def rank_all(papers: List[Dict[str, Any]], topics: List[str]) -> List[Dict[str, Any]]:

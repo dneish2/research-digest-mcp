@@ -16,7 +16,10 @@ from typing import Any, Dict, List
 
 from . import storage
 from .config import HOME, load_settings
-from .scoring import explain_sentence, rank, rank_all, rank_all_query, score_paper
+from .scoring import (
+    about_sentence, explain_sentence, rank, rank_all, rank_all_query,
+    score_paper,
+)
 from .trends import compute_trends
 
 SERVER_NAME = "research-digest"
@@ -105,13 +108,14 @@ def _summary(paper: Dict[str, Any], abstract: bool = False) -> Dict[str, Any]:
         "published": paper.get("published", ""),
         "category": paper.get("primary_category", ""),
         "concepts": (paper.get("concepts") or [])[:6],
+        "about": about_sentence(paper),
     }
     if "score" in paper:
         out["score"] = paper["score"]
     if "why_text" in paper:
         out["why"] = paper["why_text"]
     if abstract:
-        out["abstract"] = (paper.get("abstract") or "")[:400]
+        out["abstract"] = paper.get("abstract") or ""
     return out
 
 
