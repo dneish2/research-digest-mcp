@@ -28,6 +28,8 @@ Rerun anytime with:  .venv\\Scripts\\python.exe eval\\eval-regression.py
 """
 from __future__ import annotations
 
+import argparse
+import gzip
 import json
 import random
 import sys
@@ -37,6 +39,9 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from research_digest_mcp import storage, scoring  # noqa: E402
+from research_digest_mcp.config import force_utf8_streams  # noqa: E402
+
+force_utf8_streams()  # paper titles are full of accents; consoles are not
 
 MIN_HITS = 3
 MAX_HITS = 40
@@ -62,6 +67,26 @@ _STOPWORDS = {
 }
 
 OUT_JSON = Path(__file__).parent / "eval-regression-results.json"
+FIXTURES = Path(__file__).parent / "fixtures"
+CORPUS_FIXTURE = FIXTURES / "corpus.json.gz"
+PHRASE_FIXTURE = FIXTURES / "phrases.json"
+
+
+def load_corpus(use_live: bool) -> tuple:
+    """The frozen corpus by default; the live library only when asked.
+
+    A baseline that moves with the thing it measures is not a baseline. Mining
+    phrases from the live library made this eval drift whenever a paper was
+    added or removed: collapsing three duplicate records moved the headline
+    precision@5 from 0.708 to 0.769 without one line of the ranker changing.
+    So the committed corpus and phrase set are the default, and CI only ever
+    runs against those.
+    """
+    if use_live:
+        return storage.load_papers(), "the live library"
+    with gzip.open(str(CORPUS_FIXTURE), "rb") as handle:
+        papers = json.loads(handle.read().decode("utf-8"))
+    return papers, "the frozen corpus (%s)" % CORPUS_FIXTURE.name
 
 
 # --------------------------------------------------------------------------
@@ -211,15 +236,39 @@ def strict_ordering_ok(ranked_ids: list, positive_ids: set) -> tuple:
 # --------------------------------------------------------------------------
 
 def main():
-    papers = storage.load_papers()
-    print(f"Loaded {len(papers)} papers from the live library (read-only).")
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--live", action="store_true",
+                        help="measure the live library instead of the frozen corpus")
+    parser.add_argument("--mine", action="store_true",
+                        help="re-mine the phrase set from the corpus and rewrite the pinned file")
+    parser.add_argument("--assert-min", type=float, default=None, metavar="P5",
+                        help="exit non-zero if the current ranker scores below this precision@5")
+    args = parser.parse_args()
+
+    papers, source = load_corpus(args.live)
+    print(f"Loaded {len(papers)} papers from {source} (read-only).")
 
     rng = random.Random(SEED)
-    candidates = mine_candidates(papers)
-    print(f"Mined {len(candidates)} raw n-gram candidates "
-          f"(before the {MIN_HITS}-{MAX_HITS} hit-count filter).")
+    if args.mine or not PHRASE_FIXTURE.exists():
+        candidates = mine_candidates(papers)
+        print(f"Mined {len(candidates)} raw n-gram candidates "
+              f"(before the {MIN_HITS}-{MAX_HITS} hit-count filter).")
+        phrases = select_phrases(candidates, rng)
+        FIXTURES.mkdir(exist_ok=True)
+        PHRASE_FIXTURE.write_text(
+            json.dumps([{"phrase": ph, "positive_ids": sorted(ids)} for ph, ids in phrases],
+                       indent=1, ensure_ascii=False),
+            encoding="utf-8")
+        print(f"Wrote the pinned phrase set to {PHRASE_FIXTURE}.")
+    else:
+        pinned = json.loads(PHRASE_FIXTURE.read_text(encoding="utf-8"))
+        present = {p["id"] for p in papers}
+        phrases = [(row["phrase"], [i for i in row["positive_ids"] if i in present])
+                   for row in pinned]
+        missing = sum(1 for row in pinned if not set(row["positive_ids"]) <= present)
+        note = f", {missing} with positives absent from this corpus" if missing else ""
+        print(f"Using the pinned phrase set from {PHRASE_FIXTURE.name}{note}.")
 
-    phrases = select_phrases(candidates, rng)
     print(f"Selected {len(phrases)} eval phrases.\n")
 
     by_id = {p["id"]: p for p in papers}
@@ -304,6 +353,14 @@ def main():
     )
     print(f"\nFull per-phrase results written to {OUT_JSON}")
 
+    if args.assert_min is not None:
+        actual = summary["current"]["p@5"]
+        if actual < args.assert_min:
+            print(f"\nFAIL: current p@5 {actual:.3f} is below the floor {args.assert_min:.3f}.")
+            return 1
+        print(f"\nOK: current p@5 {actual:.3f} >= floor {args.assert_min:.3f}.")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

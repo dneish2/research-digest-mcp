@@ -1,0 +1,267 @@
+[
+ {
+  "phrase": "across a wide range",
+  "positive_ids": [
+   "2302.14017v1",
+   "2311.03335v1",
+   "2605.30102v1",
+   "2606.04829v1",
+   "2606.05574v1"
+  ]
+ },
+ {
+  "phrase": "advance the development",
+  "positive_ids": [
+   "2102.05452v1",
+   "2412.05449v1",
+   "2503.02400v2"
+  ]
+ },
+ {
+  "phrase": "advances in large",
+  "positive_ids": [
+   "2311.10723v2",
+   "2604.08551v1",
+   "2605.17965v1",
+   "2605.27209v1",
+   "2606.18068v1",
+   "2606.22647v1",
+   "2606.23130v2"
+  ]
+ },
+ {
+  "phrase": "advantage estimation",
+  "positive_ids": [
+   "2606.18954v1",
+   "2606.22995v1",
+   "2606.27163v1"
+  ]
+ },
+ {
+  "phrase": "bridge the gap between",
+  "positive_ids": [
+   "2202.13965v1",
+   "2505.11918v2",
+   "2605.27685v1",
+   "2606.19267v1"
+  ]
+ },
+ {
+  "phrase": "bridge this gap",
+  "positive_ids": [
+   "2605.16163v1",
+   "2605.19484v1",
+   "2605.24220v1",
+   "2606.06036v1",
+   "2606.07314v1",
+   "2606.07462v1",
+   "2606.11042v1",
+   "2606.12245v1",
+   "2606.25876v1"
+  ]
+ },
+ {
+  "phrase": "capable of navigating",
+  "positive_ids": [
+   "2301.08278v3",
+   "2605.28607v1",
+   "2605.28787v1",
+   "2606.05646v1",
+   "2606.24870v1"
+  ]
+ },
+ {
+  "phrase": "claude sonnet",
+  "positive_ids": [
+   "2606.05574v1",
+   "2606.08367v1",
+   "2606.10209v1",
+   "2608.23653v1",
+   "2609.05189v1"
+  ]
+ },
+ {
+  "phrase": "code and models",
+  "positive_ids": [
+   "2102.00240v1",
+   "2105.13677v5",
+   "2205.10102v3",
+   "2210.01765v4",
+   "2307.02291v3"
+  ]
+ },
+ {
+  "phrase": "code will be released",
+  "positive_ids": [
+   "2605.16079v1",
+   "2605.28732v1",
+   "2605.30407v1"
+  ]
+ },
+ {
+  "phrase": "controlled experiments",
+  "positive_ids": [
+   "1307.2075v2",
+   "2602.08216v2",
+   "2605.15714v1",
+   "2605.16198v1",
+   "2605.19782v1",
+   "2606.22797v1",
+   "2606.25960v1",
+   "2608.23000v1",
+   "2608.23622v1"
+  ]
+ },
+ {
+  "phrase": "existing code",
+  "positive_ids": [
+   "2406.04710v2",
+   "2606.11864v1",
+   "2606.25550v1"
+  ]
+ },
+ {
+  "phrase": "first benchmark",
+  "positive_ids": [
+   "2605.30256v1",
+   "2606.02470v1",
+   "2606.07462v1",
+   "2606.13239v1",
+   "2606.22678v1",
+   "2606.24595v1"
+  ]
+ },
+ {
+  "phrase": "generative adversarial networks",
+  "positive_ids": [
+   "1803.01837v1",
+   "2006.05515v1",
+   "2609.05396v1"
+  ]
+ },
+ {
+  "phrase": "gradient algorithm",
+  "positive_ids": [
+   "1812.00922v1",
+   "2205.15716v1",
+   "2605.15697v1"
+  ]
+ },
+ {
+  "phrase": "method achieves state-of-the-art performance",
+  "positive_ids": [
+   "2104.11502v1",
+   "2403.06536v1",
+   "2504.14075v1"
+  ]
+ },
+ {
+  "phrase": "multi-agent reinforcement learning systems",
+  "positive_ids": [
+   "1812.00922v1",
+   "2203.08975v2",
+   "2301.08278v3"
+  ]
+ },
+ {
+  "phrase": "online inverse reinforcement learning",
+  "positive_ids": [
+   "1811.10471v1",
+   "2003.03912v1",
+   "2008.08972v1"
+  ]
+ },
+ {
+  "phrase": "plays a vital role",
+  "positive_ids": [
+   "2109.05566v2",
+   "2402.05964v2",
+   "2605.18572v1"
+  ]
+ },
+ {
+  "phrase": "raises a fundamental question",
+  "positive_ids": [
+   "2605.28787v1",
+   "2606.22797v1",
+   "2606.23130v2"
+  ]
+ },
+ {
+  "phrase": "reinforcement learning systems",
+  "positive_ids": [
+   "1812.00922v1",
+   "2203.08975v2",
+   "2301.08278v3"
+  ]
+ },
+ {
+  "phrase": "retrieval-augmented generation",
+  "positive_ids": [
+   "2601.19260v1",
+   "2605.14177v1",
+   "2605.14488v1",
+   "2605.15937v1",
+   "2605.17965v1",
+   "2605.19743v1",
+   "2605.28583v1",
+   "2605.28607v1",
+   "2605.31377v1",
+   "2606.01613v1",
+   "2606.06754v1",
+   "2606.11117v1",
+   "2606.19911v1",
+   "2606.19960v1",
+   "2606.20164v1",
+   "2606.22647v1",
+   "2606.22778v1",
+   "2608.23176v1",
+   "2608.24764v1",
+   "2609.05152v1",
+   "2609.05339v1"
+  ]
+ },
+ {
+  "phrase": "task execution",
+  "positive_ids": [
+   "2004.08600v1",
+   "2605.16143v1",
+   "2605.23723v1",
+   "2605.24992v1",
+   "2606.05121v1",
+   "2606.07506v1",
+   "2606.08162v1",
+   "2606.13190v1",
+   "2606.14502v1",
+   "2606.19911v1",
+   "2606.24340v1"
+  ]
+ },
+ {
+  "phrase": "vision language",
+  "positive_ids": [
+   "2303.01258v1",
+   "2307.02291v3",
+   "2508.17807v2",
+   "2608.24603v1",
+   "2609.05401v1"
+  ]
+ },
+ {
+  "phrase": "while prior work",
+  "positive_ids": [
+   "2605.16245v1",
+   "2605.18593v1",
+   "2605.18597v1",
+   "2606.04703v1"
+  ]
+ },
+ {
+  "phrase": "yields substantial",
+  "positive_ids": [
+   "2605.16202v1",
+   "2606.09748v1",
+   "2606.13239v1"
+  ]
+ }
+]
