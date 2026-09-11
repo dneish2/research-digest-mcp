@@ -8,7 +8,27 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
+
+
+def force_utf8_streams(*streams) -> None:
+    """Make the given text streams write UTF-8 whatever the console codepage is.
+
+    arXiv titles and author names are full of accents, dashes and the occasional
+    CJK or Greek character. On Windows, stdout/stderr default to the locale
+    codepage (cp1252), which cannot represent most of that: writing it either
+    raises UnicodeEncodeError and kills the process, or -- for characters cp1252
+    *can* encode -- writes bytes that are not valid UTF-8, which silently
+    corrupts a JSON-RPC stream an MCP client is reading.
+
+    Every entry point that prints a paper has to call this. It lives here, in
+    one place, so a new entry point cannot quietly reintroduce the bug.
+    """
+    for stream in (streams or (sys.stdout, sys.stderr)):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", newline="\n")
+
 
 HOME = Path(os.environ.get("RESEARCH_DIGEST_HOME", Path.home() / ".research-digest"))
 

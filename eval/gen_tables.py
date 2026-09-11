@@ -3,6 +3,10 @@ table) from judgments.json / answer_key.json / metrics.json, for eval-judge.md."
 import json
 from pathlib import Path
 
+from research_digest_mcp.config import force_utf8_streams
+
+force_utf8_streams()  # paper titles are full of accents; consoles are not
+
 D = Path(__file__).parent
 ak = json.loads((D / "answer_key.json").read_text(encoding="utf-8"))
 jg = json.loads((D / "judgments.json").read_text(encoding="utf-8"))

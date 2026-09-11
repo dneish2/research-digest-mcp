@@ -9,6 +9,10 @@ import json
 import math
 from pathlib import Path
 
+from research_digest_mcp.config import force_utf8_streams
+
+force_utf8_streams()  # paper titles are full of accents; consoles are not
+
 OUT_DIR = Path(__file__).parent
 
 answer_key = json.loads((OUT_DIR / "answer_key.json").read_text(encoding="utf-8"))
