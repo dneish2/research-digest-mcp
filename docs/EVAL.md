@@ -81,13 +81,16 @@ Its weakness is that it is one model's opinion, rendered once.
 
 ## 3. Results
 
-### Regression track — 26 mined phrases, deterministic
+### Regression track — 26 pinned phrases, deterministic
+
+Measured against the **frozen corpus** in `eval/fixtures/` (1,373 papers, sha256
+`d61933b6…`), not the live library. See "Why the number moved" below.
 
 | Ranker | precision@5 | precision@10 | strict ordering |
 |---|---|---|---|
-| **current** | **0.708** | **0.404** | **84.6%** (22/26) |
-| profile scorer fed query terms | 0.331 | 0.258 | — |
-| recency, restricted to matching papers | 0.008 | 0.015 | — |
+| **current** | **0.769** | **0.469** | **92.3%** (24/26) |
+| profile scorer fed query terms | 0.408 | 0.311 | — |
+| recency, restricted to matching papers | 0.031 | 0.027 | — |
 | random over the whole library | 0.000 | 0.000 | — |
 
 "Strict ordering" is the harder question: were **all** exact-phrase papers placed above
@@ -96,8 +99,36 @@ five; this does not.
 
 One run is the result here, not a sample of one. There is no model and no randomness
 outside a fixed `seed 42` shuffle, so the number is a property of the code and the
-library, and re-running reproduces it exactly. That is not true of the judge track
+corpus, and re-running reproduces it exactly. That is not true of the judge track
 below, and the difference between the two is the point of running both.
+
+#### Why the number moved: 0.708 → 0.769
+
+An earlier version of this document reported **0.708 / 84.6%**. Almost none of the
+difference is the ranker getting better, and saying so plainly matters more than the
+larger number does.
+
+That run mined its phrase set from the **live library** at the moment it ran. Collapsing
+three duplicate records (below) changed which n-grams cleared the 3–40 hit-count filter,
+so the next run graded a *different set of questions*. A baseline that moves with the
+thing it measures is not a baseline.
+
+Holding the phrase set fixed separates the two effects:
+
+| | precision@5 | strict ordering |
+|---|---|---|
+| old mined set, pre-dedupe *(the 0.708 that was published)* | 0.708 | 84.6% |
+| pinned set, pre-dedupe | 0.762 | 80.8% |
+| pinned set, post-dedupe **— today** | **0.769** | **92.3%** |
+
+So the honest split is: **+0.054 of the p@5 gain is a different ruler**, and only **+0.007
+is the dedupe fix**. What the dedupe genuinely bought is strict ordering — **80.8% →
+92.3%**, because duplicate records were interleaving with their own copies and breaking
+the ordering check.
+
+The corpus and phrase set are now committed, so this cannot happen again silently:
+`eval/fixtures/corpus.json.gz` and `eval/fixtures/phrases.json` are the default inputs,
+`--live` is opt-in, and CI runs the pinned pair on every push.
 
 ### Judge track — 8 queries, 115 blind judgments
 
@@ -179,14 +210,37 @@ restores 0.708 with the stopword fix kept.
 | (a) query scorer, before either fix | 0.708 | 88.5% |
 | (b) + stopword list — **what was shipped, unmeasured** | 0.531 | 46.2% |
 | (c) + phrase built from the raw query | 0.708 | 88.5% |
-| (d) + hyphen expansion — **today** | 0.708 | 84.6% |
+| (d) + hyphen expansion — **the committed ranker** | 0.708 | 84.6% |
 
+Those four rows are all on the old mined phrase set, which is why they are quoted against
+0.708 rather than today's 0.769 — the comparison between them is still like-for-like.
 Reproduce with `eval\eval-regression.py`; row (d) is the committed code.
 
 The general lesson is not about stopwords. It is that a fix motivated by one eval and
 never checked against the other is a coin flip, and that this one was *shipped* in state
 (b) — a 25% relative precision loss that no test failed on, because the tests encoded the
 bug that motivated the fix and nothing encoded the cost.
+
+### The eval output caught a bug that was not about ranking
+
+Reading a per-phrase dump for the phrase `advances in large`, the current ranker's top 5
+listed *"Understanding the (In)Security of Vibe-Coded Applications"* **twice**.
+
+The archive was keyed on the raw arXiv id, which carries a version suffix. arXiv issues a
+new one every time authors revise a paper, so a re-fetch stored `2605.30169v1` and
+`2605.30169v2` as two papers. Three pairs had accumulated in a 1,376-paper library — small
+enough to never notice, large enough that one of them ate two of five result slots.
+
+It is now keyed on the base id, so versions collapse into one record; the newest revision
+wins the content and the earliest `first_seen` is kept, since that is when the library
+actually first saw the paper and trends read that field. The record keeps its versioned
+`id`, so embedding rows and saved entries written against the old id still resolve. Three
+tests pin it, all three confirmed to fail without the fix.
+
+Worth noting what found it: not a failing test, and not the metric — precision@5 barely
+moved (0.762 → 0.769). It was reading the qualitative dump the harness prints underneath
+its headline number. The metric that *did* see it was strict ordering, **80.8% → 92.3%**,
+because a duplicate interleaves with its own copy.
 
 ---
 
@@ -207,7 +261,7 @@ papers, which do contain a standalone "chain". Letting compounds also contribute
 parts takes that query to **10 of 10, first at rank 1**. That fix is real, and it is
 shipped.
 
-**It does not rescue this query, and nothing could.** Of 1,376 papers:
+**It does not rescue this query, and nothing could.** Of 1,373 papers:
 
 | | count |
 |---|---|
@@ -225,7 +279,7 @@ method's ceiling second**. A keyword matcher cannot retrieve that paper by const
 which is falsifier (1) from section 1, found in the wild.
 
 One more measurement, because the obvious next sentence is "so use embeddings": the
-similarity store already built over this library (tf-idf + SVD, 384 dimensions, all 1,376
+similarity store already built over this library (tf-idf + SVD, 384 dimensions, all 1,373
 papers) **also fails to bridge it.** That paper is not a near neighbour of any
 chain-of-thought paper in the library, and its own nearest neighbours are about black-box
 action monitoring and protein structure determination. "Add embeddings" is not supported
@@ -240,7 +294,7 @@ The section to read first if you are deciding whether to believe any of the abov
 
 - **Exact-phrase positives reward a lexical matcher by construction.** The regression
   track's ground truth is "contains this string" and the system under test matches
-  strings. 0.708 is evidence against regressions, not evidence of quality.
+  strings. 0.769 is evidence against regressions, not evidence of quality.
 - **Eight queries is not a benchmark.** They were written by the same person who built
   the ranker, after using it. Nothing controls for choosing queries it happens to serve.
 - **There is no held-out set.** Every number here comes from the data that motivated the
@@ -257,7 +311,7 @@ The section to read first if you are deciding whether to believe any of the abov
 - **Recall is never measured anywhere.** Both tracks score what was retrieved. Neither
   can see a relevant paper that no condition surfaced — which is exactly the failure mode
   section 5 found, and it took a manual count of the library to see it.
-- **One library, one person, one topic profile.** 1,376 papers in five arXiv categories
+- **One library, one person, one topic profile.** 1,373 papers in five arXiv categories
   reflecting one reader's interests. Nothing here transfers to a different corpus without
   re-running it.
 
@@ -305,16 +359,16 @@ it means "not got to".
 
 Cold start is total. Day one the file has zero lines and no backfill is possible.
 
-### 7.2 Put the regression track in CI
+### 7.2 Put the regression track in CI — **done**
 
-**~1 hour.** It is deterministic and takes about thirty seconds. Pin the phrase set rather
-than re-mining it, so the fixtures stop moving under the metric, and fail the build on a
-precision@5 drop beyond a set margin. Had this existed, state (b) in section 4 would never
-have been committed.
+The corpus and the phrase set are both committed under `eval/fixtures/`, the harness reads
+them by default (`--live` is opt-in), and the `eval` job in `.github/workflows/test.yml`
+runs it on every push and pull request with `--assert-min 0.75`. Had this existed, state
+(b) in section 4 — a drop to 0.531 — would have failed the build instead of shipping.
 
-The fixtures must be pinned to a file, not mined from the live library at run time. A
-baseline computed from live data is not a baseline — it moves when the thing it is meant
-to hold still for moves.
+The floor is set below the measured 0.769 rather than at it: the run is exact, so the gap
+is not noise tolerance, it is room for a deliberate ranker change to land without a docs
+edit in the same commit. A drop of the size that actually shipped clears it by a mile.
 
 ### 7.3 A held-out query set, judged once and then left alone
 

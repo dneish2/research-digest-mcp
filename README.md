@@ -150,9 +150,10 @@ your topic list, and watch the arithmetic change.
 
 ### Is it any good?
 
-Measured, in [`docs/EVAL.md`](docs/EVAL.md): precision@5 of **0.708** against 26
-machine-verified exact-phrase queries (recency scores 0.008, random 0.000), and
-**0.80** against 8 LLM-judged semantic queries with 115 blind judgments.
+Measured, in [`docs/EVAL.md`](docs/EVAL.md): precision@5 of **0.769** against 26
+machine-verified exact-phrase queries (recency scores 0.031, random 0.000), and
+**0.80** against 8 LLM-judged semantic queries with 115 blind judgments. The
+first number runs in CI on every push, against a frozen corpus.
 
 Read the limitations section before believing either number. Exact-phrase
 positives reward a keyword matcher by construction, eight queries is not a
