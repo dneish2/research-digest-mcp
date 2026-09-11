@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
@@ -51,10 +52,60 @@ def write_json(path: Path, payload: Any) -> None:
 
 # --- archive ---------------------------------------------------------------
 
+_VERSION_SUFFIX = re.compile(r"^(?P<base>.+?)v(?P<version>\d+)$")
+
+
+def base_id(paper_id: str) -> str:
+    """The arXiv id without its version suffix: 2605.30169v2 -> 2605.30169.
+
+    arXiv hands out a new version suffix every time authors revise a paper, so
+    the same paper arrives as a different id on a later fetch. Keying the
+    archive on the raw id stored it twice, and both copies competed for slots
+    in the same result list. Ids with no version suffix are returned unchanged.
+    """
+    match = _VERSION_SUFFIX.match(paper_id or "")
+    return match.group("base") if match else (paper_id or "")
+
+
+def _version_of(paper_id: str) -> int:
+    """The version number in an id, or 0 when it carries none."""
+    match = _VERSION_SUFFIX.match(paper_id or "")
+    return int(match.group("version")) if match else 0
+
+
+def _collapse_versions(papers: Dict[str, Any]) -> Dict[str, Any]:
+    """Fold v1/v2/... of one paper into a single entry keyed by its base id.
+
+    The newest version wins the record, because that is the revision the author
+    intends people to read, but the entry keeps the *earliest* first_seen of the
+    group -- the library first saw this paper when v1 arrived, not when the
+    revision did, and trends read first_seen.
+    """
+    groups: Dict[str, list] = {}
+    for pid, paper in papers.items():
+        if isinstance(paper, dict):
+            groups.setdefault(base_id(pid), []).append((pid, paper))
+
+    collapsed: Dict[str, Any] = {}
+    for base, members in groups.items():
+        members.sort(key=lambda item: _version_of(item[0]))
+        newest = dict(members[-1][1])
+        seen = [m[1].get("first_seen") for m in members if m[1].get("first_seen")]
+        if seen:
+            newest["first_seen"] = min(seen)
+        newest.setdefault("id", members[-1][0])
+        collapsed[base] = newest
+    return collapsed
+
+
 def load_archive() -> Dict[str, Any]:
     archive = read_json(ARCHIVE_PATH, {"papers": {}, "runs": []})
     archive.setdefault("papers", {})
     archive.setdefault("runs", [])
+    # Archives written before ids were normalised still hold v1 and v2 of the
+    # same paper under two keys. Collapsing on load makes every read correct
+    # immediately; the next write persists the collapsed form.
+    archive["papers"] = _collapse_versions(archive["papers"])
     return archive
 
 
@@ -79,12 +130,13 @@ def merge_papers(new_papers: List[Dict[str, Any]], run_date: str) -> Dict[str, i
         pid = paper.get("id")
         if not pid:
             continue
-        if pid in papers:
-            papers[pid].update({k: v for k, v in paper.items() if k != "first_seen"})
+        key = base_id(pid)
+        if key in papers:
+            papers[key].update({k: v for k, v in paper.items() if k != "first_seen"})
         else:
             paper = dict(paper)
             paper.setdefault("first_seen", run_date)
-            papers[pid] = paper
+            papers[key] = paper
             added += 1
     runs = [r for r in archive["runs"] if r != run_date]
     runs.append(run_date)
@@ -109,13 +161,14 @@ def import_papers(new_papers: List[Dict[str, Any]], run_dates=None) -> Dict[str,
         pid = paper.get("id")
         if not pid:
             continue
-        if pid in papers:
-            papers[pid].update({k: v for k, v in paper.items() if k != "first_seen"})
+        key = base_id(pid)
+        if key in papers:
+            papers[key].update({k: v for k, v in paper.items() if k != "first_seen"})
             updated += 1
         else:
             paper = dict(paper)
             paper.setdefault("first_seen", str(paper.get("published") or "")[:10] or None)
-            papers[pid] = paper
+            papers[key] = paper
             added += 1
     runs = set(archive["runs"]) | {str(d)[:10] for d in (run_dates or []) if d}
     archive["runs"] = sorted(runs)

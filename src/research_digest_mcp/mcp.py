@@ -309,9 +309,9 @@ def tool_save_paper(args: Dict[str, Any]) -> Dict[str, Any]:
                 "message": f"{raw!r} does not look like an arXiv id (want something like "
                            f"2609.05339, 2609.05339v1, or an arxiv.org/abs URL)."}
     arxiv_id = match.group(0)
-    bare = arxiv_id.split("v")[0]
+    bare = storage.base_id(arxiv_id)
 
-    by_bare = {p["id"].split("v")[0]: p for p in storage.load_papers()}
+    by_bare = {storage.base_id(p["id"]): p for p in storage.load_papers()}
     paper = by_bare.get(bare)
     already_had = paper is not None
 

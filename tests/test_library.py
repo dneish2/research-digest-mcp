@@ -202,7 +202,8 @@ class TestImport(TempHome):
         stats = storage.import_papers(cleaned, run_dates=["2025-01-02", "2025-01-03"])
         self.assertEqual(stats, {"added": 1, "updated": 0, "total": 1})
         archive = storage.load_archive()
-        self.assertEqual(archive["papers"]["2501.00001v1"]["first_seen"], "2025-01-02")
+        # Keyed by the base id, not the versioned one -- see the dedupe tests below.
+        self.assertEqual(archive["papers"]["2501.00001"]["first_seen"], "2025-01-02")
         self.assertIn("2025-01-02", archive["runs"])
         self.assertIn("2025-01-03", archive["runs"])
 
@@ -215,6 +216,52 @@ class TestImport(TempHome):
                                        run_dates=["2025-01-02"])
         self.assertEqual(stats, {"added": 0, "updated": 1, "total": 1})
         self.assertEqual(len(storage.load_papers()), 1)
+
+    def test_a_revised_paper_does_not_become_a_second_paper_regression(self):
+        """arXiv hands out v2 when authors revise, and the archive used to key on
+        the raw id -- so a re-fetch stored the same paper twice and both copies
+        competed for slots in one result list. Seen live: three duplicate pairs
+        in a 1,376 paper library, one of which took two of five top slots."""
+        from research_digest_mcp import storage
+        v1 = {"id": "2605.30169v1", "title": "Dissociative Identity", "abstract": "a",
+              "published": "2026-05-28"}
+        v2 = {"id": "2605.30169v2", "title": "Dissociative Identity", "abstract": "a revised",
+              "published": "2026-05-28"}
+        storage.merge_papers([v1], "2026-05-28")
+        storage.merge_papers([v2], "2026-06-01")
+        papers = storage.load_papers()
+        self.assertEqual(len(papers), 1)
+        self.assertEqual(papers[0]["abstract"], "a revised")
+        # The library first saw this paper when v1 arrived, not when the revision did.
+        self.assertEqual(papers[0]["first_seen"], "2026-05-28")
+
+    def test_an_archive_written_before_the_fix_collapses_on_load_regression(self):
+        """Existing libraries already hold both versions under two keys. Reads must
+        be correct immediately, without asking anyone to run a migration."""
+        from research_digest_mcp import storage
+        papers = {
+            "2605.30169v1": {"id": "2605.30169v1", "title": "Dup", "abstract": "old",
+                             "published": "2026-05-28", "first_seen": "2026-05-28"},
+            "2605.30169v2": {"id": "2605.30169v2", "title": "Dup", "abstract": "new",
+                             "published": "2026-05-28", "first_seen": "2026-06-01"},
+            "2605.29999v1": {"id": "2605.29999v1", "title": "Solo", "abstract": "x",
+                             "published": "2026-05-28", "first_seen": "2026-05-28"},
+        }
+        (self.home / "archive.json").write_text(
+            json.dumps({"papers": papers, "runs": []}, ensure_ascii=False), encoding="utf-8")
+        loaded = storage.load_papers()
+        self.assertEqual(len(loaded), 2)
+        dup = [p for p in loaded if storage.base_id(p["id"]) == "2605.30169"][0]
+        self.assertEqual(dup["abstract"], "new")
+        self.assertEqual(dup["first_seen"], "2026-05-28")
+        # The record keeps its versioned id, so embedding rows and saved entries
+        # written against that id still resolve.
+        self.assertEqual(dup["id"], "2605.30169v2")
+
+    def test_an_id_with_no_version_suffix_is_left_alone(self):
+        from research_digest_mcp import storage
+        self.assertEqual(storage.base_id("2605.30169"), "2605.30169")
+        self.assertEqual(storage.base_id("math-ph/0601001v12"), "math-ph/0601001")
 
     def test_an_imported_paper_does_not_fake_a_trends_spike(self):
         """Old papers must fall outside the trends windows, or importing a
