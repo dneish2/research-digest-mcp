@@ -101,6 +101,17 @@ def fetch_category(category: str, max_results: int = 60) -> List[Dict[str, Any]]
     return parse_atom(payload)
 
 
+def fetch_by_ids(ids: List[str]) -> List[Dict[str, Any]]:
+    """One or more specific papers by arXiv id (e.g. "2609.05339" or
+    "2609.05339v1"). Used to add a paper your agent surfaced mid-session,
+    rather than waiting for it to show up in a category fetch."""
+    ids = [i for i in ids if i]
+    if not ids:
+        return []
+    payload = _get({"id_list": ",".join(ids), "max_results": len(ids)})
+    return parse_atom(payload)
+
+
 def search(query: str, max_results: int = 40) -> List[Dict[str, Any]]:
     """Free-text search across title and abstract."""
     payload = _get({

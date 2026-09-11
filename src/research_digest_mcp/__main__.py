@@ -1,12 +1,13 @@
 """Command line entry point.
 
-    research-digest fetch      pull today's papers from arXiv
-    research-digest embed      build vectors for similarity search
-    research-digest status     what is in the library
-    research-digest search Q   search from the shell
-    research-digest digest     today's top papers, written to a dated file
-    research-digest web        open the browser interface
-    research-digest mcp        run as an MCP server (what your AI client calls)
+    research-digest fetch          pull today's papers from arXiv
+    research-digest import FILE    load papers from another archive.json
+    research-digest embed          build vectors for similarity search
+    research-digest status         what is in the library
+    research-digest search Q       search from the shell
+    research-digest digest         today's top papers, written to a dated file
+    research-digest web            open the browser interface
+    research-digest mcp            run as an MCP server (what your AI client calls)
 """
 from __future__ import annotations
 
@@ -65,6 +66,58 @@ def cmd_embed(args) -> int:
     written = EmbeddingStore().replace_all(result["vectors"], result["engine"], result["basis"])
     print(f"Wrote {written} vectors, {result['dims']} columns, basis {result['basis']}.")
     print("The previous fit was replaced. Vectors from different fits are never mixed.")
+    return 0
+
+
+_IMPORT_CORE_FIELDS = (
+    "id", "title", "abstract", "published", "primary_category",
+    "categories", "url", "concepts", "authors",
+)
+
+
+def cmd_import(args) -> int:
+    """Load papers from another archive.json — this tool's own export format,
+    from an older version, or from another machine's library. Safe to run more
+    than once: papers already in your library are updated, not duplicated, and
+    stale scorer output (score/why/bucket/novelty from whatever version wrote
+    the file) is dropped rather than carried in, since the running code
+    recomputes all of that on every read anyway.
+    """
+    from pathlib import Path
+    path = Path(args.file)
+    if not path.exists():
+        print(f"No such file: {path}", file=sys.stderr)
+        return 1
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"Could not read {path}: {exc}", file=sys.stderr)
+        return 1
+
+    source = raw.get("papers") if isinstance(raw, dict) else None
+    if not isinstance(source, dict):
+        print(f"{path} does not look like a research-digest archive "
+              f"(expected a top-level 'papers' object).", file=sys.stderr)
+        return 1
+
+    cleaned = []
+    for pid, paper in source.items():
+        if not isinstance(paper, dict):
+            continue
+        record = {k: paper.get(k) for k in _IMPORT_CORE_FIELDS if paper.get(k) is not None}
+        record.setdefault("id", pid)
+        first_seen = paper.get("digest_date") or paper.get("first_seen")
+        if first_seen:
+            record["first_seen"] = str(first_seen)[:10]
+        cleaned.append(record)
+
+    run_dates = raw.get("dates") or raw.get("runs") or []
+    stats = storage.import_papers(cleaned, run_dates)
+    print(f"Imported {stats['added']} new, updated {stats['updated']} existing "
+          f"(from {len(cleaned)} papers in {path.name}). "
+          f"Library now holds {stats['total']} papers.")
+    if stats["added"]:
+        print("Run 'research-digest embed' to rebuild similarity search over the full library.")
     return 0
 
 
@@ -173,6 +226,10 @@ def main(argv=None) -> int:
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("fetch", help="pull today's papers from arXiv").set_defaults(func=cmd_fetch)
+
+    imp = sub.add_parser("import", help="load papers from another archive.json")
+    imp.add_argument("file", help="path to an archive.json (this tool's own export format)")
+    imp.set_defaults(func=cmd_import)
 
     embed = sub.add_parser("embed", help="build vectors for similarity search")
     embed.add_argument("--engine", choices=["tfidf-svd", "minilm"], default=None)

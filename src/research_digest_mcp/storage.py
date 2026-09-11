@@ -93,6 +93,36 @@ def merge_papers(new_papers: List[Dict[str, Any]], run_date: str) -> Dict[str, i
     return {"added": added, "total": len(papers)}
 
 
+def import_papers(new_papers: List[Dict[str, Any]], run_dates=None) -> Dict[str, int]:
+    """Merge papers from an external export — a full archive from another install,
+    or an older version of this tool.
+
+    Unlike merge_papers, which stamps one run date onto everything it adds, an
+    import brings its own history: each new paper keeps whatever first_seen date
+    it already carries (or falls back to its published date), and every date the
+    export was built across is folded into `runs`, not just today.
+    """
+    archive = load_archive()
+    papers = archive["papers"]
+    added = updated = 0
+    for paper in new_papers:
+        pid = paper.get("id")
+        if not pid:
+            continue
+        if pid in papers:
+            papers[pid].update({k: v for k, v in paper.items() if k != "first_seen"})
+            updated += 1
+        else:
+            paper = dict(paper)
+            paper.setdefault("first_seen", str(paper.get("published") or "")[:10] or None)
+            papers[pid] = paper
+            added += 1
+    runs = set(archive["runs"]) | {str(d)[:10] for d in (run_dates or []) if d}
+    archive["runs"] = sorted(runs)
+    write_json(ARCHIVE_PATH, archive)
+    return {"added": added, "updated": updated, "total": len(papers)}
+
+
 # --- saved / read ----------------------------------------------------------
 
 def load_saved() -> Dict[str, Any]:

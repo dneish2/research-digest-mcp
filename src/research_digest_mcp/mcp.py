@@ -10,17 +10,21 @@ installed" or "you have not fetched any papers yet".
 from __future__ import annotations
 
 import json
+import re
 import sys
 import traceback
-from typing import Any, Dict, List
+from datetime import date
+from typing import Any, Dict, List, Optional
 
 from . import storage
 from .config import HOME, load_settings
 from .scoring import (
-    about_sentence, explain_sentence, rank, rank_all, rank_all_query,
+    about_sentence, explain_sentence, extract_concepts, rank, rank_all, rank_all_query,
     score_paper,
 )
 from .trends import compute_trends
+
+_ARXIV_ID = re.compile(r"\d{4}\.\d{4,5}(v\d+)?")
 
 SERVER_NAME = "research-digest"
 SERVER_VERSION = "1.0.0"
@@ -87,6 +91,25 @@ TOOLS = [
                 "limit": {"type": "integer", "default": 5},
             },
             "required": ["topic"],
+        },
+    },
+    {
+        "name": "save_paper",
+        "description": (
+            "Add a specific paper to the library by arXiv id or URL and bookmark it — "
+            "for the paper your agent found mid-session that a category fetch may never "
+            "surface on its own. If the paper is already in the library, just bookmarks it."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id_or_url": {
+                    "type": "string",
+                    "description": "e.g. 2609.05339, 2609.05339v1, or an arxiv.org/abs URL",
+                },
+                "note": {"type": "string", "description": "Why you're keeping it"},
+            },
+            "required": ["id_or_url"],
         },
     },
     {
@@ -278,6 +301,52 @@ def tool_suggest_reading(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def tool_save_paper(args: Dict[str, Any]) -> Dict[str, Any]:
+    raw = str(args.get("id_or_url", "")).strip()
+    match = _ARXIV_ID.search(raw)
+    if not match:
+        return {"status": "error",
+                "message": f"{raw!r} does not look like an arXiv id (want something like "
+                           f"2609.05339, 2609.05339v1, or an arxiv.org/abs URL)."}
+    arxiv_id = match.group(0)
+    bare = arxiv_id.split("v")[0]
+
+    by_bare = {p["id"].split("v")[0]: p for p in storage.load_papers()}
+    paper = by_bare.get(bare)
+    already_had = paper is not None
+
+    if paper is None:
+        try:
+            from .fetchers import ArxivUnavailable, fetch_by_ids
+        except Exception as exc:  # pragma: no cover - stdlib only, should not happen
+            return {"status": "error", "message": f"Could not reach the fetcher: {exc}"}
+        try:
+            fetched = fetch_by_ids([arxiv_id])
+        except ArxivUnavailable as exc:
+            return {"status": "error", "message": str(exc)}
+        if not fetched:
+            return {"status": "not_found",
+                    "message": f"arXiv has no paper matching {arxiv_id}."}
+        paper = fetched[0]
+        paper["concepts"] = extract_concepts(paper)
+        storage.merge_papers([paper], date.today().isoformat())
+
+    note = str(args.get("note", "") or "")
+    storage.save_paper(paper["id"], paper.get("title", ""), note, paper.get("concepts") or [])
+
+    message = f"Saved {paper.get('title', '')!r}."
+    if not already_had:
+        message += " Added to the library — run 'research-digest embed' to include it in similarity search."
+    return {
+        "status": "ok",
+        "id": paper["id"],
+        "title": paper.get("title", ""),
+        "url": paper.get("url", f"https://arxiv.org/abs/{paper['id']}"),
+        "already_in_library": already_had,
+        "message": message,
+    }
+
+
 def tool_get_digest(args: Dict[str, Any]) -> Dict[str, Any]:
     papers = storage.load_papers()
     if not papers:
@@ -344,6 +413,7 @@ HANDLERS = {
     "get_trends": tool_get_trends,
     "get_saved": tool_get_saved,
     "suggest_reading": tool_suggest_reading,
+    "save_paper": tool_save_paper,
     "get_digest": tool_get_digest,
     "library_status": tool_library_status,
 }

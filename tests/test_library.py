@@ -163,6 +163,61 @@ class TestAboutSentence(TempHome):
         self.assertNotIn("  ", result)
 
 
+class TestImport(TempHome):
+    def test_import_brings_in_new_papers_and_their_own_history(self):
+        from research_digest_mcp import storage
+        cleaned = [{"id": "2501.00001v1", "title": "Old paper", "abstract": "",
+                    "published": "2025-01-01", "first_seen": "2025-01-02"}]
+        stats = storage.import_papers(cleaned, run_dates=["2025-01-02", "2025-01-03"])
+        self.assertEqual(stats, {"added": 1, "updated": 0, "total": 1})
+        archive = storage.load_archive()
+        self.assertEqual(archive["papers"]["2501.00001v1"]["first_seen"], "2025-01-02")
+        self.assertIn("2025-01-02", archive["runs"])
+        self.assertIn("2025-01-03", archive["runs"])
+
+    def test_importing_twice_updates_rather_than_duplicates(self):
+        from research_digest_mcp import storage
+        paper = {"id": "2501.00001v1", "title": "Old paper", "abstract": "",
+                 "published": "2025-01-01"}
+        storage.import_papers([paper], run_dates=["2025-01-02"])
+        stats = storage.import_papers([dict(paper, title="Old paper (revised)")],
+                                       run_dates=["2025-01-02"])
+        self.assertEqual(stats, {"added": 0, "updated": 1, "total": 1})
+        self.assertEqual(len(storage.load_papers()), 1)
+
+    def test_an_imported_paper_does_not_fake_a_trends_spike(self):
+        """Old papers must fall outside the trends windows, or importing a
+        year of history would look like every concept exploded this week."""
+        from research_digest_mcp import storage
+        from research_digest_mcp.trends import compute_trends
+        old = {"id": "2501.00001v1", "title": "agentic evaluation", "abstract": "",
+               "published": "2025-01-01", "concepts": ["agentic"]}
+        storage.import_papers([old], run_dates=["2025-01-02"])
+        result = compute_trends(storage.load_papers())
+        self.assertEqual(result["status"], "no_data")  # nothing in either recent window
+
+
+class TestSavePaper(TempHome):
+    def test_saving_a_paper_already_in_the_library_needs_no_network(self):
+        from research_digest_mcp import storage
+        from research_digest_mcp.mcp import tool_save_paper
+        storage.merge_papers([{"id": "2609.05339v1", "title": "Does Memory Survive",
+                                "abstract": "", "published": "2026-09-04",
+                                "concepts": ["agent"]}], "2026-09-04")
+        result = tool_save_paper({"id_or_url": "https://arxiv.org/abs/2609.05339v1",
+                                   "note": "for the memory review"})
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["already_in_library"])
+        saved = storage.load_saved()
+        self.assertIn("2609.05339v1", saved)
+        self.assertEqual(saved["2609.05339v1"]["note"], "for the memory review")
+
+    def test_an_unparseable_id_is_an_error_not_a_network_call(self):
+        from research_digest_mcp.mcp import tool_save_paper
+        result = tool_save_paper({"id_or_url": "not an arxiv id"})
+        self.assertEqual(result["status"], "error")
+
+
 class TestServeEncoding(TempHome):
     def test_serve_writes_utf8_even_when_stdout_defaults_to_cp1252(self):
         """The Windows bug: without reconfigure(), a cp1252 stdout either raises
@@ -282,7 +337,7 @@ class TestMcpProtocol(TempHome):
         names = {t["name"] for t in tools["result"]["tools"]}
         self.assertEqual(names, {
             "search_papers", "get_similar", "get_trends", "get_saved",
-            "suggest_reading", "get_digest", "library_status"})
+            "suggest_reading", "save_paper", "get_digest", "library_status"})
 
     def test_empty_library_explains_itself(self):
         """An empty library must say so, not return [] as if nothing matched."""
