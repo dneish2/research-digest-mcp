@@ -36,13 +36,28 @@ research-digest embed      # optional: build vectors for similarity search
 research-digest status     # see what you have
 ```
 
-`fetch` is safe to run daily. It only adds papers you have not seen. Run it a
-few times over a week and the trends view starts to mean something.
+`fetch` is safe to run daily. It only adds papers you have not seen, and arXiv
+hands back roughly the same recent batch each time, so the library grows a few
+dozen papers a day — put it on a cron job, launchd agent, or Windows scheduled
+task if you want it to run itself. Run it for a week and the trends view starts
+to mean something.
+
+Already have a library from an older version of this tool, or another
+machine? Load it in one shot instead of waiting on daily fetches to catch up:
+
+```bash
+research-digest import ~/old-library/archive.json
+```
+
+Safe to run more than once — papers already present are updated, not
+duplicated, and stale scoring output from whatever wrote the file is dropped
+rather than carried in, since the running code recomputes it on every read.
 
 ## Use it
 
 ```bash
 research-digest search agentic evaluation
+research-digest digest                    # today's top picks, written to a dated file
 research-digest web                       # browser interface on localhost
 ```
 
@@ -99,6 +114,8 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | research-digest mcp
 | `get_trends` | Concepts rising and falling across the last two weeks |
 | `get_saved` | Your bookmarked papers and notes |
 | `suggest_reading` | Unread papers on a topic, best first |
+| `save_paper` | Add a specific paper by arXiv id or URL and bookmark it |
+| `get_digest` | Today's top picks against your topics, written to a dated file |
 | `library_status` | Paper count, date range, embedding health |
 
 ---
@@ -181,7 +198,10 @@ pip install -e ".[dev]"
 python -m unittest discover -s tests -v
 ```
 
-The MCP server is plain JSON-RPC over stdin and stdout, about 300 lines, with no
+There is no lockfile — any installer works. Locally this is developed with
+[uv](https://docs.astral.sh/uv/): `uv venv && uv pip install -e ".[dev]"`.
+
+The MCP server is plain JSON-RPC over stdin and stdout, about 350 lines, with no
 SDK. One JSON object per line each way, which makes it easy to drive from a
 shell script when something looks wrong.
 

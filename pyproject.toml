@@ -27,7 +27,10 @@ dependencies = []
 
 [project.optional-dependencies]
 embeddings = ["numpy>=1.21", "scikit-learn>=1.0"]
-dev = ["numpy>=1.21", "scikit-learn>=1.0"]
+# Same packages as `embeddings` today — there is no separate dev tooling yet.
+# Expressed as a self-reference rather than a duplicated list, so the two
+# cannot silently drift apart.
+dev = ["research-digest-mcp[embeddings]"]
 
 [project.scripts]
 research-digest = "research_digest_mcp.__main__:main"
