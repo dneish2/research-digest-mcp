@@ -1,0 +1,617 @@
+{
+  "agentic evaluation": {
+    "candidate_pool_size": 460,
+    "papers": {
+      "2609.04894v1": {
+        "current": 1,
+        "recency": null,
+        "random": null
+      },
+      "2608.25174v1": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2608.22751v1": {
+        "current": 3,
+        "recency": null,
+        "random": null
+      },
+      "2605.14612v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2605.22534v1": {
+        "current": 5,
+        "recency": null,
+        "random": null
+      },
+      "2609.05396v1": {
+        "current": null,
+        "recency": 1,
+        "random": null
+      },
+      "2609.05346v1": {
+        "current": null,
+        "recency": 2,
+        "random": null
+      },
+      "2609.05318v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2609.05405v1": {
+        "current": null,
+        "recency": 4,
+        "random": null
+      },
+      "2609.05314v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2606.14517v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "2606.09122v1": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "2608.25890v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2606.24446v1": {
+        "current": null,
+        "recency": null,
+        "random": 4
+      },
+      "2606.05493v1": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  },
+  "retrieval augmented generation": {
+    "candidate_pool_size": 250,
+    "papers": {
+      "2605.14488v1": {
+        "current": 1,
+        "recency": null,
+        "random": null
+      },
+      "2606.06754v1": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2609.05339v1": {
+        "current": 3,
+        "recency": null,
+        "random": null
+      },
+      "2609.05152v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2609.04711v1": {
+        "current": 5,
+        "recency": null,
+        "random": null
+      },
+      "2609.05404v1": {
+        "current": null,
+        "recency": 1,
+        "random": null
+      },
+      "2609.05382v1": {
+        "current": null,
+        "recency": 2,
+        "random": null
+      },
+      "2609.05381v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2609.05363v1": {
+        "current": null,
+        "recency": 4,
+        "random": null
+      },
+      "2609.05328v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2605.18423v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "2605.15759v1": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "2605.15564v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2605.27685v1": {
+        "current": null,
+        "recency": null,
+        "random": 4
+      },
+      "2609.04681v1": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  },
+  "reward hacking": {
+    "candidate_pool_size": 70,
+    "papers": {
+      "2605.16191v1": {
+        "current": 1,
+        "recency": null,
+        "random": null
+      },
+      "2505.21444v2": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2605.16238v1": {
+        "current": 3,
+        "recency": null,
+        "random": null
+      },
+      "2606.13662v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2609.05401v1": {
+        "current": 5,
+        "recency": 2,
+        "random": null
+      },
+      "2609.05370v1": {
+        "current": null,
+        "recency": 1,
+        "random": null
+      },
+      "2609.05221v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2608.26013v1": {
+        "current": null,
+        "recency": 4,
+        "random": null
+      },
+      "2608.25618v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2605.16154v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "2606.05518v1": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "2606.25127v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2605.20061v1": {
+        "current": null,
+        "recency": null,
+        "random": 4
+      },
+      "2606.24193v1": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  },
+  "tool calling benchmark": {
+    "candidate_pool_size": 396,
+    "papers": {
+      "2609.05395v1": {
+        "current": 1,
+        "recency": 1,
+        "random": null
+      },
+      "2605.15077v1": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2609.04681v1": {
+        "current": 3,
+        "recency": null,
+        "random": 4
+      },
+      "2605.19743v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2605.26521v1": {
+        "current": 5,
+        "recency": null,
+        "random": null
+      },
+      "2609.05381v1": {
+        "current": null,
+        "recency": 2,
+        "random": null
+      },
+      "2609.05374v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2609.05364v1": {
+        "current": null,
+        "recency": 4,
+        "random": null
+      },
+      "2609.05363v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2606.26997v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "2305.11403v5": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "2606.16201v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2609.05262v1": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  },
+  "chain of thought faithfulness": {
+    "candidate_pool_size": 1273,
+    "papers": {
+      "2609.05381v1": {
+        "current": 1,
+        "recency": null,
+        "random": null
+      },
+      "2609.05318v1": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2609.05175v1": {
+        "current": 3,
+        "recency": null,
+        "random": null
+      },
+      "2609.05278v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2609.05186v1": {
+        "current": 5,
+        "recency": null,
+        "random": null
+      },
+      "2609.05404v1": {
+        "current": null,
+        "recency": 1,
+        "random": null
+      },
+      "2609.05396v1": {
+        "current": null,
+        "recency": 2,
+        "random": null
+      },
+      "2609.05395v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2609.05385v1": {
+        "current": null,
+        "recency": 4,
+        "random": null
+      },
+      "2609.05382v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2605.16257v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "2606.14594v1": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "2605.15787v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2306.15111v2": {
+        "current": null,
+        "recency": null,
+        "random": 4
+      },
+      "2205.08314v2": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  },
+  "multi-agent coordination": {
+    "candidate_pool_size": 200,
+    "papers": {
+      "2606.08340v1": {
+        "current": 1,
+        "recency": null,
+        "random": null
+      },
+      "2602.04418v3": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2606.19616v1": {
+        "current": 3,
+        "recency": null,
+        "random": null
+      },
+      "2605.30144v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2606.22502v1": {
+        "current": 5,
+        "recency": null,
+        "random": null
+      },
+      "2609.05298v1": {
+        "current": null,
+        "recency": 1,
+        "random": null
+      },
+      "2609.05340v1": {
+        "current": null,
+        "recency": 2,
+        "random": null
+      },
+      "2609.05279v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2609.05018v1": {
+        "current": null,
+        "recency": 4,
+        "random": null
+      },
+      "2609.04983v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2606.09122v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "1909.13839v1": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "1702.05515v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2608.22104v1": {
+        "current": null,
+        "recency": null,
+        "random": 4
+      },
+      "2605.30258v1": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  },
+  "model context protocol": {
+    "candidate_pool_size": 790,
+    "papers": {
+      "2609.04894v1": {
+        "current": 1,
+        "recency": null,
+        "random": null
+      },
+      "2606.10322v1": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2606.10209v1": {
+        "current": 3,
+        "recency": null,
+        "random": null
+      },
+      "2606.07992v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2605.12728v1": {
+        "current": 5,
+        "recency": null,
+        "random": null
+      },
+      "2609.05403v1": {
+        "current": null,
+        "recency": 1,
+        "random": null
+      },
+      "2609.05396v1": {
+        "current": null,
+        "recency": 2,
+        "random": null
+      },
+      "2609.05395v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2609.05382v1": {
+        "current": null,
+        "recency": 4,
+        "random": null
+      },
+      "2609.05381v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2606.24626v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "2605.26203v1": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "2605.24220v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2010.11388v1": {
+        "current": null,
+        "recency": null,
+        "random": 4
+      },
+      "2609.05294v1": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  },
+  "reasoning distillation": {
+    "candidate_pool_size": 200,
+    "papers": {
+      "2609.05363v1": {
+        "current": 1,
+        "recency": 2,
+        "random": null
+      },
+      "2606.13572v1": {
+        "current": 2,
+        "recency": null,
+        "random": null
+      },
+      "2609.05405v1": {
+        "current": 3,
+        "recency": 4,
+        "random": null
+      },
+      "2606.16038v1": {
+        "current": 4,
+        "recency": null,
+        "random": null
+      },
+      "2609.05221v1": {
+        "current": 5,
+        "recency": null,
+        "random": null
+      },
+      "2609.05381v1": {
+        "current": null,
+        "recency": 1,
+        "random": null
+      },
+      "2609.05334v1": {
+        "current": null,
+        "recency": 3,
+        "random": null
+      },
+      "2609.05401v1": {
+        "current": null,
+        "recency": 5,
+        "random": null
+      },
+      "2605.17962v1": {
+        "current": null,
+        "recency": null,
+        "random": 1
+      },
+      "2606.24834v1": {
+        "current": null,
+        "recency": null,
+        "random": 2
+      },
+      "2606.12320v1": {
+        "current": null,
+        "recency": null,
+        "random": 3
+      },
+      "2605.28631v1": {
+        "current": null,
+        "recency": null,
+        "random": 4
+      },
+      "2606.13672v1": {
+        "current": null,
+        "recency": null,
+        "random": 5
+      }
+    }
+  }
+}

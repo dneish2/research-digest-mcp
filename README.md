@@ -137,9 +137,28 @@ The 0.20 for common words is the part that matters. A word like "learning"
 appears in nearly every paper in this field, so matching it tells you almost
 nothing. Without that discount the ranking fills up with noise.
 
+Search ranks a little differently from the standing topic profile above: results
+are ordered by how much of your query each paper covers, weighted by how
+distinctive each matched word is, with a bonus for the exact phrase and for
+terms that recur rather than appear once. Function words are ignored for
+matching but still count inside a phrase, and a query reaches inside hyphenated
+compounds — "chain of thought" finds papers that wrote it "chain-of-thought".
+
 Every result carries its own derivation, in the MCP response and in the web
 interface. The "How scoring works" tab lets you edit a title, an abstract and
 your topic list, and watch the arithmetic change.
+
+### Is it any good?
+
+Measured, in [`docs/EVAL.md`](docs/EVAL.md): precision@5 of **0.708** against 26
+machine-verified exact-phrase queries (recency scores 0.008, random 0.000), and
+**0.80** against 8 LLM-judged semantic queries with 115 blind judgments.
+
+Read the limitations section before believing either number. Exact-phrase
+positives reward a keyword matcher by construction, eight queries is not a
+benchmark, and there is no held-out set. The document also covers the query
+where this ranker scores zero and why no ranker could do better on it, which is
+the most useful thing in it.
 
 ---
 

@@ -1,0 +1,478 @@
+{
+  "agentic evaluation": {
+    "2609.05405v1": {
+      "score": 1,
+      "reason": "Wearable health-QA benchmark evaluates AI reasoning over sensor data, but is not about agentic systems (no tool use/action)."
+    },
+    "2606.24446v1": {
+      "score": 1,
+      "reason": "Agentic code-repair framework (BigBag); evaluated empirically but core contribution is the agent, not an evaluation methodology."
+    },
+    "2609.05318v1": {
+      "score": 1,
+      "reason": "Theoretical study of agentic networked information aggregation; agentic but not about evaluating agents."
+    },
+    "2609.05346v1": {
+      "score": 1,
+      "reason": "Student perceptions of AI-assisted grading; about evaluation/assessment but not agentic systems."
+    },
+    "2606.05493v1": {
+      "score": 0,
+      "reason": "Dataset of reverse-engineering forum discussions; unrelated to agents or evaluation."
+    },
+    "2608.25890v1": {
+      "score": 0,
+      "reason": "GPU simulation of multicellular growth; unrelated."
+    },
+    "2609.05396v1": {
+      "score": 0,
+      "reason": "Generative model for synthetic wireless signals; unrelated."
+    },
+    "2608.22751v1": {
+      "score": 3,
+      "reason": "UPGRADE (full text): explicitly annotates 6,108 tools with risk levels and defines retrieval-time safety metrics - a genuine evaluation methodology for agentic tool retrieval, not just a passing mention."
+    },
+    "2609.05314v1": {
+      "score": 1,
+      "reason": "Review of LLMs for HVAC ops with deployment-readiness assessment; evaluative but not agent-specific."
+    },
+    "2605.14612v1": {
+      "score": 3,
+      "reason": "IDE toolkit built explicitly to make evaluation of agentic AI features regular, repeatable, and traceable - centrally about agentic evaluation infrastructure."
+    },
+    "2605.22534v1": {
+      "score": 3,
+      "reason": "Large-scale empirical study of why agentic PRs are merged/rejected - a direct empirical evaluation of agent behavior/quality."
+    },
+    "2606.09122v1": {
+      "score": 1,
+      "reason": "Agentic architecture for network incident resolution; an application paper, not evaluation-focused."
+    },
+    "2609.04894v1": {
+      "score": 3,
+      "reason": "Critical review assessing the progress and limits of agentic AI across environments - centrally an evaluative synthesis of agentic AI capability."
+    },
+    "2608.25174v1": {
+      "score": 2,
+      "reason": "Model-based agentic software engineering framework focused on producing acceptance evidence for agent work; evaluation-adjacent."
+    },
+    "2606.14517v1": {
+      "score": 1,
+      "reason": "Denial-of-service attack on LLM agent guardrails; a security study of agents, not an evaluation methodology paper."
+    }
+  },
+  "retrieval augmented generation": {
+    "2609.05339v1": {
+      "score": 2,
+      "reason": "Compares RAG against other memory representations (LC-RAW, NOTES, KG) for agent memory portability - RAG is a central comparison arm."
+    },
+    "2605.15564v1": {
+      "score": 0,
+      "reason": "Diffusion model for X-ray crystallography structure determination; unrelated."
+    },
+    "2609.05328v1": {
+      "score": 0,
+      "reason": "Graph generative model for categorical graphs; unrelated to RAG."
+    },
+    "2609.05381v1": {
+      "score": 1,
+      "reason": "About verbatim memorization/retrieval of published numeric values by LLMs, not retrieval-augmented generation architecture."
+    },
+    "2609.04711v1": {
+      "score": 2,
+      "reason": "UPGRADE (full text): the retrieval agent explicitly combines vector search with local LM generation over documentation - a real RAG-like component, not just a passing mention."
+    },
+    "2609.05382v1": {
+      "score": 0,
+      "reason": "Generative novel-view synthesis for mirror scenes; unrelated."
+    },
+    "2609.05404v1": {
+      "score": 0,
+      "reason": "Interactive art installation about diffusion models; unrelated."
+    },
+    "2605.18423v1": {
+      "score": 0,
+      "reason": "Ethical benchmark for autonomy readiness; unrelated to RAG."
+    },
+    "2605.27685v1": {
+      "score": 0,
+      "reason": "Multi-agent LLM framework for traffic simulation; unrelated to RAG."
+    },
+    "2609.05363v1": {
+      "score": 1,
+      "reason": "Uses a 'retrieval-augmented few-shot LLM teacher' as one component of a distillation pipeline for recommendations; RAG is incidental, not the focus."
+    },
+    "2605.15759v1": {
+      "score": 1,
+      "reason": "Long-term agent memory framework with dimension-aware retrieval; adjacent to RAG but about structured memory recall, not document-grounded generation."
+    },
+    "2609.05152v1": {
+      "score": 3,
+      "reason": "Two-stage training recipe for soft context compression specifically inside RAG pipelines - centrally about RAG."
+    },
+    "2606.06754v1": {
+      "score": 3,
+      "reason": "Multi-agent debate framework explicitly built on retrieval-augmented generation for essay scoring - RAG is the core grounding mechanism."
+    },
+    "2609.04681v1": {
+      "score": 0,
+      "reason": "About reliability/cost economics of agentic coding lifecycles; no retrieval or RAG content."
+    },
+    "2605.14488v1": {
+      "score": 3,
+      "reason": "Deepchecks: a framework explicitly for evaluating RAG applications - directly on topic."
+    }
+  },
+  "reward hacking": {
+    "2608.26013v1": {
+      "score": 0,
+      "reason": "Agentic data-synthesis pipeline for multimodal instruction data; verifier outcomes are used as feedback but this is not about reward hacking."
+    },
+    "2608.25618v1": {
+      "score": 0,
+      "reason": "Working-memory framework for long-document VQA agents; unrelated to reward hacking."
+    },
+    "2606.13662v1": {
+      "score": 2,
+      "reason": "UPGRADE (full text): explicitly names reward hacking as one of the harmful behaviors the environment-engineering approach is designed to suppress."
+    },
+    "2606.25127v1": {
+      "score": 2,
+      "reason": "Studies how reward design shapes RL driving agents' attention; directly about reward-design side effects, closely adjacent to reward hacking."
+    },
+    "2606.05518v1": {
+      "score": 0,
+      "reason": "Latent reasoning guidance for code translation; unrelated to reward hacking."
+    },
+    "2606.24193v1": {
+      "score": 0,
+      "reason": "Blockchain-secured multi-agent DRL framework for aerial drones; unrelated to reward hacking."
+    },
+    "2505.21444v2": {
+      "score": 3,
+      "reason": "UPGRADE (full text): finds that prolonged self-training RL causes reward hacking (models maximize pseudo-reward, causing sudden performance collapse) - a central, explicit finding, not a footnote."
+    },
+    "2605.20061v1": {
+      "score": 2,
+      "reason": "Credit-assignment method to prevent reward misattribution from belief drift in long-horizon RL agents; closely tied to reward-hacking mitigation."
+    },
+    "2609.05370v1": {
+      "score": 3,
+      "reason": "Shows LLM decompilers exploit a recompilability proxy metric while destroying semantic correctness - a textbook case of metric/reward gaming."
+    },
+    "2609.05221v1": {
+      "score": 1,
+      "reason": "Verifier-guided RLVR reasoning framework; touches verifiable reward but not reward hacking specifically."
+    },
+    "2605.16238v1": {
+      "score": 2,
+      "reason": "UPGRADE (full text): reports that optimizing log-scale distance metrics prevents reward hacking in the LLM tree-search forecasting pipeline - an explicit reward-hacking mitigation finding."
+    },
+    "2605.16191v1": {
+      "score": 3,
+      "reason": "UPGRADE (full text): a detailed, concrete case study of algorithmic reward hacking (levitating disconnected tiers, optics-solver exploits) and the constraint-based workflow used to eliminate it - centrally about reward hacking even though the application domain is solar-panel design."
+    },
+    "2609.05401v1": {
+      "score": 3,
+      "reason": "Shows VLM reward models give contradictory rewards under paraphrasing, i.e. exploitable/fragile reward signals - directly on topic."
+    },
+    "2605.16154v1": {
+      "score": 0,
+      "reason": "Compute-efficiency method for VLA RL training; unrelated to reward hacking."
+    }
+  },
+  "tool calling benchmark": {
+    "2609.04681v1": {
+      "score": 1,
+      "reason": "Broad study of agentic coding-lifecycle reliability that mentions tool use in passing; not a tool-calling benchmark."
+    },
+    "2609.05374v1": {
+      "score": 2,
+      "reason": "Scalable environment for hybrid GUI+CLI computer-use agents; a benchmark environment for tool/interface use, adjacent to tool-calling benchmarks."
+    },
+    "2609.05262v1": {
+      "score": 0,
+      "reason": "Self-supervised phylogenetic linguistics method; unrelated."
+    },
+    "2609.05364v1": {
+      "score": 0,
+      "reason": "AI-native performance-modeling library generated by coding agents; not about tool-calling evaluation."
+    },
+    "2609.05363v1": {
+      "score": 0,
+      "reason": "Reasoning distillation for trade-up recommendation; unrelated to tool calling."
+    },
+    "2605.19743v1": {
+      "score": 2,
+      "reason": "Multi-agent engineering-design benchmark suite that explicitly includes a direct-tool-use evaluation dimension."
+    },
+    "2305.11403v5": {
+      "score": 0,
+      "reason": "Transformer architecture for image super-resolution; completely unrelated."
+    },
+    "2609.05395v1": {
+      "score": 3,
+      "reason": "KOPA-Bench: an explicit benchmark for multi-step tool-calling over real government APIs - exactly on topic."
+    },
+    "2605.26521v1": {
+      "score": 3,
+      "reason": "UPGRADE (full text): evaluates 403 structural tool-access/delegation obligations across ten SDK-derived benchmarks with concrete pass rates - a genuine tool-calling correctness benchmark, not just adjacent."
+    },
+    "2606.26997v1": {
+      "score": 0,
+      "reason": "Pipelined rollout/training infrastructure for RLVR; unrelated to tool calling."
+    },
+    "2606.16201v1": {
+      "score": 0,
+      "reason": "Feasibility assessment for hybrid quantum-classical software; unrelated."
+    },
+    "2609.05381v1": {
+      "score": 0,
+      "reason": "Verbatim-value retrieval/memorization study; unrelated to tool calling."
+    },
+    "2605.15077v1": {
+      "score": 3,
+      "reason": "UPGRADE (full text): explicitly evaluated on standard function-calling benchmarks and adapted SWE benchmarks - directly measured on tool-calling benchmarks despite the latency framing."
+    }
+  },
+  "chain of thought faithfulness": {
+    "2306.15111v2": {
+      "score": 0,
+      "reason": "Self-supervised image captioning with CLIP; unrelated."
+    },
+    "2205.08314v2": {
+      "score": 0,
+      "reason": "Self-sovereign identity architecture; unrelated."
+    },
+    "2609.05396v1": {
+      "score": 0,
+      "reason": "Generative model for synthetic wireless signals; unrelated."
+    },
+    "2609.05175v1": {
+      "score": 0,
+      "reason": "Scientometric novelty measurement for biomedical papers; unrelated."
+    },
+    "2609.05395v1": {
+      "score": 0,
+      "reason": "Tool-calling benchmark for government APIs; unrelated to CoT faithfulness."
+    },
+    "2605.15787v1": {
+      "score": 0,
+      "reason": "Theoretical account of grokking in transformers; unrelated to faithfulness."
+    },
+    "2609.05381v1": {
+      "score": 0,
+      "reason": "Verbatim-value retrieval/memorization study; about benchmark contamination, not reasoning faithfulness."
+    },
+    "2609.05318v1": {
+      "score": 0,
+      "reason": "Theoretical agentic information-aggregation rates; unrelated to faithfulness."
+    },
+    "2609.05278v1": {
+      "score": 0,
+      "reason": "Study of GitHub socio-technical artifacts; unrelated."
+    },
+    "2606.14594v1": {
+      "score": 0,
+      "reason": "Governance/policy alignment for AI open-source contributors; unrelated."
+    },
+    "2609.05404v1": {
+      "score": 0,
+      "reason": "Interactive diffusion-model art installation; unrelated."
+    },
+    "2609.05382v1": {
+      "score": 0,
+      "reason": "Novel-view synthesis for mirror scenes; unrelated."
+    },
+    "2605.16257v1": {
+      "score": 0,
+      "reason": "Dexterous-manipulation robotics benchmark; unrelated."
+    },
+    "2609.05186v1": {
+      "score": 0,
+      "reason": "Qualitative study of Scrum Master learning paths; unrelated."
+    },
+    "2609.05385v1": {
+      "score": 2,
+      "reason": "Tests whether LLM-stated explanatory factors are necessary/sufficient causes of the model's actual decisions - the same faithfulness question as CoT faithfulness, applied to explanations generally."
+    }
+  },
+  "multi-agent coordination": {
+    "2606.09122v1": {
+      "score": 2,
+      "reason": "Multi-agent orchestration architecture for autonomous network-incident resolution; a real application of multi-agent coordination."
+    },
+    "2605.30144v1": {
+      "score": 2,
+      "reason": "UPGRADE (full text): explicitly frames the simulator as a testbed for multi-agent coordination research, alongside long-horizon memory and institutional reasoning."
+    },
+    "1909.13839v1": {
+      "score": 0,
+      "reason": "Single-agent RL for cache management; not multi-agent."
+    },
+    "2606.08340v1": {
+      "score": 3,
+      "reason": "A benchmark explicitly for open-ended multi-agent coordination in language agents - exactly on topic."
+    },
+    "1702.05515v1": {
+      "score": 3,
+      "reason": "Survey of multi-agent path finding generalizations - MAPF is a canonical multi-agent coordination problem."
+    },
+    "2605.30258v1": {
+      "score": 1,
+      "reason": "Modular configuration standard for LLM social simulations; about reproducibility architecture, not coordination itself."
+    },
+    "2609.05018v1": {
+      "score": 1,
+      "reason": "Multi-agent classroom simulation studying chatbot response style effects; not centrally about coordination."
+    },
+    "2609.04983v1": {
+      "score": 1,
+      "reason": "Research platform for mixed-initiative human-AI visual analytics; multi-agent infra is incidental to the visual-analytics focus."
+    },
+    "2606.19616v1": {
+      "score": 3,
+      "reason": "Studies how concurrent coding agents claim, divide, and collide over shared work before PR submission - directly titled and about multi-agent coordination."
+    },
+    "2609.05298v1": {
+      "score": 2,
+      "reason": "Change-point detection for cooperative multi-agent RL when the environment shifts; a coordination-adjacent MARL reliability method."
+    },
+    "2609.05279v1": {
+      "score": 3,
+      "reason": "UPGRADE (full text): directly measures coordination efficiency costs (16-63% more communication per unit progress) from swapping team members - centrally about multi-agent coordination dynamics."
+    },
+    "2606.22502v1": {
+      "score": 2,
+      "reason": "Cooperative multi-agent RL technique applied to scalable GUI testing."
+    },
+    "2609.05340v1": {
+      "score": 2,
+      "reason": "Privacy-preserving consensus/coordination among multi-agent networks under adversarial inference."
+    },
+    "2602.04418v3": {
+      "score": 3,
+      "reason": "Engineering case study explicitly titled multi-agent coordination for smart-contract auditing, with planning/execution/repair agents coordinating via negotiation."
+    },
+    "2608.22104v1": {
+      "score": 3,
+      "reason": "Proposes a new coordination strategy class for decentralized agents to reach compatible joint behaviors - directly about coordination strategy design."
+    }
+  },
+  "model context protocol": {
+    "2609.05381v1": {
+      "score": 0,
+      "reason": "Verbatim-value retrieval/memorization study; unrelated to MCP."
+    },
+    "2606.24626v1": {
+      "score": 0,
+      "reason": "Tool-augmented fault-attribution framework for long agent trajectories; not about MCP specifically."
+    },
+    "2609.05294v1": {
+      "score": 0,
+      "reason": "ECG-based cardiac diagnosis using VAEs; unrelated."
+    },
+    "2606.10322v1": {
+      "score": 3,
+      "reason": "UPGRADE (full text): the paper is literally titled around a Game-Theoretic Secure Model Context Protocol (GT-MCP), a controller-driven extension of MCP itself."
+    },
+    "2609.04894v1": {
+      "score": 2,
+      "reason": "UPGRADE (full text): substantive discussion of MCP and Agent2Agent as interoperability layers that do not establish trustworthy delegation - a real analytical treatment, not just a mention."
+    },
+    "2010.11388v1": {
+      "score": 0,
+      "reason": "Adversarial attacks on algorithmic trading RL policies; unrelated to MCP."
+    },
+    "2609.05403v1": {
+      "score": 0,
+      "reason": "Federated learning for retail query personalization; unrelated to MCP."
+    },
+    "2605.24220v1": {
+      "score": 0,
+      "reason": "Agentic RL rollout framework over arbitrary harnesses; not about MCP."
+    },
+    "2605.12728v1": {
+      "score": 3,
+      "reason": "LLM orchestrator built explicitly through the Model Context Protocol for power-grid simulation and analytics - MCP is the core integration mechanism."
+    },
+    "2609.05396v1": {
+      "score": 0,
+      "reason": "Generative model for synthetic wireless signals; unrelated."
+    },
+    "2609.05395v1": {
+      "score": 1,
+      "reason": "Tool-calling benchmark for government APIs; about tool calling generally, not explicitly MCP."
+    },
+    "2606.10209v1": {
+      "score": 3,
+      "reason": "Studies context-engineering strategies for long-horizon agents using Model Context Protocol tools directly - MCP is the concrete system under study."
+    },
+    "2606.07992v1": {
+      "score": 3,
+      "reason": "Security research on an MCP-specific attack surface (error-handling loop authority exploitation) - directly and centrally about MCP."
+    },
+    "2605.26203v1": {
+      "score": 0,
+      "reason": "Multi-agent social-incentive mechanism (AgentSociety); not about MCP."
+    },
+    "2609.05382v1": {
+      "score": 0,
+      "reason": "Novel-view synthesis for mirror scenes; unrelated."
+    }
+  },
+  "reasoning distillation": {
+    "2609.05405v1": {
+      "score": 1,
+      "reason": "Wearable health-reasoning benchmark; about reasoning evaluation, no distillation."
+    },
+    "2606.12320v1": {
+      "score": 0,
+      "reason": "Reference architecture for runtime governance of production AI agents; unrelated to reasoning distillation."
+    },
+    "2609.05363v1": {
+      "score": 3,
+      "reason": "Explicitly titled 'Reasoning Distillation' - distills LLM reasoning into an efficient student model for trade-up recommendation."
+    },
+    "2605.28631v1": {
+      "score": 1,
+      "reason": "Training-free RLVR data-selection method; about reasoning training data, not distillation."
+    },
+    "2606.13672v1": {
+      "score": 0,
+      "reason": "World model for robotic manipulation; unrelated to reasoning distillation."
+    },
+    "2609.05401v1": {
+      "score": 0,
+      "reason": "Reward-model paraphrase-fragility benchmark for robotics; unrelated to reasoning distillation."
+    },
+    "2605.17962v1": {
+      "score": 1,
+      "reason": "Financial multimodal reasoning evaluation benchmark; about reasoning evaluation, no distillation."
+    },
+    "2606.24834v1": {
+      "score": 0,
+      "reason": "Multi-turn dialogue assessment for non-functional requirements; unrelated."
+    },
+    "2609.05381v1": {
+      "score": 0,
+      "reason": "Verbatim-value retrieval/memorization study; unrelated to distillation."
+    },
+    "2606.16038v1": {
+      "score": 3,
+      "reason": "Large-scale dataset of agentic reasoning traces (thinking/non-thinking) used for multilingual distillation of software-engineering agents - directly about reasoning-trace distillation."
+    },
+    "2606.13572v1": {
+      "score": 2,
+      "reason": "UPGRADE (full text): the actor-critic framework explicitly uses stored simulation trajectories for distillation into the reasoning pipeline, not just a reasoning benchmark."
+    },
+    "2609.05221v1": {
+      "score": 1,
+      "reason": "Verifier-guided reasoning framework trained via QLoRA/RLVR; reasoning-focused fine-tuning, not distillation."
+    },
+    "2609.05334v1": {
+      "score": 1,
+      "reason": "Vision-transformer compression combining knowledge distillation with pruning/quantization for plant-disease detection; uses distillation but for vision classification, not reasoning."
+    }
+  }
+}

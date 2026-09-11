@@ -19,3 +19,6 @@ settings.json
 *.swp
 .idea/
 .vscode/
+
+# Local review working directory: superseded by docs/EVAL.md and eval/
+_review/

@@ -1,0 +1,997 @@
+{
+  "per_query": {
+    "agentic evaluation": {
+      "current": {
+        "precision_at_5": 1.0,
+        "mean_relevance_at_5": 2.8,
+        "ndcg_at_5": 0.971,
+        "n": 5,
+        "relevances": [
+          3,
+          2,
+          3,
+          3,
+          3
+        ],
+        "papers": [
+          {
+            "id": "2609.04894v1",
+            "title": "From Language Models to World-Acting Systems: Progress and Limits of Agentic AI across Digital, Social, Virtual, and Physical Environments",
+            "score": 3
+          },
+          {
+            "id": "2608.25174v1",
+            "title": "Model-Based Agentic Software Engineering",
+            "score": 2
+          },
+          {
+            "id": "2608.22751v1",
+            "title": "Risk-Aware Reranking for Agentic Tool Retrieval",
+            "score": 3
+          },
+          {
+            "id": "2605.14612v1",
+            "title": "In-IDE Toolkit for Developers of AI-Based Features",
+            "score": 3
+          },
+          {
+            "id": "2605.22534v1",
+            "title": "Why Are Agentic Pull Requests Merged or Rejected? An Empirical Study",
+            "score": 3
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.8,
+        "ndcg_at_5": 0.23,
+        "n": 5,
+        "relevances": [
+          0,
+          1,
+          1,
+          1,
+          1
+        ],
+        "papers": [
+          {
+            "id": "2609.05396v1",
+            "title": "A Deep Generative Model for Synthesizing Labeled Wireless Signals",
+            "score": 0
+          },
+          {
+            "id": "2609.05346v1",
+            "title": "Who Should Grade My Work? Student Perspectives on Transparent AI-Assisted Writing Assessment in Higher Education",
+            "score": 1
+          },
+          {
+            "id": "2609.05318v1",
+            "title": "Optimal Rates for Agentic Networked Information Aggregation",
+            "score": 1
+          },
+          {
+            "id": "2609.05405v1",
+            "title": "WearableQA: A Benchmark for Health Reasoning over Real-World Wearable Data",
+            "score": 1
+          },
+          {
+            "id": "2609.05314v1",
+            "title": "Large Language Models for HVAC Operations in Building Energy Systems: A Critical Review of Methods, Applications, and Deployment Readiness",
+            "score": 1
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.6,
+        "ndcg_at_5": 0.244,
+        "n": 5,
+        "relevances": [
+          1,
+          1,
+          0,
+          1,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2606.14517v1",
+            "title": "From Shield to Target: Denial-of-Service Attacks on LLM-Based Agent Guardrails",
+            "score": 1
+          },
+          {
+            "id": "2606.09122v1",
+            "title": "Autonomous Incident Resolution at Hyperscale: An Agentic AI Architecture for Network Operations",
+            "score": 1
+          },
+          {
+            "id": "2608.25890v1",
+            "title": "Scalable Multi-GPU Simulation of 3D Multicellular Growth with RNN-Based Workload Balancing",
+            "score": 0
+          },
+          {
+            "id": "2606.24446v1",
+            "title": "Agentic Generation of AST Transformation Rules for Fixing Breaking Updates",
+            "score": 1
+          },
+          {
+            "id": "2606.05493v1",
+            "title": "REStack: A Large-Scale Dataset of Reverse Engineering Discussions from Stack Exchange",
+            "score": 0
+          }
+        ]
+      }
+    },
+    "retrieval augmented generation": {
+      "current": {
+        "precision_at_5": 1.0,
+        "mean_relevance_at_5": 2.6,
+        "ndcg_at_5": 0.991,
+        "n": 5,
+        "relevances": [
+          3,
+          3,
+          2,
+          3,
+          2
+        ],
+        "papers": [
+          {
+            "id": "2605.14488v1",
+            "title": "Deepchecks: Evaluating Retrieval-Augmented Generation (RAG)",
+            "score": 3
+          },
+          {
+            "id": "2606.06754v1",
+            "title": "MADRAG: Multi-Agent Debate with Retrieval-Augmented Generation for Training-Free Analytic Essay Scoring",
+            "score": 3
+          },
+          {
+            "id": "2609.05339v1",
+            "title": "Does Your Agent's Memory Survive a Model Upgrade? A Controlled Study of Memory Portability",
+            "score": 2
+          },
+          {
+            "id": "2609.05152v1",
+            "title": "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compression in RAG",
+            "score": 3
+          },
+          {
+            "id": "2609.04711v1",
+            "title": "Building a research-software catalog with a coding agent: from hackathon prototype to public deployment",
+            "score": 2
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.4,
+        "ndcg_at_5": 0.116,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          1,
+          1,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2609.05404v1",
+            "title": "Diffusion TV: Experiencing Diffusion Models through Tangible, Embodied Interaction",
+            "score": 0
+          },
+          {
+            "id": "2609.05382v1",
+            "title": "Reflection-aware Generative Novel View Synthesis",
+            "score": 0
+          },
+          {
+            "id": "2609.05381v1",
+            "title": "Molecular Déjà Vu: Digit-Level Retrieval of Published Values in Frontier Language Models",
+            "score": 1
+          },
+          {
+            "id": "2609.05363v1",
+            "title": "Distill Globally, Adapt Locally: Reasoning Distillation and Product-Type Test-Time Training for Scalable Trade-Up Recommendation",
+            "score": 1
+          },
+          {
+            "id": "2609.05328v1",
+            "title": "Embedded Graph Flows for Categorical Graph Generation",
+            "score": 0
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.2,
+        "ndcg_at_5": 0.079,
+        "n": 5,
+        "relevances": [
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2605.18423v1",
+            "title": "REBAR: Reference Ethical Benchmark for Autonomy Readiness",
+            "score": 0
+          },
+          {
+            "id": "2605.15759v1",
+            "title": "DimMem: Dimensional Structuring for Efficient Long-Term Agent Memory",
+            "score": 1
+          },
+          {
+            "id": "2605.15564v1",
+            "title": "CrystalBoltz: End-to-End Protein Structure Determination via Experiment-Guided Diffusion for X-Ray Crystallography",
+            "score": 0
+          },
+          {
+            "id": "2605.27685v1",
+            "title": "Decoupled Intelligence: A Multi-Agent LLM Framework for Controllable Traffic Scenario Generation in SUMO",
+            "score": 0
+          },
+          {
+            "id": "2609.04681v1",
+            "title": "Beyond Code Generation: Reliability, Verification, and Cost Economics in the Agentic Software Development Lifecycle",
+            "score": 0
+          }
+        ]
+      }
+    },
+    "reward hacking": {
+      "current": {
+        "precision_at_5": 1.0,
+        "mean_relevance_at_5": 2.6,
+        "ndcg_at_5": 0.936,
+        "n": 5,
+        "relevances": [
+          3,
+          3,
+          2,
+          2,
+          3
+        ],
+        "papers": [
+          {
+            "id": "2605.16191v1",
+            "title": "Optimized Three-Dimensional Photovoltaic Structures with LLM guided Tree Search",
+            "score": 3
+          },
+          {
+            "id": "2505.21444v2",
+            "title": "Can Large Reasoning Models Self-Train?",
+            "score": 3
+          },
+          {
+            "id": "2605.16238v1",
+            "title": "Prospective multi-pathogen disease forecasting using autonomous LLM-guided tree search",
+            "score": 2
+          },
+          {
+            "id": "2606.13662v1",
+            "title": "EurekAgent: Agent Environment Engineering is All You Need For Autonomous Scientific Discovery",
+            "score": 2
+          },
+          {
+            "id": "2609.05401v1",
+            "title": "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Language Reward Models",
+            "score": 3
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.4,
+        "mean_relevance_at_5": 1.4,
+        "ndcg_at_5": 0.638,
+        "n": 5,
+        "relevances": [
+          3,
+          3,
+          1,
+          0,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2609.05370v1",
+            "title": "When LLM Decompilers Recompile More and Preserve Less",
+            "score": 3
+          },
+          {
+            "id": "2609.05401v1",
+            "title": "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Language Reward Models",
+            "score": 3
+          },
+          {
+            "id": "2609.05221v1",
+            "title": "A Verifier-Guided Explainable Reasoning Framework with Gold-Anchored QLoRA, Task-Aware Mixture-of-Experts, and Group-Relative RLVR",
+            "score": 1
+          },
+          {
+            "id": "2608.26013v1",
+            "title": "VISA: Agentic Self-Evolving Data Synthesis for Multimodal Instruction Following",
+            "score": 0
+          },
+          {
+            "id": "2608.25618v1",
+            "title": "AWM: Answerable Working Memory for Long-Document VQA Agents",
+            "score": 0
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.4,
+        "mean_relevance_at_5": 0.8,
+        "ndcg_at_5": 0.22,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          2,
+          2,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2605.16154v1",
+            "title": "Learn Where Outcomes Diverge: Efficient VLA RL via Probabilistic Chunk Masking",
+            "score": 0
+          },
+          {
+            "id": "2606.05518v1",
+            "title": "Latent Reasoning Guidance for Parallel Code Translation",
+            "score": 0
+          },
+          {
+            "id": "2606.25127v1",
+            "title": "Reward-Conditioned Attention: How Reward Design Shapes What Autonomous Driving Agents See",
+            "score": 2
+          },
+          {
+            "id": "2605.20061v1",
+            "title": "Rewarding Beliefs, Not Actions: Consistency-Guided Credit Assignment for Long-Horizon Agents",
+            "score": 2
+          },
+          {
+            "id": "2606.24193v1",
+            "title": "SkyChain Intelligence: A Blockchain-Secured Multi-Agent DRL Framework for Low-Altitude Embodied Artificial Intelligence",
+            "score": 0
+          }
+        ]
+      }
+    },
+    "tool calling benchmark": {
+      "current": {
+        "precision_at_5": 0.8,
+        "mean_relevance_at_5": 2.4,
+        "ndcg_at_5": 0.924,
+        "n": 5,
+        "relevances": [
+          3,
+          3,
+          1,
+          2,
+          3
+        ],
+        "papers": [
+          {
+            "id": "2609.05395v1",
+            "title": "Multi-Step Tool-Calling over Korean Open Public APIs: A Benchmark and a Data-Synthesis Recipe",
+            "score": 3
+          },
+          {
+            "id": "2605.15077v1",
+            "title": "Concurrency without Model Changes: Future-based Asynchronous Function Calling for LLMs",
+            "score": 3
+          },
+          {
+            "id": "2609.04681v1",
+            "title": "Beyond Code Generation: Reliability, Verification, and Cost Economics in the Agentic Software Development Lifecycle",
+            "score": 1
+          },
+          {
+            "id": "2605.19743v1",
+            "title": "EngiAI: A Multi-Agent Framework and Benchmark Suite for LLM-Driven Engineering Design",
+            "score": 2
+          },
+          {
+            "id": "2605.26521v1",
+            "title": "Testing Agentic Workflows with Structural Coverage Criteria",
+            "score": 3
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.4,
+        "mean_relevance_at_5": 1.0,
+        "ndcg_at_5": 0.498,
+        "n": 5,
+        "relevances": [
+          3,
+          0,
+          2,
+          0,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2609.05395v1",
+            "title": "Multi-Step Tool-Calling over Korean Open Public APIs: A Benchmark and a Data-Synthesis Recipe",
+            "score": 3
+          },
+          {
+            "id": "2609.05381v1",
+            "title": "Molecular Déjà Vu: Digit-Level Retrieval of Published Values in Frontier Language Models",
+            "score": 0
+          },
+          {
+            "id": "2609.05374v1",
+            "title": "CUA-Universe: A Scalable and Dynamic Environment for Hybrid GUI+CLI Agents",
+            "score": 2
+          },
+          {
+            "id": "2609.05364v1",
+            "title": "Design Docs Are All You Need: An AI-native Machine-Learning Performance Tool",
+            "score": 0
+          },
+          {
+            "id": "2609.05363v1",
+            "title": "Distill Globally, Adapt Locally: Reasoning Distillation and Product-Type Test-Time Training for Scalable Trade-Up Recommendation",
+            "score": 0
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.2,
+        "ndcg_at_5": 0.054,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2606.26997v1",
+            "title": "RolloutPipe: Overlapping Pipelined Rollout and Training in Disaggregated On-Policy LLM Reinforcement Learning",
+            "score": 0
+          },
+          {
+            "id": "2305.11403v5",
+            "title": "Efficient Mixed Transformer for Single Image Super-Resolution",
+            "score": 0
+          },
+          {
+            "id": "2606.16201v1",
+            "title": "Q-READY: Predictive Feasibility Assessment for Hybrid Quantum-Classical Applications",
+            "score": 0
+          },
+          {
+            "id": "2609.04681v1",
+            "title": "Beyond Code Generation: Reliability, Verification, and Cost Economics in the Agentic Software Development Lifecycle",
+            "score": 1
+          },
+          {
+            "id": "2609.05262v1",
+            "title": "Self-Supervised Lexical Representation Learning for Fast, Large-Scale Phylogenetic Inference",
+            "score": 0
+          }
+        ]
+      }
+    },
+    "chain of thought faithfulness": {
+      "current": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.0,
+        "ndcg_at_5": 0.0,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2609.05381v1",
+            "title": "Molecular Déjà Vu: Digit-Level Retrieval of Published Values in Frontier Language Models",
+            "score": 0
+          },
+          {
+            "id": "2609.05318v1",
+            "title": "Optimal Rates for Agentic Networked Information Aggregation",
+            "score": 0
+          },
+          {
+            "id": "2609.05175v1",
+            "title": "Measuring the Novelty of Biomedical Papers Using the Latent Distances between Knowledge Units",
+            "score": 0
+          },
+          {
+            "id": "2609.05278v1",
+            "title": "Ritgard: T(r)opical Islands of Socio-Technical Artifacts on GitHub",
+            "score": 0
+          },
+          {
+            "id": "2609.05186v1",
+            "title": "An Empirical Study on Learning Paths and Gender Dynamics in Scrum Master Roles",
+            "score": 0
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.2,
+        "mean_relevance_at_5": 0.4,
+        "ndcg_at_5": 0.431,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          0,
+          2,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2609.05404v1",
+            "title": "Diffusion TV: Experiencing Diffusion Models through Tangible, Embodied Interaction",
+            "score": 0
+          },
+          {
+            "id": "2609.05396v1",
+            "title": "A Deep Generative Model for Synthesizing Labeled Wireless Signals",
+            "score": 0
+          },
+          {
+            "id": "2609.05395v1",
+            "title": "Multi-Step Tool-Calling over Korean Open Public APIs: A Benchmark and a Data-Synthesis Recipe",
+            "score": 0
+          },
+          {
+            "id": "2609.05385v1",
+            "title": "Necessary or Sufficient? Evaluating LLM Explanations With Behavioural Evidence",
+            "score": 2
+          },
+          {
+            "id": "2609.05382v1",
+            "title": "Reflection-aware Generative Novel View Synthesis",
+            "score": 0
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.0,
+        "ndcg_at_5": 0.0,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2605.16257v1",
+            "title": "DexJoCo: A Benchmark and Toolkit for Task-Oriented Dexterous Manipulation on MuJoCo",
+            "score": 0
+          },
+          {
+            "id": "2606.14594v1",
+            "title": "Regulating the Machine Contributor: Governance and Policy Alignment in Open Source",
+            "score": 0
+          },
+          {
+            "id": "2605.15787v1",
+            "title": "Grokking as Structural Inference: Transformers Need Bayesian Lottery Tickets",
+            "score": 0
+          },
+          {
+            "id": "2306.15111v2",
+            "title": "Self-Supervised Image Captioning with CLIP",
+            "score": 0
+          },
+          {
+            "id": "2205.08314v2",
+            "title": "Self-Sovereign Identity as a Service: Architecture in Practice",
+            "score": 0
+          }
+        ]
+      }
+    },
+    "multi-agent coordination": {
+      "current": {
+        "precision_at_5": 1.0,
+        "mean_relevance_at_5": 2.6,
+        "ndcg_at_5": 0.908,
+        "n": 5,
+        "relevances": [
+          3,
+          3,
+          3,
+          2,
+          2
+        ],
+        "papers": [
+          {
+            "id": "2606.08340v1",
+            "title": "Benchmarking Open-Ended Multi-Agent Coordination in Language Agents",
+            "score": 3
+          },
+          {
+            "id": "2602.04418v3",
+            "title": "SPEAR: An Engineering Case Study of Multi-Agent Coordination for Smart Contract Auditing",
+            "score": 3
+          },
+          {
+            "id": "2606.19616v1",
+            "title": "Before the Pull Request: Mining Multi-Agent Coordination",
+            "score": 3
+          },
+          {
+            "id": "2605.30144v1",
+            "title": "AgentSchool: An LLM-Powered Multi-Agent Simulation for Education",
+            "score": 2
+          },
+          {
+            "id": "2606.22502v1",
+            "title": "WebCQ: Cooperative Multi-Agent Deep Reinforcement Learning for Scalable Web GUI Testing",
+            "score": 2
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.6,
+        "mean_relevance_at_5": 1.8,
+        "ndcg_at_5": 0.631,
+        "n": 5,
+        "relevances": [
+          2,
+          2,
+          3,
+          1,
+          1
+        ],
+        "papers": [
+          {
+            "id": "2609.05298v1",
+            "title": "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning",
+            "score": 2
+          },
+          {
+            "id": "2609.05340v1",
+            "title": "Trust-Aware Adaptive Disclosure for Inference Privacy Preservation in Multi-Agent Networks",
+            "score": 2
+          },
+          {
+            "id": "2609.05279v1",
+            "title": "Testing Interchangeability in LLM Agent Teams",
+            "score": 3
+          },
+          {
+            "id": "2609.05018v1",
+            "title": "How a Chatbot's Response Style Shapes a Classroom: A Multi-Agent Simulation of Students Consulting AI",
+            "score": 1
+          },
+          {
+            "id": "2609.04983v1",
+            "title": "MIVAIS: A Study Environment for Multi-Agent Mixed-Initiative Visual Analytics Applications",
+            "score": 1
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.6,
+        "mean_relevance_at_5": 1.8,
+        "ndcg_at_5": 0.585,
+        "n": 5,
+        "relevances": [
+          2,
+          0,
+          3,
+          3,
+          1
+        ],
+        "papers": [
+          {
+            "id": "2606.09122v1",
+            "title": "Autonomous Incident Resolution at Hyperscale: An Agentic AI Architecture for Network Operations",
+            "score": 2
+          },
+          {
+            "id": "1909.13839v1",
+            "title": "RLCache: Automated Cache Management Using Reinforcement Learning",
+            "score": 0
+          },
+          {
+            "id": "1702.05515v1",
+            "title": "Overview: Generalizations of Multi-Agent Path Finding to Real-World Scenarios",
+            "score": 3
+          },
+          {
+            "id": "2608.22104v1",
+            "title": "Opinion-Guided Layered Strategies for Decentralized Coordination",
+            "score": 3
+          },
+          {
+            "id": "2605.30258v1",
+            "title": "EASE Configuration Facilitates A Reproducible Science of LLM Social Simulations",
+            "score": 1
+          }
+        ]
+      }
+    },
+    "model context protocol": {
+      "current": {
+        "precision_at_5": 1.0,
+        "mean_relevance_at_5": 2.8,
+        "ndcg_at_5": 0.928,
+        "n": 5,
+        "relevances": [
+          2,
+          3,
+          3,
+          3,
+          3
+        ],
+        "papers": [
+          {
+            "id": "2609.04894v1",
+            "title": "From Language Models to World-Acting Systems: Progress and Limits of Agentic AI across Digital, Social, Virtual, and Physical Environments",
+            "score": 2
+          },
+          {
+            "id": "2606.10322v1",
+            "title": "Game-Theoretic Multi-Agent Control for Robust Contextual Reasoning in LLMs",
+            "score": 3
+          },
+          {
+            "id": "2606.10209v1",
+            "title": "Less Context, Better Agents: Efficient Context Engineering for Long-Horizon Tool-Using LLM Agents",
+            "score": 3
+          },
+          {
+            "id": "2606.07992v1",
+            "title": "VATS: Exploiting Implicit Authority in Error-Path Injection via Systematic Mutation",
+            "score": 3
+          },
+          {
+            "id": "2605.12728v1",
+            "title": "Grid-Orch: An LLM-Powered Orchestrator for Distribution Grid Simulation and Analytics",
+            "score": 3
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.2,
+        "ndcg_at_5": 0.059,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2609.05403v1",
+            "title": "RegionFed: Federated Learning for Personalized Query Understanding in Heterogeneous Retail Environments",
+            "score": 0
+          },
+          {
+            "id": "2609.05396v1",
+            "title": "A Deep Generative Model for Synthesizing Labeled Wireless Signals",
+            "score": 0
+          },
+          {
+            "id": "2609.05395v1",
+            "title": "Multi-Step Tool-Calling over Korean Open Public APIs: A Benchmark and a Data-Synthesis Recipe",
+            "score": 1
+          },
+          {
+            "id": "2609.05382v1",
+            "title": "Reflection-aware Generative Novel View Synthesis",
+            "score": 0
+          },
+          {
+            "id": "2609.05381v1",
+            "title": "Molecular Déjà Vu: Digit-Level Retrieval of Published Values in Frontier Language Models",
+            "score": 0
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.0,
+        "ndcg_at_5": 0.0,
+        "n": 5,
+        "relevances": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2606.24626v1",
+            "title": "SAFARI: Scaling Long Horizon Agentic Fault Attribution via Active Investigation",
+            "score": 0
+          },
+          {
+            "id": "2605.26203v1",
+            "title": "AgentSociety: Incentivizing Agentic Social Intelligence",
+            "score": 0
+          },
+          {
+            "id": "2605.24220v1",
+            "title": "Polar: Agentic RL on Any Harness at Scale",
+            "score": 0
+          },
+          {
+            "id": "2010.11388v1",
+            "title": "Adversarial Attacks on Deep Algorithmic Trading Policies",
+            "score": 0
+          },
+          {
+            "id": "2609.05294v1",
+            "title": "Learning from VAE Errors to support ECG-based Differential Diagnosis of Myocardial Scar",
+            "score": 0
+          }
+        ]
+      }
+    },
+    "reasoning distillation": {
+      "current": {
+        "precision_at_5": 0.6,
+        "mean_relevance_at_5": 2.0,
+        "ndcg_at_5": 0.96,
+        "n": 5,
+        "relevances": [
+          3,
+          2,
+          1,
+          3,
+          1
+        ],
+        "papers": [
+          {
+            "id": "2609.05363v1",
+            "title": "Distill Globally, Adapt Locally: Reasoning Distillation and Product-Type Test-Time Training for Scalable Trade-Up Recommendation",
+            "score": 3
+          },
+          {
+            "id": "2606.13572v1",
+            "title": "ArogyaSutra: A Multi-Agent Framework for Multimodal Medical Reasoning in Indic Languages",
+            "score": 2
+          },
+          {
+            "id": "2609.05405v1",
+            "title": "WearableQA: A Benchmark for Health Reasoning over Real-World Wearable Data",
+            "score": 1
+          },
+          {
+            "id": "2606.16038v1",
+            "title": "Open-SWE-Traces: Advancing Dual-Mode Multilingual Distillation for Software Engineering Agents",
+            "score": 3
+          },
+          {
+            "id": "2609.05221v1",
+            "title": "A Verifier-Guided Explainable Reasoning Framework with Gold-Anchored QLoRA, Task-Aware Mixture-of-Experts, and Group-Relative RLVR",
+            "score": 1
+          }
+        ]
+      },
+      "recency": {
+        "precision_at_5": 0.2,
+        "mean_relevance_at_5": 1.0,
+        "ndcg_at_5": 0.421,
+        "n": 5,
+        "relevances": [
+          0,
+          3,
+          1,
+          1,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2609.05381v1",
+            "title": "Molecular Déjà Vu: Digit-Level Retrieval of Published Values in Frontier Language Models",
+            "score": 0
+          },
+          {
+            "id": "2609.05363v1",
+            "title": "Distill Globally, Adapt Locally: Reasoning Distillation and Product-Type Test-Time Training for Scalable Trade-Up Recommendation",
+            "score": 3
+          },
+          {
+            "id": "2609.05334v1",
+            "title": "Lightweight Vision Transformer Compression for On-Device Plant Disease Detection in Resource-Constrained Agricultural Field Conditions",
+            "score": 1
+          },
+          {
+            "id": "2609.05405v1",
+            "title": "WearableQA: A Benchmark for Health Reasoning over Real-World Wearable Data",
+            "score": 1
+          },
+          {
+            "id": "2609.05401v1",
+            "title": "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Language Reward Models",
+            "score": 0
+          }
+        ]
+      },
+      "random": {
+        "precision_at_5": 0.0,
+        "mean_relevance_at_5": 0.4,
+        "ndcg_at_5": 0.213,
+        "n": 5,
+        "relevances": [
+          1,
+          0,
+          0,
+          1,
+          0
+        ],
+        "papers": [
+          {
+            "id": "2605.17962v1",
+            "title": "FinDocMRE: A Benchmark for Document-Level Financial Multimodal Reasoning Evaluation",
+            "score": 1
+          },
+          {
+            "id": "2606.24834v1",
+            "title": "Accuracy and Satisfaction in Multi-Turn LLM Dialogues for NFR Assessment",
+            "score": 0
+          },
+          {
+            "id": "2606.12320v1",
+            "title": "A Five-Plane Reference Architecture for Runtime Governance of Production AI Agents",
+            "score": 0
+          },
+          {
+            "id": "2605.28631v1",
+            "title": "Single-Rollout Hidden-State Dynamics for Training-Free RLVR Data Selection",
+            "score": 1
+          },
+          {
+            "id": "2606.13672v1",
+            "title": "$\\texttt{WEAVER}$, Better, Faster, Longer: An Effective World Model for Robotic Manipulation",
+            "score": 0
+          }
+        ]
+      }
+    }
+  },
+  "aggregate": {
+    "current": {
+      "mean_precision_at_5": 0.8,
+      "mean_relevance_at_5": 2.225,
+      "mean_ndcg_at_5": 0.827
+    },
+    "recency": {
+      "mean_precision_at_5": 0.225,
+      "mean_relevance_at_5": 0.875,
+      "mean_ndcg_at_5": 0.378
+    },
+    "random": {
+      "mean_precision_at_5": 0.125,
+      "mean_relevance_at_5": 0.5,
+      "mean_ndcg_at_5": 0.174
+    }
+  }
+}

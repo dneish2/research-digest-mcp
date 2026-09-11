@@ -236,8 +236,8 @@ def score_query(paper: Dict[str, Any], terms: List[str],
     # was a quiet bug: "chain of thought" became the phrase "chain thought",
     # which appears in no paper, so every query with a function word inside it
     # silently lost its exact-phrase bonus. On the 26-phrase regression set that
-    # cost precision@5 on 9 of the 11 phrases containing one, and on none of the
-    # 15 without — 0.708 to 0.531 overall. Stopwords still do not earn match
+    # cost precision@5 on all 11 phrases containing one, and on none of the 15
+    # without — 0.708 to 0.531 overall. Stopwords still do not earn match
     # credit of their own; they just no longer break the phrase they sit in.
     phrase_bonus = 0.0
     if len(raw) > 1:

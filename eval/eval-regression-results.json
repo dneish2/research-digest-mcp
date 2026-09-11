@@ -1,0 +1,1141 @@
+{
+  "summary": {
+    "current": {
+      "p@5": 0.5308,
+      "p@10": 0.3577
+    },
+    "old_buggy": {
+      "p@5": 0.3308,
+      "p@10": 0.2577
+    },
+    "recency": {
+      "p@5": 0.0077,
+      "p@10": 0.0154
+    },
+    "random": {
+      "p@5": 0.0,
+      "p@10": 0.0
+    }
+  },
+  "strict_ordering_rate": 0.46153846153846156,
+  "phrases": [
+    {
+      "phrase": "yet effective",
+      "n_positives": 7,
+      "current_p@5": 1.0,
+      "current_p@10": 0.7,
+      "old_buggy_p@5": 0.0,
+      "old_buggy_p@10": 0.1,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 7,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Stellar: Scalable Multimodal Document Retrieval for Natural Language Queries",
+        "Unlocking Dense Metric Depth Estimation in VLMs",
+        "Attention Debiasing for Token Pruning in Vision Language Models",
+        "Dual Cross-Attention for Medical Image Segmentation",
+        "SA-Net: Shuffle Attention for Deep Convolutional Neural Networks"
+      ],
+      "old_buggy_top5_titles": [
+        "CUA-Universe: A Scalable and Dynamic Environment for Hybrid GUI+CLI Agents",
+        "Lightweight Vision Transformer Compression for On-Device Plant Disease Detection in Resour",
+        "How Does mHC Use Its Residual Streams? Selective Routing and Near-Identity Mixing",
+        "Evidence Blindness in Direct Corpus Interaction: Persistent Navigation with AtlasNav",
+        "VideoSeeker: Incentivizing Instance-level Video Understanding via Native Agentic Tool Invo"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "multi-agent deep reinforcement learning",
+      "n_positives": 6,
+      "current_p@5": 1.0,
+      "current_p@10": 0.6,
+      "old_buggy_p@5": 0.2,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 6,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Multi-agent Deep Reinforcement Learning with Extremely Noisy Observations",
+        "WebCQ: Cooperative Multi-Agent Deep Reinforcement Learning for Scalable Web GUI Testing",
+        "Multi-Agent Deep Reinforcement Learning for Cooperative and Competitive Autonomous Vehicle",
+        "AOAD-MAT: Transformer-based multi-agent deep reinforcement learning model considering agen",
+        "A Survey of Multi-Agent Deep Reinforcement Learning with Communication"
+      ],
+      "old_buggy_top5_titles": [
+        "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning",
+        "Deep Reinforcement Learning: An Overview",
+        "Multi-agent Deep Reinforcement Learning with Extremely Noisy Observations",
+        "Memory-Induced Supra-Competitive Outcomes Between Deep Reinforcement Learning Agents in Op",
+        "Scaling up Energy-Aware Multi-Agent Reinforcement Learning for Mission-Oriented Drone Netw"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        true,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "address only",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.0,
+      "old_buggy_p@10": 0.0,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "AFUN: Towards an Affordance Foundation Model for Functionality Understanding",
+        "Multi-Faceted Interactivity Alignment in Full-Duplex Speech Models",
+        "Deontic Policies for Runtime Governance of Agentic AI Systems",
+        "Better Understanding, Better Fixes? A Study of Hallucination in LLM-based Automated Progra",
+        "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress"
+      ],
+      "old_buggy_top5_titles": [
+        "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress",
+        "Better Understanding, Better Fixes? A Study of Hallucination in LLM-based Automated Progra",
+        "SWE Refactor Bench: Can Coding Agents Complete a Long-Horizon, Whole-Repository Stack Migr",
+        "Beyond Executable Models: The Pufibara Agent Harness and the Modelica Agent Workflow Bench",
+        "$Z^2$-ACT: End-to-End Verifiable Agentic Intent Control for Open 6G RAN"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "classical methods",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.0,
+      "old_buggy_p@10": 0.1,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Vanishing Bias Heuristic-guided Reinforcement Learning Algorithm",
+        "Transformers as Unsupervised Learning Algorithms: A study on Gaussian Mixtures",
+        "FinStressTS: A Parametric Synthetic Benchmark for Time-Series Forecasting in Finance",
+        "Adaptation Needs in Robotic Systems: Assessing Behavior Trees and Their Enhancement",
+        "From Numerical Simulators of PDEs to Neural Emulators and Back"
+      ],
+      "old_buggy_top5_titles": [
+        "From Numerical Simulators of PDEs to Neural Emulators and Back",
+        "A Theory of Multilevel Interactive Equilibrium in NeuroAI",
+        "AOT-POT: Adaptive Operator Transformation for Large-Scale PDE Pre-training",
+        "Why Empirical p-Values Are Not Uniform: Reference Samples, Dependence, and PIT Backtesting",
+        "Learning Context-conditioned Gaussian Overbounds for Convolution-Based Uncertainty Propaga"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "memory large language model",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.0,
+      "old_buggy_p@10": 0.0,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "DimMem: Dimensional Structuring for Efficient Long-Term Agent Memory",
+        "Memory Contagion: Cross-Temporal Propagation of Evaluator Bias via Agent Memory",
+        "MemRefine: LLM-Guided Compression for Long-Term Agent Memory",
+        "LCGuard: Latent Communication Guard for Safe KV Sharing in Multi-Agent Systems",
+        "VISA: Agentic Self-Evolving Data Synthesis for Multimodal Instruction Following"
+      ],
+      "old_buggy_top5_titles": [
+        "Bioinfoysis Technical Report",
+        "VISA: Agentic Self-Evolving Data Synthesis for Multimodal Instruction Following",
+        "A Self-Evolving Multi-Agent Framework Defense against LLM Jailbreak Attacks",
+        "Agentopia on a Consumer GPU: A Reduced-Scale Long-Horizon Port with an 8B Model",
+        "Prefix Sliding for efficient test-time scaling"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "reinforcement learning baselines",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.0,
+      "old_buggy_p@10": 0.1,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Accelerating Training in Pommerman with Imitation and Reinforcement Learning",
+        "A Game-Theoretic Approach to Multi-Agent Trust Region Optimization",
+        "DRIFT: Decoupled Rollouts and Importance-Weighted Fine-Tuning for Efficient Multi-Turn Opt",
+        "Off-the-Grid MARL: Datasets with Baselines for Offline Multi-Agent Reinforcement Learning",
+        "VISA: Agentic Self-Evolving Data Synthesis for Multimodal Instruction Following"
+      ],
+      "old_buggy_top5_titles": [
+        "VISA: Agentic Self-Evolving Data Synthesis for Multimodal Instruction Following",
+        "Guided Riemannian Optimization (GuRO): Bridging Model Predictive Control and Decision Tran",
+        "Self-Distilled Agentic Reinforcement Learning",
+        "Agentifying Patient Dynamics within LLMs through Interacting with Clinical World Model",
+        "WorldVLN: Autoregressive World Action Model for Aerial Vision-Language Navigation"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "where autonomous agents",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.0,
+      "old_buggy_p@10": 0.0,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "The Web4 Agent Economy: A Large-Scale Empirical Study of the Landscape, Challenges, and Op",
+        "Learning Multi-Agent Communication Protocol: Study on Information Entropy Efficiency in MA",
+        "Governed AI-Assisted Engineering: Graduated Human Oversight for Agentic Code Generation in",
+        "TessIndex: Capability Verified Identity System for the Agent Economy",
+        "Routing Equilibrium in Mixed-Autonomy Traffic Networks with Altruistic Autonomous Agents"
+      ],
+      "old_buggy_top5_titles": [
+        "Federation Is Nearly Free, Reasoning Is Not: Tradeoffs for AI Co-Scientists in Protein Cha",
+        "TessIndex: Capability Verified Identity System for the Agent Economy",
+        "Agent Bazaar: Enabling Economic Alignment in Multi-Agent Marketplaces",
+        "MA$^{2}$P: A Meta-Cognitive Autonomous Intelligent Agents Framework for Complex Persuasion",
+        "Robo-Cortex: A Self-Evolving Embodied Agent via Dual-Grain Cognitive Memory and Autonomous"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "financial data",
+      "n_positives": 5,
+      "current_p@5": 0.8,
+      "current_p@10": 0.5,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.4,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 5,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Recent Advances in Reinforcement Learning in Finance",
+        "Statistical applications of the 20/60/20 rule in risk management and portfolio optimizatio",
+        "FinStressTS: A Parametric Synthetic Benchmark for Time-Series Forecasting in Finance",
+        "From Feedback Loops to Policy Updates: Reinforcement Fine-Tuning for LLM-Based Alpha Facto",
+        "Econophysics: Empirical facts and agent-based models"
+      ],
+      "old_buggy_top5_titles": [
+        "From Feedback Loops to Policy Updates: Reinforcement Fine-Tuning for LLM-Based Alpha Facto",
+        "Sequential Structure in Intraday Futures Data: LSTM vs Gradient Boosting on MNQ",
+        "FinDocMRE: A Benchmark for Document-Level Financial Multimodal Reasoning Evaluation",
+        "Orchestration Framework for Financial Agents: From Algorithmic Trading to Agentic Trading",
+        "Recent Advances in Reinforcement Learning in Finance"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "phrase": "research question",
+      "n_positives": 4,
+      "current_p@5": 0.8,
+      "current_p@10": 0.4,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.4,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.1,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 4,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Beyond Code Generation: Reliability, Verification, and Cost Economics in the Agentic Softw",
+        "Multisensory extended reality applications offer benefits for volumetric biomedical image ",
+        "Multi-Agent Discovery and Resource-Aware Autonomous Exploration of Scientific Datasets",
+        "Can A Single Human Supervise A Swarm of 100 Heterogeneous Robots?",
+        "Survey Research in Software Engineering: Problems and Strategies"
+      ],
+      "old_buggy_top5_titles": [
+        "Beyond Code Generation: Reliability, Verification, and Cost Economics in the Agentic Softw",
+        "Multi-Agent Discovery and Resource-Aware Autonomous Exploration of Scientific Datasets",
+        "AI Harness Engineering: A Runtime Substrate for Foundation-Model Software Agents",
+        "The Accessibility Capability Boundary: Operational Limits and Expansion Potential of AI-Ge",
+        "Can Large Reasoning Models Self-Train?"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        true,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "advance the development",
+      "n_positives": 3,
+      "current_p@5": 0.4,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.2,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Promptware Engineering: Software Engineering for Prompt-Enabled Systems",
+        "Software Engineering in Civic Tech: A Case Study about Code for Ireland",
+        "From sleep medicine to medicine during sleep: A clinical perspective",
+        "Quantifying attention via dwell time and engagement in a social media browsing environment",
+        "MATraM: A Multi-Activity Transport and Mobility Agent-Based Model for Activity Modificatio"
+      ],
+      "old_buggy_top5_titles": [
+        "Quantifying attention via dwell time and engagement in a social media browsing environment",
+        "MATraM: A Multi-Activity Transport and Mobility Agent-Based Model for Activity Modificatio",
+        "From sleep medicine to medicine during sleep: A clinical perspective",
+        "Understanding Clinical Decision-Making in Traditional East Asian Medicine through Dimensio",
+        "REStack: A Large-Scale Dataset of Reverse Engineering Discussions from Stack Exchange"
+      ],
+      "current_top5_is_positive": [
+        true,
+        false,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        true,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "but they remain",
+      "n_positives": 3,
+      "current_p@5": 0.4,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.2,
+      "old_buggy_p@10": 0.1,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Observability and Fault Injection for LLM-Based Multi-Agent Systems in Software Engineerin",
+        "CutVerse: A Compositional GUI Agents Benchmark for Media Post-Production Editing",
+        "OnePred: Next-Query Prediction via Recursive Intent Memory in Multi-Turn Conversations",
+        "Superhuman Safe and Agile Racing through Multi-Agent Reinforcement Learning",
+        "Learn from Weaknesses: Automated Domain Specialization for Small Computer-Use Agents"
+      ],
+      "old_buggy_top5_titles": [
+        "Building a research-software catalog with a coding agent: from hackathon prototype to publ",
+        "Bioinfoysis Technical Report",
+        "A Self-Evolving Multi-Agent Framework Defense against LLM Jailbreak Attacks",
+        "Observability and Fault Injection for LLM-Based Multi-Agent Systems in Software Engineerin",
+        "Agentifying Patient Dynamics within LLMs through Interacting with Clinical World Model"
+      ],
+      "current_top5_is_positive": [
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "phrase": "both task success",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Beyond Executable Models: The Pufibara Agent Harness and the Modelica Agent Workflow Bench",
+        "Learning Multi-Agent Communication Protocol: Study on Information Entropy Efficiency in MA",
+        "Robo-Cortex: A Self-Evolving Embodied Agent via Dual-Grain Cognitive Memory and Autonomous",
+        "Trace2Tower: Transition-Aware EigenTrace Induction of Multi-Level Skills for LLM Agents",
+        "CUA-Universe: A Scalable and Dynamic Environment for Hybrid GUI+CLI Agents"
+      ],
+      "old_buggy_top5_titles": [
+        "Trace2Tower: Transition-Aware EigenTrace Induction of Multi-Level Skills for LLM Agents",
+        "Beyond Executable Models: The Pufibara Agent Harness and the Modelica Agent Workflow Bench",
+        "Poetic Heritage for Culturally Grounded Emotional Support: An Interaction Design Framework",
+        "Robo-Cortex: A Self-Evolving Embodied Agent via Dual-Grain Cognitive Memory and Autonomous",
+        "Latent Action Reparameterization for Efficient Agent Inference"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        true,
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "phrase": "control flow",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.1,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Better Understanding, Better Fixes? A Study of Hallucination in LLM-based Automated Progra",
+        "A Deterministic Agentic Workflow for HS Tariff Classification: Multi-Dimensional Rule Reas",
+        "OpenRath: Session-Centered Runtime State for Agent Systems",
+        "Is Agentic AI Ready for Real-World Hardware Engineering? A Deep Dive with Phoenix-bench",
+        "Towards an Implementation of the Knowledge-Based Control Plane for Intelligent Swarm Netwo"
+      ],
+      "old_buggy_top5_titles": [
+        "Better Understanding, Better Fixes? A Study of Hallucination in LLM-based Automated Progra",
+        "A Deterministic Agentic Workflow for HS Tariff Classification: Multi-Dimensional Rule Reas",
+        "Runtime-Structured Task Decomposition for Agentic Coding Systems",
+        "Be Yourself: Bounded Attention for Multi-Subject Text-to-Image Generation",
+        "Towards the classification of Self-Sovereign Identity properties"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        true,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "executable scripts",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "SkillsVote: Lifecycle Governance of Agent Skills from Collection, Recommendation to Evolut",
+        "Agentic-J: An AI Agent for Biological Microscopy Image Analysis",
+        "Agentic Electronic Design Automation: A Handoff Perspective",
+        "Bioinfoysis Technical Report",
+        "SkillGenBench: Benchmarking Skill Generation Pipelines for LLM Agents"
+      ],
+      "old_buggy_top5_titles": [
+        "Bioinfoysis Technical Report",
+        "SkillGenBench: Benchmarking Skill Generation Pipelines for LLM Agents",
+        "SkillsVote: Lifecycle Governance of Agent Skills from Collection, Recommendation to Evolut",
+        "Agentic-J: An AI Agent for Biological Microscopy Image Analysis",
+        "Evaluating Large Language Models in Dynamic Clinical Decision-Making with Standardized Pat"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "phrase": "across a wide range",
+      "n_positives": 5,
+      "current_p@5": 0.8,
+      "current_p@10": 0.5,
+      "old_buggy_p@5": 0.8,
+      "old_buggy_p@10": 0.5,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 5,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Multi-Mixer Models: Flexible Sequence Modeling with Shared Representations",
+        "Cross-Image Attention for Zero-Shot Appearance Transfer",
+        "Full Stack Optimization of Transformer Inference: a Survey",
+        "M3imic: Learning a Versatile Whole-Body Controller for Multimodal Motion Mimicking",
+        "SmellBench: Towards Fine-Grained Evaluation of Code Agents on Refactoring Tasks"
+      ],
+      "old_buggy_top5_titles": [
+        "Cross-Image Attention for Zero-Shot Appearance Transfer",
+        "Full Stack Optimization of Transformer Inference: a Survey",
+        "Multi-Mixer Models: Flexible Sequence Modeling with Shared Representations",
+        "When Cloud Agents Meet Device Agents: Lessons from Hybrid Multi-Agent Systems",
+        "M3imic: Learning a Versatile Whole-Body Controller for Multimodal Motion Mimicking"
+      ],
+      "current_top5_is_positive": [
+        false,
+        true,
+        true,
+        true,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        true,
+        false,
+        true,
+        true
+      ]
+    },
+    {
+      "phrase": "advances in large",
+      "n_positives": 8,
+      "current_p@5": 0.2,
+      "current_p@10": 0.4,
+      "old_buggy_p@5": 0.2,
+      "old_buggy_p@10": 0.4,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 8,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "From Language Models to World-Acting Systems: Progress and Limits of Agentic AI across Dig",
+        "A Few GPUs, A Whole Lotta Scale: Faithful LLM Training Emulation with PrismLLM",
+        "UniMate: One Unified Model to Animate Diverse Skeletons",
+        "WearableQA: A Benchmark for Health Reasoning over Real-World Wearable Data",
+        "Understanding the (In)Security of Vibe-Coded Applications"
+      ],
+      "old_buggy_top5_titles": [
+        "From Language Models to World-Acting Systems: Progress and Limits of Agentic AI across Dig",
+        "MAgSeg: Segmentation of Agricultural Landscapes in High-Resolution Satellite Imagery using",
+        "A Few GPUs, A Whole Lotta Scale: Faithful LLM Training Emulation with PrismLLM",
+        "Latent Action Reparameterization for Efficient Agent Inference",
+        "BLAgent: Agentic RAG for File-Level Bug Localization"
+      ],
+      "current_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
+      "phrase": "generalization to unseen",
+      "n_positives": 3,
+      "current_p@5": 0.4,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.2,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Gripper-aware Vision Language Action Models",
+        "Attention as a Hypernetwork",
+        "RAVEN: Agentic RAG for Automated Vulnerability Repair",
+        "Learning Sim-Grounded Policies for Bimanual Rope Manipulation from Human Teleoperation Dat",
+        "Decomposed Vision-Language Alignment for Fine-Grained Open-Vocabulary Segmentation"
+      ],
+      "old_buggy_top5_titles": [
+        "Gripper-aware Vision Language Action Models",
+        "WARD: Adversarially Robust Defense of Web Agents Against Prompt Injections",
+        "Learning Sim-Grounded Policies for Bimanual Rope Manipulation from Human Teleoperation Dat",
+        "Decomposed Vision-Language Alignment for Fine-Grained Open-Vocabulary Segmentation",
+        "StateXDiff: Cell State-Contextualized Multimodal Diffusion for Single-Cell Perturbation Pr"
+      ],
+      "current_top5_is_positive": [
+        false,
+        false,
+        true,
+        false,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        true,
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "phrase": "genetic algorithm",
+      "n_positives": 4,
+      "current_p@5": 0.4,
+      "current_p@10": 0.4,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.4,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.1,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 4,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Egret Swarm Optimization Algorithm: An Evolutionary Computation Approach for Model Free Op",
+        "A Scalable and Adaptable Multiple-Place Foraging Algorithm for Ant-Inspired Robot Swarms",
+        "A Discrete Particle Swarm Optimizer for the Design of Cryptographic Boolean Functions",
+        "P vs NP Problem in Portfolio Optimization: Integrating the Markowitz-CAPM Framework with C",
+        "On Self-Regulated Swarms, Societal Memory, Speed and Dynamics"
+      ],
+      "old_buggy_top5_titles": [
+        "P vs NP Problem in Portfolio Optimization: Integrating the Markowitz-CAPM Framework with C",
+        "On Self-Regulated Swarms, Societal Memory, Speed and Dynamics",
+        "Egret Swarm Optimization Algorithm: An Evolutionary Computation Approach for Model Free Op",
+        "A Scalable and Adaptable Multiple-Place Foraging Algorithm for Ant-Inspired Robot Swarms",
+        "A Discrete Particle Swarm Optimizer for the Design of Cryptographic Boolean Functions"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        false,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "phrase": "one of the most",
+      "n_positives": 8,
+      "current_p@5": 0.0,
+      "current_p@10": 0.0,
+      "old_buggy_p@5": 0.0,
+      "old_buggy_p@10": 0.0,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 8,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Lightweight Vision Transformer Compression for On-Device Plant Disease Detection in Resour",
+        "How Does mHC Use Its Residual Streams? Selective Routing and Near-Identity Mixing",
+        "Testing Interchangeability in LLM Agent Teams",
+        "Molecular D\u00e9j\u00e0 Vu: Digit-Level Retrieval of Published Values in Frontier Language Models",
+        "Refined Hardness of Distance-Optimal Multi-Agent Path Finding"
+      ],
+      "old_buggy_top5_titles": [
+        "Molecular D\u00e9j\u00e0 Vu: Digit-Level Retrieval of Published Values in Frontier Language Models",
+        "Lightweight Vision Transformer Compression for On-Device Plant Disease Detection in Resour",
+        "How Does mHC Use Its Residual Streams? Selective Routing and Near-Identity Mixing",
+        "Testing Interchangeability in LLM Agent Teams",
+        "Praxist: From Experimental Artifacts to Solution Lineages"
+      ],
+      "current_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "quantum separation of variables",
+      "n_positives": 3,
+      "current_p@5": 0.4,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "SOV approach for integrable quantum models associated to general representations on spin-1",
+        "Completeness of Bethe Ansatz by Sklyanin SOV for Cyclic Representations of Integrable Quan",
+        "The hexagon in the mirror: the three-point function in the SoV representation",
+        "Reconstruction of Baxter Q-operator from Sklyanin SOV for cyclic representations of integr",
+        "The open XXZ spin chain in the SoV framework: scalar product of separate states"
+      ],
+      "old_buggy_top5_titles": [
+        "The hexagon in the mirror: the three-point function in the SoV representation",
+        "Reconstruction of Baxter Q-operator from Sklyanin SOV for cyclic representations of integr",
+        "The open XXZ spin chain in the SoV framework: scalar product of separate states",
+        "The open XXX spin chain in the SoV framework: scalar product of separate states",
+        "Completeness of Bethe Ansatz by Sklyanin SOV for Cyclic Representations of Integrable Quan"
+      ],
+      "current_top5_is_positive": [
+        true,
+        false,
+        false,
+        false,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "phrase": "systematic exploration",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.6,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Training Ecosystems: A Computational Approach to Uncovering Learning Behavior in Unconvent",
+        "Bridging Requirements and Architecture: Multi-Agent Orchestration with External Knowledge ",
+        "From Model-Based Screening to Data-Driven Surrogates: A Multi-Stage Workflow for Exploring",
+        "Look Before You Leap: Autonomous Exploration for LLM Agents",
+        "EurekAgent: Agent Environment Engineering is All You Need For Autonomous Scientific Discov"
+      ],
+      "old_buggy_top5_titles": [
+        "Look Before You Leap: Autonomous Exploration for LLM Agents",
+        "Training Ecosystems: A Computational Approach to Uncovering Learning Behavior in Unconvent",
+        "Bridging Requirements and Architecture: Multi-Agent Orchestration with External Knowledge ",
+        "EurekAgent: Agent Environment Engineering is All You Need For Autonomous Scientific Discov",
+        "From Model-Based Screening to Data-Driven Surrogates: A Multi-Stage Workflow for Exploring"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        true,
+        true,
+        false,
+        true
+      ]
+    },
+    {
+      "phrase": "user preferences",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.6,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "VitaBench 2.0: Evaluating Personalized and Proactive Agents in Long-Term User Interactions",
+        "ANCHOR: Agentic Noise Creation Framework for Human Simulation and Denoising Recommendation",
+        "Language-Driven Cost Optimization for Autonomous Driving",
+        "From Volume to Value: Preference-Aligned Memory Construction for On-Device RAG",
+        "MuChator: Enabling Active Music Discovery via Conversational Music LLMs in Douyin Music"
+      ],
+      "old_buggy_top5_titles": [
+        "From Volume to Value: Preference-Aligned Memory Construction for On-Device RAG",
+        "D\u00e9j\u00e0 vu: A Contextualized Temporal Attention Mechanism for Sequential Recommendation",
+        "VitaBench 2.0: Evaluating Personalized and Proactive Agents in Long-Term User Interactions",
+        "MuChator: Enabling Active Music Discovery via Conversational Music LLMs in Douyin Music",
+        "ANCHOR: Agentic Noise Creation Framework for Human Simulation and Denoising Recommendation"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        false,
+        true,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        false,
+        true,
+        false,
+        true
+      ]
+    },
+    {
+      "phrase": "close this gap",
+      "n_positives": 6,
+      "current_p@5": 0.8,
+      "current_p@10": 0.6,
+      "old_buggy_p@5": 1.0,
+      "old_buggy_p@10": 0.6,
+      "recency_p@5": 0.2,
+      "recency_p@10": 0.1,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 6,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Multi-Step Tool-Calling over Korean Open Public APIs: A Benchmark and a Data-Synthesis Rec",
+        "Optimal Rates for Agentic Networked Information Aggregation",
+        "Simthesizer: An Agent-Driven Simulation Framework for LLM Serving Systems",
+        "Regulating the Machine Contributor: Governance and Policy Alignment in Open Source",
+        "Articraft: An Agentic System for Scalable Articulated 3D Asset Generation"
+      ],
+      "old_buggy_top5_titles": [
+        "Multi-Step Tool-Calling over Korean Open Public APIs: A Benchmark and a Data-Synthesis Rec",
+        "Optimal Rates for Agentic Networked Information Aggregation",
+        "Simthesizer: An Agent-Driven Simulation Framework for LLM Serving Systems",
+        "Articraft: An Agentic System for Scalable Articulated 3D Asset Generation",
+        "Agent Bazaar: Enabling Economic Alignment in Multi-Agent Marketplaces"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        true
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "phrase": "play an important role",
+      "n_positives": 3,
+      "current_p@5": 0.2,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Plasma Medicine: A Brief Introduction",
+        "Effects of Thermal Boundary Conditions on Natural Convection and Entropy Generation in Non",
+        "Beyond Tracking: Using Deep Learning to Discover Novel Interactions in Biological Swarms",
+        "Bioinfoysis Technical Report",
+        "Portfolio Optimization with Feedback Strategies Based on Artificial Neural Networks"
+      ],
+      "old_buggy_top5_titles": [
+        "Effects of Thermal Boundary Conditions on Natural Convection and Entropy Generation in Non",
+        "Portfolio Optimization with Feedback Strategies Based on Artificial Neural Networks",
+        "Polynomial Diffusions and Applications in Finance",
+        "Using Self Determination Theory to Design to Support Young Peoples Online Help-Seeking",
+        "Beyond Tracking: Using Deep Learning to Discover Novel Interactions in Biological Swarms"
+      ],
+      "current_top5_is_positive": [
+        false,
+        true,
+        false,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        false,
+        true,
+        false,
+        false
+      ]
+    },
+    {
+      "phrase": "code will be released",
+      "n_positives": 3,
+      "current_p@5": 0.2,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.6,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "When LLM Decompilers Recompile More and Preserve Less",
+        "Beyond Code Generation: Reliability, Verification, and Cost Economics in the Agentic Softw",
+        "Degradation-Aware Unfolding Half-Shuffle Transformer for Spectral Compressive Imaging",
+        "VideoSeeker: Incentivizing Instance-level Video Understanding via Native Agentic Tool Invo",
+        "Unlocking Dense Metric Depth Estimation in VLMs"
+      ],
+      "old_buggy_top5_titles": [
+        "VideoSeeker: Incentivizing Instance-level Video Understanding via Native Agentic Tool Invo",
+        "Unlocking Dense Metric Depth Estimation in VLMs",
+        "Degradation-Aware Unfolding Half-Shuffle Transformer for Spectral Compressive Imaging",
+        "MemTrace: Tracing and Attributing Errors in Large Language Model Memory Systems",
+        "Exploring Autonomous Agentic Data Engineering for Model Specialization"
+      ],
+      "current_top5_is_positive": [
+        false,
+        false,
+        false,
+        true,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        false,
+        false,
+        true,
+        true
+      ]
+    },
+    {
+      "phrase": "bridge the gap between",
+      "n_positives": 4,
+      "current_p@5": 0.0,
+      "current_p@10": 0.4,
+      "old_buggy_p@5": 0.6,
+      "old_buggy_p@10": 0.4,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": false,
+      "positives_in_ranked": 4,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Measuring the Novelty of Biomedical Papers Using the Latent Distances between Knowledge Un",
+        "From Portfolio Optimization to Quantum Blockchain and Security: A Systematic Review of Qua",
+        "DiffCold: A Diffusion-based Generative Model for Cold-Start Item Recommendation",
+        "The Web4 Agent Economy: A Large-Scale Empirical Study of the Landscape, Challenges, and Op",
+        "Focusing on what to decode and what to train: SOV Decoding with Specific Target Guided DeN"
+      ],
+      "old_buggy_top5_titles": [
+        "From Portfolio Optimization to Quantum Blockchain and Security: A Systematic Review of Qua",
+        "Focusing on what to decode and what to train: SOV Decoding with Specific Target Guided DeN",
+        "Transformers as Unsupervised Learning Algorithms: A study on Gaussian Mixtures",
+        "Decoupled Intelligence: A Multi-Agent LLM Framework for Controllable Traffic Scenario Gene",
+        "Precision-medicine-toolbox: An open-source python package for facilitation of quantitative"
+      ],
+      "current_top5_is_positive": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        false,
+        false,
+        true,
+        true,
+        true
+      ]
+    }
+  ]
+}
