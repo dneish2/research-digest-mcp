@@ -347,6 +347,16 @@ def handle(message: Dict[str, Any]) -> Dict[str, Any]:
 def serve(stdin=None, stdout=None) -> None:
     stdin = stdin or sys.stdin
     stdout = stdout or sys.stdout
+    # arXiv titles and author names are full of accents, dashes and the occasional
+    # CJK or Greek character. On Windows the default stdout/stderr encoding is the
+    # locale codepage (cp1252), which cannot represent most of that: writing it
+    # either raises UnicodeEncodeError and kills the session, or — for characters
+    # cp1252 *can* encode, like e- or an en dash — writes bytes that are not valid
+    # UTF-8 and silently corrupt the JSON-RPC stream an MCP client is reading.
+    # storage.py solved this on the read side; this is the same fix on the write side.
+    for stream in (stdin, stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", newline="\n")
     for line in stdin:
         line = line.strip()
         if not line:

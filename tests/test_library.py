@@ -92,6 +92,35 @@ class TestScoring(TempHome):
         self.assertEqual(len(rank(papers, ["agentic"], limit=5)), 5)
 
 
+class TestServeEncoding(TempHome):
+    def test_serve_writes_utf8_even_when_stdout_defaults_to_cp1252(self):
+        """The Windows bug: without reconfigure(), a cp1252 stdout either raises
+        UnicodeEncodeError on a CJK title or silently writes bytes that are not
+        valid UTF-8, corrupting the JSON-RPC stream a client is parsing."""
+        import io
+        from research_digest_mcp import storage
+        from research_digest_mcp.mcp import serve
+
+        papers = {"2601.00002v1": {
+            "id": "2601.00002v1", "title": "评估 agentic systems — Björn's take",
+            "abstract": "非常好", "published": "2026-01-01", "concepts": ["evaluation"],
+        }}
+        (self.home / "archive.json").write_text(
+            json.dumps({"papers": papers, "runs": []}, ensure_ascii=False), encoding="utf-8")
+
+        request = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+            "name": "search_papers", "arguments": {"query": "evaluation"}}})
+        stdin = io.StringIO(request + "\n")
+        raw_out = io.BytesIO()
+        stdout = io.TextIOWrapper(raw_out, encoding="cp1252", newline="\n")
+
+        serve(stdin=stdin, stdout=stdout)  # must not raise
+
+        text = raw_out.getvalue().decode("utf-8")  # would mismatch if still cp1252
+        self.assertIn("评估", text)
+        self.assertIn("Björn", text)
+
+
 class TestTrends(TempHome):
     def _papers(self, this_week, prev_week):
         today = date.today()

@@ -138,6 +138,14 @@ def cmd_config(args) -> int:
 
 
 def main(argv=None) -> int:
+    # Same fix as mcp.serve(): on Windows, stdout/stderr default to the locale
+    # codepage, which cannot carry most arXiv titles and author names. Without
+    # this, `research-digest search` or `fetch` crashes the moment a result has
+    # an accented name or a Greek letter in it.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", newline="\n")
+
     parser = argparse.ArgumentParser(
         prog="research-digest",
         description="A personal research library your AI assistant can read.")
