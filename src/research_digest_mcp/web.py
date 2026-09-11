@@ -18,7 +18,8 @@ from urllib.parse import parse_qs, urlparse
 
 from . import storage
 from .config import HOME, load_settings
-from .scoring import BOILERPLATE, about_sentence, score_paper, rank_all_query, explain_sentence
+from .scoring import (BOILERPLATE, about_sentence, explain_sentence, rank_all_query,
+                      score_paper, score_query)
 from .trends import compute_trends, cross_pollination
 
 STATIC = Path(__file__).parent / "static"
@@ -68,7 +69,7 @@ def _similar(paper_id: str, limit: int):
         for pid, s in hits]}
 
 
-def _paper_detail(pid: str) -> dict:
+def _paper_detail(pid: str, query: str = "") -> dict:
     """Everything the detail panel needs, in one call: the full record, the
     lead sentence, and the precomputed similar list. UI-4: before this, opening
     a paper meant a fetch for the row data (already in hand from the grid) plus
@@ -78,8 +79,20 @@ def _paper_detail(pid: str) -> dict:
     paper = papers.get(pid)
     if not paper:
         return {"status": "error", "message": f"No paper {pid}"}
-    topics = load_settings()["topics"]
-    result = score_paper(paper, topics)
+    # Score the paper the same way the list the reader came from scored it. Search
+    # ranks by query relevance; the panel used to answer with the standing-profile
+    # score regardless, so opening the top hit for "chain of thought" showed
+    # "match 0.42" under a list that had ranked it at 0.83. Two different numbers
+    # under one label is worse than either number alone.
+    if query.strip():
+        result = score_query(paper, query.lower().split()) or {
+            "score": 0.0,
+            "why": {"matched": [], "components": {}},
+        }
+        basis = "query"
+    else:
+        result = score_paper(paper, load_settings()["topics"])
+        basis = "topics"
     saved = storage.load_saved()
     read = storage.load_read()
     return {
@@ -96,6 +109,7 @@ def _paper_detail(pid: str) -> dict:
         "score": result["score"],
         "why": result["why"],
         "why_text": explain_sentence(result["why"]),
+        "score_basis": basis,
         "saved": pid in saved,
         "read": pid in read,
         "note": (saved.get(pid) or {}).get("note", ""),
@@ -268,7 +282,7 @@ def api(path: str, params: dict) -> dict:
         return _similar(one.get("id", ""), int(one.get("limit", 8)))
 
     if path == "/api/paper":
-        return _paper_detail(one.get("id", ""))
+        return _paper_detail(one.get("id", ""), one.get("q", ""))
 
     if path == "/api/explain":
         # The scoring playground: score arbitrary text against arbitrary topics.

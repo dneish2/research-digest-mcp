@@ -60,10 +60,15 @@ const paperCache = new Map();
 
 function prefetchPaper(id) {
   if (!id) return null;
-  if (!paperCache.has(id)) {
-    paperCache.set(id, get('/api/paper', { id }));
+  // Keyed by id *and* query: the panel scores against whatever ranked the list
+  // the reader came from, so the same paper legitimately has a different score
+  // under a search than under the standing profile.
+  const key = state.query ? id + " :: " + state.query : id;
+  if (!paperCache.has(key)) {
+    const params = state.query ? { id, q: state.query } : { id };
+    paperCache.set(key, get('/api/paper', params));
   }
-  return paperCache.get(id);
+  return paperCache.get(key);
 }
 
 /* ---------------- shared bits ---------------- */
@@ -171,6 +176,7 @@ async function loadGrid() {
     ? `${data.matched} of ${data.searched} papers matched`
     : `${data.total} papers`;
   $('#status').className = 'search-status on';
+  renderHeroText();
   renderGrid();
 }
 
@@ -326,7 +332,8 @@ async function openPanel(i) {
   }
 
   const foot = el('div', 'scorefoot');
-  const why = el('button', 'whylink', `match ${data.score.toFixed(2)} · why? →`);
+  const label = data.score_basis === 'query' ? 'match' : 'topic match';
+  const why = el('button', 'whylink', `${label} ${data.score.toFixed(2)} · why? →`);
   why.type = 'button';
   why.addEventListener('click', () => openScoringFor(data));
   foot.appendChild(why);
@@ -533,6 +540,27 @@ async function runLab() {
   }
 }
 
+// The hero used to be written once at startup, so it went on saying "Everything
+// you have fetched" while a search was showing 46 of 1,376 papers.
+function renderHeroText() {
+  const hero = $('#hero');
+  const old = hero.querySelector('.hero-text');
+  if (old) old.remove();
+  const wrap = el('div', 'hero-text');
+  if (state.query) {
+    wrap.appendChild(el('h1', null, `Results for “${state.query}”`));
+    wrap.appendChild(el('p', null,
+      'Ranked by how much of your query each paper covers, best first. Open any '
+      + 'paper for what it’s about and its nearest neighbours. Esc clears the search.'));
+  } else {
+    wrap.appendChild(el('h1', null, 'Your library'));
+    wrap.appendChild(el('p', null,
+      'Everything you have fetched, best match first. Open any paper for what it’s '
+      + 'about and its nearest neighbours. Press / to search, 1 to 5 to switch views.'));
+  }
+  hero.insertBefore(wrap, hero.firstChild);
+}
+
 /* ---------------- views ---------------- */
 
 const VIEWS = ['grid', 'digest', 'trends', 'queue', 'scoring'];
@@ -543,6 +571,9 @@ function setView(name) {
     b.classList.toggle('active', b.dataset.view === name));
   VIEWS.forEach((v) => { $('#view-' + v).hidden = v !== name; });
   $('#filters').style.visibility = name === 'grid' ? '' : 'hidden';
+  // The "46 of 1376 papers matched" line describes the grid. It used to stay put
+  // when you switched to Digest or Trends, captioning a list it had not counted.
+  $('#status').hidden = name !== 'grid';
   if (name === 'digest') loadDigest();
   if (name === 'trends') loadTrends();
   if (name === 'queue') loadQueue();
@@ -661,10 +692,7 @@ async function boot() {
       + "'research-digest embed' if you want similarity search."));
     return;
   }
-  hero.appendChild(el('h1', null, 'Your library'));
-  hero.appendChild(el('p', null,
-    'Everything you have fetched, best match first. Open any paper for what it’s '
-    + 'about and its nearest neighbours. Press / to search, 1 to 5 to switch views.'));
+  renderHeroText();
   const sug = el('div', 'suggestion-grid');
   (s.topics || []).slice(0, 7).forEach((t) => {
     const b = el('button', 'suggestion', t);
