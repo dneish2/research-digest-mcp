@@ -29,3 +29,19 @@ jobs:
           pip uninstall -y numpy scikit-learn scipy joblib threadpoolctl
           python -m unittest discover -s tests -v
         shell: bash
+
+  eval:
+    # The ranker regression track. Deterministic: it reads the frozen corpus and
+    # the pinned phrase set in eval/fixtures/, never the live library, so a drop
+    # here is a ranker change and nothing else. A stopword fix once cost 25% of
+    # precision@5 and shipped anyway, because the unit suite was green and
+    # nothing measured the cost. This is what would have caught it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Ranker must not regress below the floor
+        run: python eval/eval-regression.py --assert-min 0.75
