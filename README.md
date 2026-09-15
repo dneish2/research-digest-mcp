@@ -18,19 +18,27 @@ Nothing leaves your machine. There is no account, no API key, and no server.
 ## Install
 
 ```bash
-git clone https://github.com/dneish2/research-digest-mcp
-cd research-digest-mcp
-pip install -e .
+pip install git+https://github.com/dneish2/research-digest-mcp
 ```
 
-That gives you search, saved papers, trends and the web interface with no
-third-party dependencies at all.
+No clone. That gives you search, saved papers, trends and the web interface
+with no third-party dependencies at all.
 
 Similarity search ("find papers like this one") needs numpy and scikit-learn:
 
 ```bash
-pip install -e ".[embeddings]"
+pip install "research-digest-mcp[embeddings] @ git+https://github.com/dneish2/research-digest-mcp"
 ```
+
+Rather try it without installing anything? [uv](https://docs.astral.sh/uv/)
+can run it straight from GitHub:
+
+```bash
+uvx --from git+https://github.com/dneish2/research-digest-mcp research-digest fetch
+```
+
+Working on the code itself, not just using it? See
+[Development](#development) below — an editable install needs a local clone.
 
 ## Build your library
 
