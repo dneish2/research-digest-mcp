@@ -1,5 +1,9 @@
 # research-digest
 
+[![tests](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](pyproject.toml)
+
 A personal library of arXiv papers that your AI assistant can read.
 
 It fetches papers in the categories you care about, ranks them against your
@@ -122,27 +126,36 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | research-digest mcp
 
 ## How ranking works
 
-No model decides the order. The score is arithmetic you can check:
+No model decides the order. Every score is arithmetic you can redo by hand,
+matching your topics and your query against each paper's title, abstract and
+extracted concept tags.
+
+Say one of your topics is "reinforcement learning." A paper scores:
 
 | | |
 |---|---|
-| a multi-word topic appearing verbatim | 1.00 |
-| a single distinctive word | 0.60 |
-| a single common word | 0.20 |
-| three or more of your topics matched | +0.30 |
+| that exact phrase appears in the title or abstract | 1.00 |
+| just "reinforcement" appears, on its own | 0.60 |
+| just "learning" appears, on its own | 0.20 |
+| three or more of your topics matched, not just this one | +0.30 |
 | exactly two matched | +0.15 |
 | published today, decaying to zero over 30 days | +0.20 |
 
-The 0.20 for common words is the part that matters. A word like "learning"
-appears in nearly every paper in this field, so matching it tells you almost
-nothing. Without that discount the ranking fills up with noise.
+"Reinforcement" is worth three times what "learning" is, because "learning"
+appears in nearly every paper in this field, so matching it alone is weak
+evidence, not none. 0.60 would let it drown out real signal; 0 would throw
+away the little it does carry. 0.20 is the middle ground. This only applies to
+words like "learning," "model" and "training" that are common in this specific
+literature. Plain English words such as "of" and "the" are handled
+differently: dropped from matching entirely, covered below.
 
-Search ranks a little differently from the standing topic profile above: results
-are ordered by how much of your query each paper covers, weighted by how
-distinctive each matched word is, with a bonus for the exact phrase and for
-terms that recur rather than appear once. Function words are ignored for
-matching but still count inside a phrase, and a query reaches inside hyphenated
-compounds — "chain of thought" finds papers that wrote it "chain-of-thought".
+`search_papers` ranks a little differently from the standing topic profile
+above: results are ordered by how much of your query each paper covers,
+weighted by how distinctive each matched word is, with a bonus for the exact
+phrase and for terms that recur rather than appear once. Function words like
+"the" and "of" are ignored for matching but still count inside a phrase match,
+and a query reaches inside hyphenated compounds — "chain of thought" finds
+papers that wrote it "chain-of-thought".
 
 Every result carries its own derivation, in the MCP response and in the web
 interface. The "How scoring works" tab lets you edit a title, an abstract and
@@ -150,16 +163,29 @@ your topic list, and watch the arithmetic change.
 
 ### Is it any good?
 
-Measured, in [`docs/EVAL.md`](docs/EVAL.md): precision@5 of **0.769** against 26
-machine-verified exact-phrase queries (recency scores 0.031, random 0.000), and
-**0.80** against 8 LLM-judged semantic queries with 115 blind judgments. The
-first number runs in CI on every push, against a frozen corpus.
+For 5 results, precision@5 is how many of them are actually relevant, out of 5.
+1.00 means every result belongs; 0.20 means one out of five does.
 
-Read the limitations section before believing either number. Exact-phrase
-positives reward a keyword matcher by construction, eight queries is not a
-benchmark, and there is no held-out set. The document also covers the query
-where this ranker scores zero and why no ranker could do better on it, which is
-the most useful thing in it.
+Two separate checks, in [`docs/EVAL.md`](docs/EVAL.md):
+
+- **Exact-phrase queries** — 26 queries where "relevant" can be checked by a
+  script (the phrase is in the paper or it is not). Precision@5: **0.769**.
+  Two baselines on the same queries show this is a real result and not an
+  artifact of easy questions: sorting by recency alone gets 0.031, and random
+  order gets 0.000.
+- **Semantic queries** — 8 queries where relevance is a judgment call, not a
+  script. An LLM made that call 115 times, blind to which ranker produced
+  which result. Precision@5: **0.80**.
+
+The 26-query number is the one to trust day to day: it runs in CI on every
+push, against a corpus frozen so the score cannot drift out from under a
+change to the ranker. The 8-query number is directional — eight queries is not
+a benchmark, and there is no held-out set behind it.
+
+Read the limitations section in `docs/EVAL.md` before leaning on either number.
+Exact-phrase positives reward a keyword matcher by construction. It also walks
+through the one query where this ranker scores zero, and why no ranker could
+do better on it — that's the most useful part of the document.
 
 ---
 
@@ -214,12 +240,12 @@ That downloads about 90 MB the first time.
 ## Development
 
 ```bash
-pip install -e ".[dev]"
+uv venv && uv pip install -e ".[dev]"
 python -m unittest discover -s tests -v
 ```
 
-There is no lockfile — any installer works. Locally this is developed with
-[uv](https://docs.astral.sh/uv/): `uv venv && uv pip install -e ".[dev]"`.
+Any Python installer works here — `pip install -e ".[dev]"` is the same
+install without uv.
 
 The MCP server is plain JSON-RPC over stdin and stdout, about 350 lines, with no
 SDK. One JSON object per line each way, which makes it easy to drive from a
