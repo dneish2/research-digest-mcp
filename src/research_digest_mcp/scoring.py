@@ -28,6 +28,11 @@ BOILERPLATE = {
     "data", "training", "train", "method", "methods", "approach", "framework",
     "system", "systems", "task", "tasks", "performance", "results", "novel",
     "language", "large", "based", "using", "study", "analysis", "problem",
+    # Field labels, not subjects. A search for "finance ai" was led by a paper
+    # on healthcare workforce readiness, because "ai" carried the same weight
+    # as "finance" and appears in roughly half this corpus. Matching one of
+    # these says only that the paper is in computer science.
+    "ai", "llm", "llms", "ml", "nlp", "artificial", "intelligence", "machine",
 }
 
 # Plain English function words. BOILERPLATE is deliberately about this field's
@@ -48,16 +53,31 @@ STOPWORDS = {
 }
 
 
-def _significant(terms: List[str]) -> List[str]:
+def _significant(terms: List[str], split_compounds: bool = True) -> List[str]:
     """Query/topic words worth matching against — lowercased, deduped in
-    order, with plain English function words dropped."""
+    order, with plain English function words dropped.
+
+    A hyphenated term is split into its parts as well as kept whole, because
+    the searcher should not have to guess the author's hyphenation. _match_set
+    already opens compounds up on the *text* side, so "chain of thought"
+    reached a paper writing "chain-of-thought"; the reverse did not hold, and
+    a search for "LLM-as-judge" matched only the papers that spell it with
+    both hyphens — 8 of a library that holds well over a hundred on the
+    subject. Both sides are now normalised the same way.
+    """
     seen, out = set(), []
     for term in terms:
-        t = term.lower().strip()
-        if not t or t in STOPWORDS or t in seen:
+        t = term.lower().strip().strip(".,;:!?")
+        if not t or t in STOPWORDS:
             continue
-        seen.add(t)
-        out.append(t)
+        # Splitting is for matching, not for display: a suggestion chip reading
+        # "multi-agent, multi, agent" is three chips for one idea.
+        pieces = [t] + t.split("-") if (split_compounds and "-" in t) else [t]
+        for piece in pieces:
+            if not piece or piece in STOPWORDS or piece in seen:
+                continue
+            seen.add(piece)
+            out.append(piece)
     return out
 
 PHRASE_HIT = 1.0
@@ -302,7 +322,11 @@ def explain_sentence(why: Dict[str, Any]) -> str:
     if comp.get("tf_bonus"):
         bits.append(f"+{comp['tf_bonus']:.2f} for how often the terms appear")
     if comp.get("recency"):
-        bits.append(f"+{comp['recency']:.2f} for being {why.get('age_days')} days old")
+        age = why.get("age_days")
+        when = ("posted today" if age == 0
+                else "posted yesterday" if age == 1
+                else f"being {age} days old")
+        bits.append(f"+{comp['recency']:.2f} for {when}")
     return "; ".join(bits) + "."
 
 
@@ -359,6 +383,37 @@ def rank(papers: List[Dict[str, Any]], topics: List[str],
          limit: int = 20) -> List[Dict[str, Any]]:
     """The top `limit` matches. Use rank_all when you need the true match count."""
     return rank_all(papers, topics)[:limit]
+
+
+def term_coverage(papers: List[Dict[str, Any]], terms: List[str]) -> Dict[str, int]:
+    """How many papers each term appears in at all.
+
+    A term that appears in zero papers is not a narrow filter, it is noise: it
+    cannot promote anything, and because ranking is by what fraction of the
+    query a paper covers, it drags every real result down by the same amount.
+    That is how a typo silently costs you the answer -- "fidn" matches nothing,
+    so every paper scores 2/3 instead of 2/2 and the ordering flattens.
+
+    Rather than guess at spelling, the caller drops the dead terms and says
+    which ones it dropped. Wrong guesses are visible; silent dilution is not.
+    """
+    counts = {t: 0 for t in terms}
+    if not terms:
+        return counts
+    for paper in papers:
+        words = _match_set(paper_text(paper))
+        for term in terms:
+            if term in words:
+                counts[term] += 1
+    return counts
+
+
+def live_terms(papers: List[Dict[str, Any]], terms: List[str]):
+    """(terms that appear somewhere in the library, terms that appear nowhere)."""
+    counts = term_coverage(papers, terms)
+    live = [t for t in terms if counts[t] > 0]
+    dead = [t for t in terms if counts[t] == 0]
+    return live, dead
 
 
 def rank_all_query(papers: List[Dict[str, Any]], terms: List[str]) -> List[Dict[str, Any]]:
