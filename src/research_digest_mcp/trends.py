@@ -17,6 +17,23 @@ from typing import Any, Dict, List, Optional
 WINDOW_DAYS = 7
 MIN_PAPERS = 5
 
+# A concept has to reach this many papers in at least one of the two weeks
+# before a direction is claimed for it. Below it the percentage is arithmetic
+# on noise: one group posting twice reads as "+100%, rising", and a reader has
+# no way to tell that from a real shift. Rows under the bar are still shown,
+# in their own bucket, marked "too few to call" -- hiding them would trade one
+# false impression for another.
+MIN_EVIDENCE = 4
+
+# And it has to move this many percentage points of the week's papers. Counts
+# alone made a busy week look like a broad rise in everything in it.
+MIN_SHARE_MOVE = 1.5
+
+
+def _KNOWN():
+    from .scoring import CONCEPT_PATTERNS
+    return CONCEPT_PATTERNS
+
 
 def _paper_day(paper: Dict[str, Any]) -> Optional[date]:
     for field in ("first_seen", "published", "updated"):
@@ -29,11 +46,30 @@ def _paper_day(paper: Dict[str, Any]) -> Optional[date]:
     return None
 
 
+def _known_concepts(paper: Dict[str, Any]) -> List[str]:
+    """Only the concepts from the known vocabulary, never the title-word fallback.
+
+    `extract_concepts` tops a paper's tags up with distinctive words from its
+    title when fewer than three known concepts matched. Those are useful on a
+    card -- they are a real handle on that one paper -- but they are not ideas,
+    and counting them as ideas is what put "toward" and "evaluating" in Rising
+    and made Crossing Over announce that "regionfed" had crossed into cs.LG.
+    "regionfed" is one paper's model name. It crossed nothing.
+
+    Filtered on read rather than on write, so this corrects a library that is
+    already full of mixed tags without a migration.
+    """
+    from .scoring import CONCEPT_PATTERNS
+    known = set(CONCEPT_PATTERNS)
+    return [str(c).lower() for c in (paper.get("concepts") or [])
+            if str(c).lower() in known]
+
+
 def _concepts(papers: List[Dict[str, Any]]) -> Counter:
     counter: Counter = Counter()
     for paper in papers:
-        for concept in paper.get("concepts", []) or []:
-            counter[str(concept).lower()] += 1
+        for concept in _known_concepts(paper):
+            counter[concept] += 1
     return counter
 
 
@@ -58,7 +94,7 @@ def cross_pollination(papers: List[Dict[str, Any]], lookback_days: int = 90,
         if day is None:
             continue
         category = paper.get("primary_category") or "uncategorised"
-        pairs = [(str(c).lower(), category) for c in (paper.get("concepts") or [])]
+        pairs = [(c, category) for c in _known_concepts(paper)]
         if day < cutoff:
             historical.update(pairs)
         else:
@@ -67,19 +103,30 @@ def cross_pollination(papers: List[Dict[str, Any]], lookback_days: int = 90,
     if not historical or not recent:
         return []
 
+    # Only categories with enough history to make "never before" mean anything.
+    # In a category holding four papers, every concept is a first, and the list
+    # filled up with confident claims about nothing.
+    seen_in = Counter(category for _concept, category in historical.elements())
+
     out = []
     for paper in recent:
         category = paper.get("primary_category") or "uncategorised"
-        novel = [c for c in (paper.get("concepts") or [])
-                 if historical[(str(c).lower(), category)] == 0]
+        if seen_in[category] < 20:
+            continue
+        novel = [c for c in _known_concepts(paper)
+                 if historical[(c, category)] == 0]
         if not novel:
             continue
         out.append({
             "id": paper.get("id", ""),
+            "url": paper.get("url", "") or f"https://arxiv.org/abs/{paper.get('id', '')}",
             "title": paper.get("title", ""),
             "category": category,
             "concepts": novel[:3],
-            "note": f"first time “{novel[0]}” shows up in {category}",
+            # "In your library" is the honest scope. This is a claim about what
+            # you have fetched, over the months you have been fetching it, not
+            # about the literature.
+            "note": f"first “{novel[0]}” paper you have held in {category}",
         })
     return out[:limit]
 
@@ -122,28 +169,59 @@ def compute_trends(papers: List[Dict[str, Any]],
         }
 
     now, before = _concepts(this_week), _concepts(prev_week)
-    rising, falling, steady = [], [], []
+
+    # The denominators. A concept can only "rise" relative to how many papers
+    # there were to be tagged: 8 of 70 this week against 4 of 56 last week is
+    # barely a change, and the old view reported it as +100%. Every row now
+    # carries the share as well as the count, and the share is what it is
+    # sorted and judged on.
+    n_now, n_before = len(this_week), len(prev_week)
+
+    rising, falling, steady, thin = [], [], [], []
     for concept in set(now) | set(before):
         current, previous = now.get(concept, 0), before.get(concept, 0)
-        if current + previous < 3:
+        share_now = current / n_now
+        share_before = previous / n_before
+        entry = {
+            "concept": concept,
+            "current": current, "previous": previous,
+            "of_current": n_now, "of_previous": n_before,
+            "share_now": round(share_now * 100, 1),
+            "share_previous": round(share_before * 100, 1),
+            "change_pts": round((share_now - share_before) * 100, 1),
+        }
+
+        # Below this, the arithmetic still works and the claim does not. Two
+        # papers out of seventy is one research group posting twice, and
+        # calling it a 100% rise is the tool asserting something it cannot
+        # know. These are kept and shown, in their own bucket, labelled.
+        if max(current, previous) < MIN_EVIDENCE:
+            entry["verdict"] = "too few to call"
+            thin.append(entry)
             continue
-        entry = {"concept": concept, "current": current, "previous": previous}
+
+        entry["change_pct"] = (round((current - previous) / previous * 100, 1)
+                               if previous else None)
         if previous == 0:
             entry["change"] = "new"
+            entry["verdict"] = f"new this week, {current} papers"
             rising.append(entry)
+        elif entry["change_pts"] >= MIN_SHARE_MOVE:
+            entry["verdict"] = (f"{entry['share_previous']}% to {entry['share_now']}% "
+                                f"of the week's papers")
+            rising.append(entry)
+        elif entry["change_pts"] <= -MIN_SHARE_MOVE:
+            entry["verdict"] = (f"{entry['share_previous']}% to {entry['share_now']}% "
+                                f"of the week's papers")
+            falling.append(entry)
         else:
-            pct = (current - previous) / previous * 100
-            entry["change_pct"] = round(pct, 1)
-            if pct >= 25:
-                rising.append(entry)
-            elif pct <= -25:
-                falling.append(entry)
-            else:
-                steady.append(entry)
+            entry["verdict"] = f"holding around {entry['share_now']}%"
+            steady.append(entry)
 
-    rising.sort(key=lambda e: (e.get("change") == "new", e.get("change_pct", 0)), reverse=True)
-    falling.sort(key=lambda e: e.get("change_pct", 0))
+    rising.sort(key=lambda e: (e.get("change") == "new", e["change_pts"]), reverse=True)
+    falling.sort(key=lambda e: e["change_pts"])
     steady.sort(key=lambda e: e["current"], reverse=True)
+    thin.sort(key=lambda e: -max(e["current"], e["previous"]))
 
     return {
         "status": "ok",
@@ -151,8 +229,25 @@ def compute_trends(papers: List[Dict[str, Any]],
         "rising": rising[:10],
         "falling": falling[:10],
         "steady": steady[:10],
+        "too_few": thin[:10],
+        "basis": {
+            "this_week": {"papers": n_now, "start": this_start.isoformat(),
+                          "end": today.isoformat()},
+            "previous_week": {"papers": n_before, "start": prev_start.isoformat(),
+                              "end": this_start.isoformat()},
+            "min_evidence": MIN_EVIDENCE,
+            "min_share_move": MIN_SHARE_MOVE,
+            "vocabulary": len(_KNOWN()),
+        },
         "note": (
-            "Counts are concept tags on papers you fetched, so they track your "
-            "configured categories, not arXiv as a whole."
+            f"Measured over {n_now} papers dated {this_start.isoformat()} to "
+            f"{today.isoformat()}, against {n_before} papers from "
+            f"{prev_start.isoformat()} to {this_start.isoformat()}. Movement is in "
+            f"percentage points of that week's papers, not in raw counts, so a busy "
+            f"week does not make everything look like it is rising. A concept has to "
+            f"reach {MIN_EVIDENCE} papers in one of the two weeks before it is called "
+            f"at all, and move {MIN_SHARE_MOVE} points to be called a move. These are "
+            f"concept tags on papers YOU fetched, so this tracks your configured "
+            f"categories, never arXiv as a whole."
         ),
     }
