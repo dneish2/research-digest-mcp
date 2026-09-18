@@ -40,12 +40,79 @@ uvx --from git+https://github.com/dneish2/research-digest-mcp research-digest fe
 Working on the code itself, not just using it? See
 [Development](#development) below — an editable install needs a local clone.
 
+### Check the install
+
+```bash
+python -m research_digest_mcp doctor
+```
+
+It names which Python answered and whether that is your working tree or a
+frozen copy, whether the command is on PATH and where it is if not, whether the
+data directory is writable, how many papers you hold and when the library last
+grew, and it ends with the exact MCP config line to paste, built from the
+interpreter you just ran it with. It makes no network request unless you pass
+`--network`, so it cannot itself trip arXiv's rate limit.
+
+Exit code is 0 when everything is green, 1 when it is usable with warnings, and
+2 when something is broken, so a scheduled task can gate on it.
+
+### If `research-digest` is "not recognized" or "command not found"
+
+The install worked. Your shell just cannot see it.
+
+`pip` puts the `research-digest` launcher in a per-user scripts folder that is
+often missing from `PATH`, especially on Windows and with the Microsoft Store
+build of Python. pip prints a warning about this, but it scrolls past in the
+middle of the install output:
+
+```
+WARNING: The script research-digest.exe is installed in
+'...\local-packages\Python313\Scripts' which is not on PATH.
+```
+
+Every command in this README also works in this form, which does not depend on
+`PATH` at all:
+
+```bash
+python -m research_digest_mcp web       # instead of: research-digest web
+python -m research_digest_mcp fetch
+python -m research_digest_mcp status
+```
+
+Note the underscores: `research_digest_mcp` is the Python package, while
+`research-digest` is the shortcut command. If `python` is not the right name on
+your system, use `python3` or `py -3`.
+
+Prefer the short command? Add the folder pip named in its warning to `PATH`:
+
+```powershell
+# Windows, PowerShell. Paste the path from YOUR pip warning.
+$dir = "$env:LOCALAPPDATA\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts"
+[Environment]::SetEnvironmentVariable(
+    "PATH", [Environment]::GetEnvironmentVariable("PATH", "User") + ";$dir", "User")
+```
+
+```bash
+# macOS and Linux, then reopen the shell
+echo 'export PATH="$(python3 -m site --user-base)/bin:$PATH"' >> ~/.zshrc
+```
+
+Open a new terminal afterwards. The old one keeps the old `PATH`.
+
 ## Build your library
 
 ```bash
-research-digest fetch      # pull recent papers from arXiv
+research-digest fetch      # pull recent papers from arXiv, against your profile
 research-digest embed      # optional: build vectors for similarity search
 research-digest status     # see what you have
+research-digest profile    # what it fetches for you, and the query it sends
+```
+
+Missed a stretch of days? A plain `fetch` cannot reach them: it asks for the
+newest papers, so a gap stays a gap. Give it a date window instead:
+
+```bash
+research-digest fetch --since 2026-07-01 --until 2026-07-31
 ```
 
 `fetch` is safe to run daily. It only adds papers you have not seen, and arXiv
@@ -68,25 +135,56 @@ rather than carried in, since the running code recomputes it on every read.
 ## Use it
 
 ```bash
-research-digest search agentic evaluation
-research-digest digest                    # today's top picks, written to a dated file
-research-digest web                       # browser interface on localhost
+research-digest ask "what should I read about agent memory?"
+research-digest search agentic evaluation  # keywords, over what you already hold
+research-digest arxiv "speculative decoding"   # searches arXiv and ADDS what it finds
+research-digest digest                     # today's top picks, written to a dated file
+research-digest web                        # browser interface on localhost
 ```
 
+`search` reads the shelf. `arxiv` puts something on it. `ask` reads your
+sentence first, and tells you what it decided before it shows you anything:
+
+```
+read as: Searched your library for agent, memory; ignored memroy (in no paper you hold).
+```
+
+That line is the point. When an answer looks wrong you need to know whether the
+question was misread or the library is simply thin, and those need opposite
+fixes. A word appearing in zero papers is dropped rather than searched for,
+because ranking is by how much of your query a paper covers — a dead term
+lowers every real result by the same amount, which is how a typo silently costs
+you the answer.
+
+No model is needed for any of this. If you have a local one (Ollama, any small
+model) it is used for one job — turning your sentence into search terms — and
+it is held to two rules enforced in code, not asked for in a prompt: it may
+re-word your question but not re-topic it, and it never decides to go online.
+Nothing ranks your results except arithmetic you can read.
+
+A full walkthrough of every command and screen is in
+[docs/RUNNING.md](docs/RUNNING.md).
+
 ## Connect it to your agent
+
+These use `python -m research_digest_mcp` rather than the short
+`research-digest` command on purpose. Your agent starts this server itself, and
+it often does so with a different `PATH` than your terminal has, so the short
+command can fail there even when it works when you type it. Use `python3` or
+`py -3` if that is what Python is called on your machine.
 
 **Claude Code**
 
 ```bash
-claude mcp add research-digest -- research-digest mcp
+claude mcp add research-digest -- python -m research_digest_mcp mcp
 ```
 
 **Codex CLI** — add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.research-digest]
-command = "research-digest"
-args = ["mcp"]
+command = "python"
+args = ["-m", "research_digest_mcp", "mcp"]
 ```
 
 **GitHub Copilot CLI** — add to `~/.copilot/mcp-config.json`:
@@ -95,25 +193,28 @@ args = ["mcp"]
 {
   "mcpServers": {
     "research-digest": {
-      "command": "research-digest",
-      "args": ["mcp"],
+      "command": "python",
+      "args": ["-m", "research_digest_mcp", "mcp"],
       "tools": ["*"]
     }
   }
 }
 ```
 
-Any other MCP client takes the same two fields: run `research-digest` with the
-argument `mcp`.
+Any other MCP client takes the same two fields: a command, and the arguments
+that make it run this package with `mcp`.
 
 Then ask in normal language: "search my library for retrieval papers", "what
 have I saved about multi-agent systems".
 
-Check it responds:
+Check it responds, before blaming your agent:
 
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | research-digest mcp
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python -m research_digest_mcp mcp
 ```
+
+A JSON line listing the eleven tools means the server is fine and anything still
+broken is in the client config.
 
 ---
 
@@ -121,14 +222,21 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | research-digest mcp
 
 | Tool | What it does |
 |---|---|
+| `ask_library` | A question in plain English, with the reading it used |
 | `search_papers` | Keyword search, with the score breakdown for every hit |
+| `fetch_papers` | Searches **arXiv itself** and adds what it finds to the library |
 | `get_similar` | Nearest papers by embedding similarity |
-| `get_trends` | Concepts rising and falling across the last two weeks |
+| `get_trends` | Concepts rising and falling, as shares of each week's papers |
 | `get_saved` | Your bookmarked papers and notes |
 | `suggest_reading` | Unread papers on a topic, best first |
+| `suggest_profile_terms` | What you save that your fetch profile never asks for |
 | `save_paper` | Add a specific paper by arXiv id or URL and bookmark it |
 | `get_digest` | Today's top picks against your topics, written to a dated file |
-| `library_status` | Paper count, date range, embedding health |
+| `library_status` | Paper count, date range, last fetch time, embedding health |
+
+`fetch_papers` is the one that changes what an agent can do for you. Every
+other tool reads a shelf; without this one, "find me something on X" answers
+"nothing found" for a paper that exists and simply has not been fetched yet.
 
 ---
 
@@ -211,8 +319,42 @@ research-digest config --add-topic "world model"
 |---|---|
 | `categories` | `cs.AI`, `cs.LG`, `cs.CL`, `cs.MA`, `cs.SE` |
 | `topics` | agent, evaluation, reasoning, retrieval, multi-agent, reliability, interpretability |
-| `max_per_fetch` | 60 |
 | `encoder` | `tfidf-svd` |
+
+### Your interest profile
+
+`categories` and `topics` above are the simple shape, and they keep working. If
+you want the tool to fetch outside your own subject, add a `profile` block with
+three tiers:
+
+```json
+{
+  "profile": {
+    "work_context": "One paragraph on what you build. Not used for scoring; it is there so you can read your own profile back.",
+    "core":          { "categories": ["cs.AI", "cs.LG"], "topics": ["agent benchmark", "eval harness"], "per_category": 60 },
+    "complementary": { "categories": ["cs.HC", "cs.IR"], "topics": ["trust", "explainability"], "per_category": 30 },
+    "stretch":       { "categories": ["stat.ME", "econ.EM"], "structural_keywords": ["confounding", "identification"], "per_category": 20 }
+  }
+}
+```
+
+**core** is the subject you work in, fetched deepest. **complementary** is the
+adjacent lanes, fetched shallower so they season the feed rather than flood it.
+**stretch** is for fields you do not work in, matched on `structural_keywords`,
+which are about method rather than subject: a `stat.ME` paper on identification
+strategy is worth reading for how it argues, not for what it is about.
+
+`per_category` is how many papers that tier asks arXiv for, per category, per
+run. This is the number that decides whether your library grows. Set it too low
+and each run sees only the last hour of submissions.
+
+Run `research-digest profile` to see what the tool believes about you, how many
+papers you actually hold in each category, and the exact arXiv query it sends.
+A category listed there holding zero papers is configured and not delivering.
+
+Topic lists longer than six are covered across runs rather than truncated: each
+fetch asks about the next six and the window advances, so a forty-topic profile
+is fully covered in about a week of daily runs.
 
 Data lives in `~/.research-digest` by default. Point `RESEARCH_DIGEST_HOME`
 somewhere else if you prefer:
