@@ -467,6 +467,19 @@ def tool_library_status(args: Dict[str, Any]) -> Dict[str, Any]:
     status["last_fetch_source"] = state.get("last_fetch_source") or ""
     status["last_added"] = state.get("last_added")
 
+    # What the library is missing, which every other surface hides. A search
+    # over a library with a month-shaped hole in it still answers confidently.
+    coverage = storage.month_coverage(papers)
+    status["coverage"] = coverage
+    if coverage["gaps"]:
+        status["coverage_warning"] = (
+            f"You hold no papers published in {', '.join(coverage['gaps'][:4])}"
+            + (f" and {len(coverage['gaps']) - 4} other months"
+               if len(coverage["gaps"]) > 4 else "")
+            + f". A search cannot find what was never fetched. Run "
+              f"'research-digest fetch --since {coverage['gaps'][0]}-01' to fill it in."
+        )
+
     try:
         from .similarity import EmbeddingStore
         store = EmbeddingStore()

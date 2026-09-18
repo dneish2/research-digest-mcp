@@ -122,6 +122,73 @@ class TestReadEndpoints(TempHome):
         self.assertEqual(page["total"], 2)
 
 
+class TestTheLibraryKnowsWhatItIsMissing(TempHome):
+    """A search over a library with a month-shaped hole in it still answers
+    confidently. A July paper could not be found in a library holding 402
+    papers from May, 369 from June and none at all from July, and nothing on
+    any screen mentioned the hole. That makes "never fetched" and "does not
+    exist" look identical, which is the worst answer a research tool can give.
+    """
+
+    def _months(self, spec):
+        from research_digest_mcp import storage
+        rows = []
+        for month, count in spec.items():
+            for i in range(count):
+                rows.append({"id": f"{month}.{i:05d}", "title": "x", "abstract": "y",
+                             "published": f"{month}-15", "primary_category": "cs.AI",
+                             "concepts": []})
+        storage.merge_papers(rows, date.today().isoformat())
+        return storage
+
+    def test_a_missing_month_inside_the_fetching_window_is_named(self):
+        storage = self._months({"2026-05": 40, "2026-06": 40, "2026-08": 40})
+        cov = storage.month_coverage(storage.load_papers())
+        self.assertEqual(cov["gaps"], ["2026-07"])
+
+    def test_a_thin_month_is_flagged_separately_from_an_empty_one(self):
+        """A partial fetch reads as a quiet month and is not one."""
+        storage = self._months({"2026-05": 40, "2026-06": 40, "2026-07": 2})
+        cov = storage.month_coverage(storage.load_papers())
+        self.assertEqual(cov["gaps"], [])
+        self.assertEqual(cov["thin"], ["2026-07"])
+
+    def test_the_long_tail_of_old_papers_is_not_reported_as_gaps(self):
+        """Measured from its true earliest paper, a real library reported 215
+        missing months going back to 1995. That is not a gap, it is a library
+        that was not running in 1995. The window opens where fetching did."""
+        storage = self._months({"2011-03": 1, "2018-07": 2,
+                                "2026-05": 40, "2026-06": 40, "2026-08": 40})
+        cov = storage.month_coverage(storage.load_papers())
+        self.assertEqual(cov["gaps"], ["2026-07"])
+        self.assertEqual(cov["window_start"], "2026-05")
+        self.assertEqual(cov["outside_window"], 3)
+
+    def test_the_current_month_is_never_a_gap(self):
+        """It is always incomplete. Flagging it would fire every first of the
+        month and train the reader to ignore the warning."""
+        storage = self._months({"2026-05": 40, "2026-06": 40})
+        cov = storage.month_coverage(storage.load_papers())
+        self.assertNotIn(date.today().strftime("%Y-%m"), cov["gaps"])
+
+    def test_status_carries_the_warning_with_the_command_to_fix_it(self):
+        from research_digest_mcp.mcp import tool_library_status
+        self._months({"2026-05": 40, "2026-06": 40, "2026-08": 40})
+        status = tool_library_status({})
+        self.assertIn("2026-07", status["coverage_warning"])
+        self.assertIn("--since 2026-07-01", status["coverage_warning"])
+
+    def test_a_search_with_only_weak_hits_says_so(self):
+        """Nine papers each covering a third of the query were presented
+        exactly like nine good hits."""
+        from research_digest_mcp.web import api
+        self.seed()
+        out = api("/api/search", {"q": ["memory upgrades heat pumps calibration"]})
+        if out["matched"]:
+            self.assertTrue(out["weak"], "a partial-coverage hit must be flagged")
+            self.assertIn("not have this yet", out["weak_note"])
+
+
 class TestExport(TempHome):
     def test_each_format_comes_back_with_a_filename_and_a_body(self):
         from research_digest_mcp.web import api
@@ -213,15 +280,31 @@ class TestWriteEndpoints(TempHome):
         out = api_write("/api/profile", {"workspace_root": str(self.home / "nope")})
         self.assertTrue(out["rejected"])
 
-    def test_the_model_server_must_be_on_this_machine(self):
-        """This setting decides where your questions are sent, so it is
-        enforced in code rather than requested in the UI copy."""
+    def test_a_remote_endpoint_is_allowed_but_changes_what_is_promised(self):
+        """Refusing anything but localhost was the wrong shape of protection:
+        it blocked LM Studio on your own LAN while the real requirement is only
+        that the page never claims privacy it is not delivering. The promise
+        follows the URL instead of the URL being bent to fit the promise."""
         from research_digest_mcp.web import api_write
-        self.assertEqual(
-            api_write("/api/llm", {"base_url": "http://evil.example.com"})["status"],
-            "error")
-        self.assertEqual(
-            api_write("/api/llm", {"base_url": "http://127.0.0.1:11434"})["status"], "ok")
+        local = api_write("/api/llm", {"provider": "ollama",
+                                       "base_url": "http://127.0.0.1:11434"})
+        self.assertEqual(local["status"], "ok")
+        self.assertTrue(local["llm"]["local"])
+        self.assertIn("stay on this machine", local["llm"]["privacy"])
+
+        remote = api_write("/api/llm", {"provider": "openai-compatible",
+                                        "base_url": "https://api.example.com/v1"})
+        self.assertEqual(remote["status"], "ok")
+        self.assertFalse(remote["llm"]["local"])
+        self.assertIn("api.example.com", remote["llm"]["privacy"])
+        self.assertIn("workspace files are not", remote["llm"]["privacy"])
+
+    def test_a_nonsense_url_or_provider_is_refused(self):
+        from research_digest_mcp.web import api_write
+        self.assertEqual(api_write("/api/llm", {"base_url": "not a url"})["status"],
+                         "error")
+        self.assertEqual(api_write("/api/llm", {"provider": "magic"})["status"],
+                         "error")
 
     def test_dismissing_the_model_strip_persists(self):
         from research_digest_mcp.config import load_settings

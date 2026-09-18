@@ -40,76 +40,155 @@ PREFERRED = ("qwen2.5:7b", "qwen2.5:3b", "llama3.2:3b", "llama3.1:8b",
 
 INSTALL_HINT = (
     "Install Ollama from ollama.com, then run 'ollama pull qwen2.5:3b'. "
-    "The question box works without it — a model only improves how your "
-    "question is turned into search terms."
+    "The question box works without it. A model only improves how your "
+    "question gets turned into search terms."
 )
+
+
+# Anything that speaks one of these two shapes works. Between them they cover
+# Ollama, LM Studio, llama.cpp's server, vLLM, OpenAI, Anthropic-compatible
+# gateways, OpenRouter, Together, Groq, and whatever comes next, because they
+# all settled on the same request body.
+PROVIDERS = {
+    "ollama": {
+        "label": "Ollama (local)",
+        "blurb": "A model running on this machine. Nothing is sent anywhere.",
+        "default_url": DEFAULT_BASE_URL,
+        "needs_key": False,
+        "local": True,
+        "setup": "Install Ollama from ollama.com, then run: ollama pull qwen2.5:3b",
+    },
+    "openai-compatible": {
+        "label": "OpenAI-compatible endpoint",
+        "blurb": ("Anything speaking the /v1/chat/completions shape. LM Studio, "
+                  "llama.cpp, vLLM and Jan run this locally. OpenAI, OpenRouter, "
+                  "Groq and Together run it as a paid service."),
+        "default_url": "http://127.0.0.1:1234/v1",
+        "needs_key": True,
+        "local": False,
+        "setup": ("Point it at the base URL your server prints, ending in /v1. "
+                  "A key is only needed for a hosted service."),
+    },
+}
+
+LOCAL_HOST = re.compile(r"^https?://(127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\])(:\d+)?(/|$)")
+
+
+def is_local(base_url: str) -> bool:
+    """Is this endpoint on this machine? Decides what the UI is allowed to promise."""
+    return bool(LOCAL_HOST.match(str(base_url or "").strip()))
 
 
 def settings_block(settings: Dict[str, Any]) -> Dict[str, Any]:
     """The llm section of settings.json, with defaults filled in."""
     raw = settings.get("llm") or {}
+    provider = str(raw.get("provider") or "ollama")
+    if provider not in PROVIDERS:
+        provider = "ollama"
+    base_url = str(raw.get("base_url") or PROVIDERS[provider]["default_url"]).rstrip("/")
     return {
         "enabled": bool(raw.get("enabled", True)),
-        "base_url": str(raw.get("base_url") or DEFAULT_BASE_URL).rstrip("/"),
+        "provider": provider,
+        "base_url": base_url,
         "model": str(raw.get("model") or ""),
+        "api_key": str(raw.get("api_key") or ""),
         "dismissed": bool(raw.get("dismissed", False)),
+        "local": is_local(base_url),
     }
 
 
-def _get_json(url: str, timeout: float) -> Optional[Any]:
+def _get_json(url: str, timeout: float, key: str = "") -> Optional[Any]:
     try:
-        request = urllib.request.Request(url, headers={"Accept": "application/json"})
+        headers = {"Accept": "application/json"}
+        if key:
+            headers["Authorization"] = "Bearer " + key
+        request = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, OSError, ValueError, TimeoutError):
         return None
 
 
-def probe(settings: Dict[str, Any]) -> Dict[str, Any]:
-    """Is there a local model, and which one would we use?
+def list_models(config: Dict[str, Any]) -> Optional[List[str]]:
+    """What the configured endpoint says it can run, or None if it did not answer."""
+    base, key = config["base_url"], config.get("api_key", "")
+    if config["provider"] == "ollama":
+        payload = _get_json(base + "/api/tags", PROBE_TIMEOUT)
+        if payload is None:
+            return None
+        return [str(m.get("name", "")) for m in (payload.get("models") or [])
+                if m.get("name")]
+    payload = _get_json(base + "/models", PROBE_TIMEOUT, key)
+    if payload is None:
+        return None
+    rows = payload.get("data") if isinstance(payload, dict) else payload
+    return [str(r.get("id", "")) for r in (rows or []) if isinstance(r, dict) and r.get("id")]
 
-    Never raises, never blocks for long, and distinguishes the three states
-    that need different words in the UI: switched off by the user, nothing
-    listening, and listening but with no models pulled.
+
+def probe(settings: Dict[str, Any]) -> Dict[str, Any]:
+    """Is a model reachable, and which one would we use?
+
+    Never raises, never blocks for long, and separates the states that need
+    different words on screen: switched off, nothing listening, listening with
+    nothing installed, and ready.
     """
     config = settings_block(settings)
+    provider = PROVIDERS[config["provider"]]
     out: Dict[str, Any] = {
         "status": "off",
         "enabled": config["enabled"],
+        "provider": config["provider"],
+        "provider_label": provider["label"],
         "base_url": config["base_url"],
         "model": config["model"],
         "models": [],
+        "local": config["local"],
+        "has_key": bool(config["api_key"]),
         "dismissed": config["dismissed"],
-        "hint": INSTALL_HINT,
+        "hint": provider["setup"],
+        # The one sentence that has to be right, because it is the promise the
+        # workspace feature is offered on. It follows the URL, not a claim.
+        "privacy": ("Your questions stay on this machine."
+                    if config["local"] else
+                    f"Your questions are sent to {config['base_url']}. Your papers "
+                    f"and your workspace files are not."),
     }
     if not config["enabled"]:
-        out["message"] = ("Turned off in settings. Questions are parsed by rule, "
+        out["message"] = ("Turned off. Questions are read by rule instead, "
                           "which needs no model.")
         return out
 
-    payload = _get_json(config["base_url"] + "/api/tags", PROBE_TIMEOUT)
-    if payload is None:
+    models = list_models(config)
+    if models is None:
         out["status"] = "absent"
-        out["message"] = (f"No local model server answering at {config['base_url']}. "
-                          f"Questions are parsed by rule instead, which works fine.")
+        out["message"] = (f"Nothing answered at {config['base_url']}. "
+                          f"Questions are read by rule instead, which works fine.")
         return out
 
-    models = [str(m.get("name", "")) for m in (payload.get("models") or []) if m.get("name")]
     out["models"] = models
-    if not models:
+    if not models and not config["model"]:
         out["status"] = "no_models"
-        out["message"] = ("A model server is running but has no models pulled. "
-                          "Run 'ollama pull qwen2.5:3b'.")
+        out["message"] = ("The endpoint answered but lists no models. "
+                          + provider["setup"])
         return out
 
-    chosen = config["model"] if config["model"] in models else pick_model(models)
-    out["model"] = chosen
+    # A hosted endpoint may refuse to list models while happily serving the one
+    # you named. A configured name is therefore taken at its word.
+    if config["model"]:
+        out["model"] = config["model"]
+        if models and config["model"] not in models:
+            fallback = pick_model(models)
+            out["model"] = fallback
+            out["status"] = "model_missing"
+            out["message"] = (f"{config['model']} is not available here. "
+                              f"Using {fallback} instead.")
+            return out
+    else:
+        out["model"] = pick_model(models)
+
     out["status"] = "ready"
-    out["message"] = f"Using {chosen} to read your questions. Ranking stays arithmetic."
-    if config["model"] and config["model"] not in models:
-        out["status"] = "model_missing"
-        out["message"] = (f"{config['model']} is configured but not pulled. "
-                          f"Falling back to {chosen}.")
+    out["message"] = (f"{out['model']} is reading your questions into search terms. "
+                      f"It does not rank anything.")
     return out
 
 
@@ -190,20 +269,32 @@ def propose_plan(question: str, topics: List[str], config: Dict[str, Any]) -> Op
     base = str(config.get("base_url") or DEFAULT_BASE_URL).rstrip("/")
     if not model:
         return None
-    body = json.dumps({
-        "model": model,
-        "prompt": PLAN_PROMPT.format(
-            question=question, topics=", ".join(topics[:20]) or "not set"),
-        "stream": False,
-        "format": "json",
-        "options": {"temperature": 0, "num_predict": 300},
-    }).encode("utf-8")
+    prompt = PLAN_PROMPT.format(
+        question=question, topics=", ".join(topics[:20]) or "not set")
+    headers = {"Content-Type": "application/json"}
+
+    if config.get("provider", "ollama") == "ollama":
+        url = base + "/api/generate"
+        body = {"model": model, "prompt": prompt, "stream": False, "format": "json",
+                "options": {"temperature": 0, "num_predict": 300}}
+    else:
+        url = base + "/chat/completions"
+        body = {"model": model, "temperature": 0, "max_tokens": 300,
+                "messages": [{"role": "user", "content": prompt}]}
+        if config.get("api_key"):
+            headers["Authorization"] = "Bearer " + config["api_key"]
+
     request = urllib.request.Request(
-        base + "/api/generate", data=body,
-        headers={"Content-Type": "application/json"})
+        url, data=json.dumps(body).encode("utf-8"), headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=GENERATE_TIMEOUT) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, OSError, ValueError, TimeoutError):
         return None
-    return _extract_json(str(payload.get("response", "")))
+
+    if config.get("provider", "ollama") == "ollama":
+        return _extract_json(str(payload.get("response", "")))
+    try:
+        return _extract_json(payload["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, TypeError):
+        return None

@@ -47,22 +47,30 @@ def _paper_day(paper: Dict[str, Any]) -> Optional[date]:
 
 
 def _known_concepts(paper: Dict[str, Any]) -> List[str]:
-    """Only the concepts from the known vocabulary, never the title-word fallback.
+    """Which known concepts this paper is actually about, read from its text.
+
+    Two problems with using the stored `concepts` list, which is what this did
+    before, and both of them made the numbers wrong in ways a reader could not
+    see:
 
     `extract_concepts` tops a paper's tags up with distinctive words from its
-    title when fewer than three known concepts matched. Those are useful on a
-    card -- they are a real handle on that one paper -- but they are not ideas,
-    and counting them as ideas is what put "toward" and "evaluating" in Rising
-    and made Crossing Over announce that "regionfed" had crossed into cs.LG.
-    "regionfed" is one paper's model name. It crossed nothing.
+    own title when fewer than three known concepts matched. Those are a fine
+    handle on one paper and they are not ideas, and counting them as ideas put
+    "toward" and "evaluating" in Rising and had Crossing Over announce that
+    "regionfed" had crossed into cs.LG. regionfed is one paper's model name.
 
-    Filtered on read rather than on write, so this corrects a library that is
-    already full of mixed tags without a migration.
+    Worse, that list is capped at six. 366 papers in a 1,443-paper library sit
+    at the cap, and the cap keeps whichever concepts come first in
+    CONCEPT_PATTERNS, so a concept's count depended on where it happened to sit
+    in a hand-written list. Measured over one week, "calibration" was stored on
+    3 papers and present in 4.
+
+    So this reads the title, abstract and tags directly. Slower, and a trend
+    line nobody can trust is not worth saving the milliseconds on.
     """
-    from .scoring import CONCEPT_PATTERNS
-    known = set(CONCEPT_PATTERNS)
-    return [str(c).lower() for c in (paper.get("concepts") or [])
-            if str(c).lower() in known]
+    from .scoring import CONCEPT_PATTERNS, paper_text
+    text = paper_text(paper)
+    return [c for c in CONCEPT_PATTERNS if c in text]
 
 
 def _concepts(papers: List[Dict[str, Any]]) -> Counter:
@@ -239,15 +247,22 @@ def compute_trends(papers: List[Dict[str, Any]],
             "min_share_move": MIN_SHARE_MOVE,
             "vocabulary": len(_KNOWN()),
         },
+        "scope_warning": (
+            f"This is {n_now} papers, not arXiv. arXiv publishes a few thousand "
+            f"papers a week; your profile asked for a slice of them and this is that "
+            f"slice. So a concept reading 2 here means 2 of your {n_now}, and a "
+            f"concept reading 0 mostly means your profile did not ask for it."
+        ),
         "note": (
-            f"Measured over {n_now} papers dated {this_start.isoformat()} to "
-            f"{today.isoformat()}, against {n_before} papers from "
-            f"{prev_start.isoformat()} to {this_start.isoformat()}. Movement is in "
-            f"percentage points of that week's papers, not in raw counts, so a busy "
-            f"week does not make everything look like it is rising. A concept has to "
-            f"reach {MIN_EVIDENCE} papers in one of the two weeks before it is called "
-            f"at all, and move {MIN_SHARE_MOVE} points to be called a move. These are "
-            f"concept tags on papers YOU fetched, so this tracks your configured "
-            f"categories, never arXiv as a whole."
+            f"Counted over the {n_now} papers your profile pulled between "
+            f"{this_start.isoformat()} and {today.isoformat()}, against the "
+            f"{n_before} it pulled the week before. Each number is the share of that "
+            f"week's papers, so a week where you fetched more does not read as "
+            f"everything rising at once. A concept needs {MIN_EVIDENCE} papers in one "
+            f"of the two weeks before this calls a direction for it, and needs to move "
+            f"{MIN_SHARE_MOVE} points of share to count as a move. Concepts are found "
+            f"by reading each paper's title and abstract, not by trusting the tags "
+            f"saved on it, because those are capped at six per paper and the cap made "
+            f"some concepts look rarer than they are."
         ),
     }

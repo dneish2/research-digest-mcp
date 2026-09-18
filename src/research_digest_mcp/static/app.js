@@ -270,16 +270,33 @@ function renderGrid() {
       : 'No papers in this view yet.'));
     if (state.query) {
       // A library search that finds nothing is not the end of the road, and
-      // pretending it is was the single biggest gap: the tool could not reach
-      // past what it already held.
+      // pretending it was is the single biggest thing this tool got wrong: it
+      // could not reach past what it already held.
       const go = el('button', 'btn', 'Search arXiv for it instead');
       go.type = 'button';
       go.addEventListener('click', () => searchArxiv(state.query));
       empty.appendChild(go);
+      empty.appendChild(renderGapNote());
     }
     return;
   }
   empty.hidden = true;
+
+  // Honest about a thin answer. Nine papers each matching a third of the query
+  // used to look exactly like nine good hits.
+  if (state.weakNote) {
+    const warn = el('div', 'scopebar');
+    warn.appendChild(el('b', null, 'These are the closest things you hold, not matches.'));
+    warn.appendChild(el('span', null, state.weakNote));
+    const go = el('button', 'btn', `Ask arXiv for “${state.query}”`);
+    go.type = 'button';
+    go.style.alignSelf = 'flex-start';
+    go.addEventListener('click', () => searchArxiv(state.query));
+    warn.appendChild(go);
+    const gap = renderGapNote();
+    if (gap) warn.appendChild(gap);
+    grid.appendChild(warn);
+  }
   renderCards(grid, state.papers, 0);
 
   if (state.hasMore) {
@@ -292,6 +309,57 @@ function renderGrid() {
     });
     grid.appendChild(more);
   }
+}
+
+// A month-shaped hole in the library explains a failed search better than any
+// amount of ranking work, and nothing on any screen used to mention it. A
+// July paper could not be found in a library holding 402 papers from May, 369
+// from June and none at all from July.
+function renderGapNote() {
+  const cov = state.coverage;
+  if (!cov || !(cov.gaps || []).length) return null;
+  const box = el('div', 'gapnote');
+  const months = cov.gaps.map(prettyMonth);
+  box.appendChild(el('b', null,
+    months.length === 1
+      ? `You hold nothing published in ${months[0]}.`
+      : `You hold nothing published in ${months.length} months: ${months.join(', ')}.`));
+  box.appendChild(el('span', null,
+    'A fetch always starts from the newest paper, so a month you missed stays '
+    + 'missed. Searching cannot find what was never fetched.'));
+  const fill = el('button', 'btn-ghost', `Fetch ${months[0]} now`);
+  fill.type = 'button';
+  fill.addEventListener('click', () => backfill(cov.gaps[0], fill));
+  box.appendChild(fill);
+  return box;
+}
+
+function prettyMonth(key) {
+  const d = new Date(key + '-02T00:00:00');
+  return Number.isNaN(d.getTime()) ? key
+    : d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+function lastDayOf(key) {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m, 0).toISOString().slice(0, 10);
+}
+
+async function backfill(month, button) {
+  button.disabled = true;
+  button.textContent = `Fetching ${prettyMonth(month)}…`;
+  $('#status').textContent = `Asking arXiv for papers published in ${prettyMonth(month)}. `
+    + 'This walks every category, so give it a couple of minutes.';
+  const r = await get('/api/refresh',
+    { since: month + '-01', until: lastDayOf(month) }, { timeoutMs: 300000 });
+  button.disabled = false;
+  if (r.status !== 'ok') {
+    button.textContent = `Fetch ${prettyMonth(month)} now`;
+    return toast(r.message || 'arXiv did not answer.', 'bad');
+  }
+  toast(r.message);
+  paperCache.clear();
+  await boot();
 }
 
 const PAGE_SIZE = 120;
@@ -316,6 +384,8 @@ async function loadGrid(append) {
   state.papers = append ? state.papers.concat(data.results) : data.results;
   state.topics = data.terms || data.topics || [];
   state.hasMore = Boolean(data.has_more);
+  state.weakNote = data.weak ? data.weak_note : '';
+  if (data.coverage) state.coverage = data.coverage;
   $('#status').textContent = state.query
     ? `${data.matched} of ${data.searched} papers matched`
     : `Showing ${state.papers.length} of ${data.total} papers`;
@@ -648,14 +718,26 @@ async function loadTrends() {
   }
 
   const basis = data.basis || {};
+  const thisW = basis.this_week || {};
+  const prevW = basis.previous_week || {};
   const head = el('div', 'view-head');
   head.appendChild(el('h2', null, 'What moved in your feed'));
   head.appendChild(el('p', 'sub',
-    `Week of ${humanDate(basis.this_week && basis.this_week.start)} to `
-    + `${humanDate(basis.this_week && basis.this_week.end)} `
-    + `(${(basis.this_week || {}).papers} papers), against the week before it `
-    + `(${(basis.previous_week || {}).papers} papers).`));
+    `${thisW.papers} papers from ${humanDate(thisW.start)} to ${humanDate(thisW.end)}, `
+    + `compared against the ${prevW.papers} from ${humanDate(prevW.start)} to `
+    + `${humanDate(prevW.end)}.`));
   out.appendChild(head);
+
+  // The sentence that decides whether any of this is believable. Without it a
+  // reader reasonably assumes these counts are arXiv, and "chain-of-thought:
+  // 2 papers" is absurd about arXiv and ordinary about a 70-paper sample that
+  // your own keyword list selected.
+  if (data.scope_warning) {
+    const scope = el('div', 'scopebar');
+    scope.appendChild(el('b', null, 'Read this as your feed, not the field.'));
+    scope.appendChild(el('span', null, data.scope_warning));
+    out.appendChild(scope);
+  }
 
   const box = el('div', 'tcols');
   [['Rising', data.rising, 'up'], ['Falling', data.falling, 'down'],
@@ -673,11 +755,13 @@ async function loadTrends() {
   if ((data.too_few || []).length) {
     const col = el('div', 'tcol');
     col.style.marginTop = '18px';
-    col.appendChild(el('h3', null, 'Too few papers to call'));
+    col.appendChild(el('h3', null, 'Too thin to say anything about'));
     col.appendChild(el('p', 'sub',
-      `Fewer than ${basis.min_evidence} papers in both weeks. The percentage would `
-      + 'be arithmetic on noise — one group posting twice reads as "+100%" — so no '
-      + 'direction is claimed. The counts are here so you can judge for yourself.'));
+      `These turned up in fewer than ${basis.min_evidence} of your papers in both `
+      + 'weeks. At those numbers one research group posting twice looks identical to '
+      + 'a real shift, so calling a direction would be making it up. The counts are '
+      + 'here anyway, because hiding them would leave you thinking nothing was '
+      + 'happening rather than that too little was measured.'));
     const strip = el('div', 'thin-row');
     (data.too_few || []).forEach((r) => {
       const b = el('button', 'thin-chip');
@@ -896,60 +980,92 @@ async function runLab() {
   const c = data.why.components || {};
   const box = $('#lab-formula');
   box.textContent = '';
-  const row = (label, value, note, cls) => {
-    const r = el('div', 'r' + (cls ? ' ' + cls : ''));
-    const left = el('span');
-    left.appendChild(el('span', null, label));
-    // Every line says what it is for. The column of numbers was correct and
-    // unreadable: "sum / 4 topics, weighted 0.8  0.400" is the formula, not
-    // an explanation of it.
-    if (note) left.appendChild(el('small', null, note));
-    r.appendChild(left);
-    r.appendChild(el('span', null, value));
-    return r;
-  };
 
   const matched = data.why.matched || [];
-  matched.forEach((m) => box.appendChild(row(
-    m.topic, '+' + m.credit.toFixed(2),
-    m.kind === 'common word'
-      ? 'appears in most papers here, so matching it says little — worth 0.20'
-      : m.kind === 'phrase'
-        ? 'the whole phrase, verbatim — the strongest signal, worth 1.00'
-        : 'a word that is not boilerplate in this field — worth 0.60')));
-  if (!matched.length) {
-    box.appendChild(row('no topic matched', '0.00',
-      'nothing you listed appears in this paper', 'dim'));
+  const nTopics = data.why.topics_considered;
+  const nMatched = data.why.topics_matched;
+  const points = matched.reduce((sum, m) => sum + m.credit, 0);
+
+  // Three questions, answered in order, each with its own number. The old
+  // panel was a correct column of arithmetic that never said what it was
+  // working out, so "sum / 4 topics, weighted 0.8 = 0.400" told you the
+  // formula and nothing else.
+  const step = (n, question, answer, value) => {
+    const wrap = el('div', 'step');
+    const head = el('div', 'step-head');
+    head.appendChild(el('span', 'step-n', String(n)));
+    head.appendChild(el('span', 'step-q', question));
+    head.appendChild(el('span', 'step-v', value));
+    wrap.appendChild(head);
+    wrap.appendChild(el('div', 'step-a', answer));
+    return wrap;
+  };
+
+  const one = step(1, 'How many of your topics does it mention?',
+    matched.length
+      ? `${nMatched} of your ${nTopics}. Not every word counts the same, so those `
+        + `${nMatched} are worth ${points.toFixed(2)} points out of a possible `
+        + `${nTopics.toFixed ? nTopics : nTopics}.00. That works out to `
+        + `${(points / nTopics * 100).toFixed(0)}% of your list, and this part of the `
+        + `score is worth up to 0.80, so it earns ${c.base.toFixed(2)}.`
+      : 'None of them. Nothing you listed appears in this paper.',
+    c.base.toFixed(2));
+
+  if (matched.length) {
+    const words = el('div', 'step-words');
+    matched.forEach((m) => {
+      const chip = el('span', 'wordchip');
+      chip.appendChild(el('b', null, m.topic));
+      chip.appendChild(el('span', null, '+' + m.credit.toFixed(2)));
+      chip.title = {
+        'common word': 'Shows up in most papers here, so matching it barely narrows '
+          + 'anything down. Worth 0.20.',
+        phrase: 'The whole phrase, word for word. The strongest thing a paper can '
+          + 'match. Worth 1.00.',
+      }[m.kind] || 'A real subject word, not filler. Worth 0.60.';
+      chip.className += m.kind === 'common word' ? ' wordchip-weak' : '';
+      words.appendChild(chip);
+    });
+    one.appendChild(words);
+    one.appendChild(el('p', 'step-note',
+      'Faded words are ones like "learning" or "model" that show up in almost every '
+      + 'paper here. Matching one of those barely narrows anything down, so it counts '
+      + 'for less.'));
   }
+  box.appendChild(one);
 
-  box.appendChild(row(
-    'coverage', c.base.toFixed(3),
-    `the ${matched.length ? matched.length : 'zero'} credits above, divided by all `
-    + `${data.why.topics_considered} topics you listed, then scaled by 0.8. Dividing `
-    + `by the whole list is what stops a paper matching one topic out of forty from `
-    + `scoring as highly as one matching ten.`, 'r-sum'));
+  box.appendChild(step(2, 'Does it touch several of your interests at once?',
+    nMatched >= 3
+      ? `Yes, ${nMatched} of them. A paper sitting where three or more of your `
+        + `interests overlap is usually more use to you than one that nails a single `
+        + `topic, so it gets a flat 0.30.`
+      : nMatched === 2
+        ? 'Two of them, which earns a smaller flat 0.15.'
+        : 'No. This needs at least two of your topics to earn anything.',
+    '+' + (c.breadth_bonus || 0).toFixed(2)));
 
-  box.appendChild(row(
-    'breadth bonus', '+' + (c.breadth_bonus || 0).toFixed(2),
-    data.why.topics_matched >= 3
-      ? `matched ${data.why.topics_matched} of your topics — 3 or more earns 0.30, `
-        + `because spanning several of your interests is itself a signal`
-      : data.why.topics_matched === 2
-        ? 'matched exactly 2 of your topics — that earns 0.15'
-        : 'needs 2 or more of your topics to earn anything'));
-
-  box.appendChild(row(
-    'recency', '+' + (c.recency || 0).toFixed(2),
+  box.appendChild(step(3, 'Is it new?',
     data.why.age_days == null
-      ? 'no date given, so nothing is added — set one to see this move'
-      : `${data.why.age_days} days old. Fades to zero over 30 days, worth up to 0.20 `
-        + `on the day it is posted. This is a daily-reading tool, so new counts.`));
+      ? 'No date set, so nothing is added here. Pick a date above and watch this move.'
+      : data.why.age_days > 30
+        ? `It is ${data.why.age_days} days old. Anything past 30 days gets nothing `
+          + `from this. It can still score well on the two questions above.`
+        : `It is ${data.why.age_days} days old. Fresh papers get up to 0.20, fading `
+          + `to nothing by day 30, because this is built for a daily read.`,
+    '+' + (c.recency || 0).toFixed(2)));
 
-  const total = row('score', data.score.toFixed(3),
-    data.why.capped ? 'the parts added to more than 1.00 and were capped there'
-      : 'coverage + breadth + recency, capped at 1.00');
-  total.className = 'r total';
+  const total = el('div', 'step step-total');
+  const th = el('div', 'step-head');
+  th.appendChild(el('span', 'step-q', 'Score'));
+  th.appendChild(el('span', 'step-v', data.score.toFixed(2)));
+  total.appendChild(th);
+  total.appendChild(el('div', 'step-a',
+    data.why.capped
+      ? 'The three parts added up to more than 1.00, so it is capped there.'
+      : `${c.base.toFixed(2)} plus ${(c.breadth_bonus || 0).toFixed(2)} plus `
+        + `${(c.recency || 0).toFixed(2)}. The highest any paper can score is 1.00.`));
   box.appendChild(total);
+
   $('#lab-why').textContent = data.why_text;
 
   const chips = $('#lab-boiler');
@@ -1197,10 +1313,17 @@ async function loadProfile() {
   out.textContent = '';
   out.appendChild(el('p', 'dim', 'Loading your profile…'));
 
-  const [data, cat] = await Promise.all([
+  const [data, cat, llm] = await Promise.all([
     get('/api/profile', {}, { timeoutMs: 20000 }),
     get('/api/categories', {}, { timeoutMs: 20000 }),
+    // Fetched here too, not just at boot, so the model card is correct when
+    // Profile is the first screen someone opens.
+    get('/api/llm', {}, { timeoutMs: 8000 }),
   ]);
+  if (llm.status === 'ok') {
+    state.llm = llm.llm;
+    state.llmProviders = llm.providers || [];
+  }
   if (data.status !== 'ok') {
     out.textContent = '';
     out.appendChild(notice('Could not load the profile', data.message || data.status, loadProfile));
@@ -1259,17 +1382,47 @@ function renderProfile() {
   // What a fetch costs and why it is slow, said once, near the controls that
   // change it. arXiv's rate limit is the real constraint on this whole screen.
   const cost = data.fetch_cost || {};
-  const costBox = el('div', 'costbar');
   const mins = Math.floor((cost.estimated_seconds || 0) / 60);
   const secs = (cost.estimated_seconds || 0) % 60;
+  const cats = data.total_categories;
+
+  // The shape of a fetch, said as what you get rather than as protocol.
+  const costBox = el('div', 'costbar');
   costBox.appendChild(el('b', null,
-    `A fetch = ${cost.requests} requests, about ${mins}m ${secs}s`));
-  costBox.appendChild(el('span', null, cost.note || ''));
+    `Each fetch asks ${cats} categories for up to ${cost.max_papers} papers, `
+    + `and takes about ${mins ? mins + 'm ' : ''}${secs}s.`));
+  costBox.appendChild(el('span', null,
+    'Every category gets its own trip to arXiv, so the time comes from how many '
+    + 'categories you have, not how many papers you ask for. Adding a category makes '
+    + 'a fetch longer. Moving a papers-per-category slider does not.'));
+
+  const how = el('details', 'method');
+  how.appendChild(el('summary', null, 'What actually happens when you press Fetch'));
+  const steps = el('ol', 'howlist');
+  [
+    `It goes through your ${cats} categories one at a time. Each one is a separate `
+    + 'request, so no category can crowd out another.',
+    'For each, it asks arXiv for papers in that category whose title or abstract '
+    + 'contains at least one of your words. Not all of your words. Any one of them.',
+    'Only some of your words fit in a single request, because the request is a web '
+    + 'address and those have a length limit. So each run takes the next few words '
+    + 'off your list, and the next run picks up where it left off. Over a few days '
+    + 'your whole list gets used. The gold-highlighted words below are the ones '
+    + 'going out next.',
+    'It waits 5 seconds between requests. arXiv asks for that, and asking faster '
+    + 'gets you turned away for 5 minutes, which is slower than waiting.',
+    'Anything new gets added to your library. Anything you already have is left '
+    + 'alone, so running this twice in a day costs you nothing but time.',
+  ].forEach((line) => steps.appendChild(el('li', null, line)));
+  how.appendChild(steps);
+  costBox.appendChild(how);
+
   if (data.cooldown_remaining > 0) {
     costBox.className = 'costbar costbar-warn';
     costBox.appendChild(el('b', null,
-      `arXiv is refusing this client right now — ${Math.ceil(data.cooldown_remaining)}s `
-      + 'left before it will be asked again. Fetches will wait rather than retry.'));
+      `arXiv is not taking requests from you right now. `
+      + `${Math.ceil(data.cooldown_remaining)} seconds left. A fetch will wait for `
+      + `that rather than keep asking, which is what makes it worse.`));
   }
   out.appendChild(costBox);
 
@@ -1374,6 +1527,61 @@ function renderProfile() {
   ws.appendChild(wsRow);
   out.appendChild(ws);
 
+  // What the library is missing, as a picture. A row of bars says more about
+  // whether this thing is actually running than any number can.
+  const cov = state.coverage;
+  if (cov && (cov.months || []).length > 1) {
+    const card = el('section', 'profile-card');
+    const title = el('div', 'profile-title');
+    title.appendChild(el('h3', null, 'What you have, month by month'));
+    if ((cov.gaps || []).length) {
+      const flag = el('span', 'pill pill-warn',
+        `${cov.gaps.length} month${cov.gaps.length > 1 ? 's' : ''} missing`);
+      title.appendChild(flag);
+    }
+    card.appendChild(title);
+    card.appendChild(el('p', 'sub',
+      'Counted by when each paper was published. A short bar is a month you barely '
+      + 'fetched, and an empty one is a month you cannot search at all, because a '
+      + 'fetch always starts from the newest paper and never goes back on its own.'));
+
+    const chart = el('div', 'monthchart');
+    const peak = Math.max(...cov.months.map((m) => m.papers), 1);
+    cov.months.forEach((m) => {
+      const col = el('div', 'monthcol' + (m.papers ? '' : ' monthcol-gap'));
+      col.title = m.papers
+        ? `${m.papers} papers published in ${prettyMonth(m.month)}`
+        : `Nothing from ${prettyMonth(m.month)}. Click to fetch it.`;
+      const bar = el('div', 'monthbar');
+      const fill = el('i');
+      fill.style.height = Math.max(2, (m.papers / peak) * 100) + '%';
+      bar.appendChild(fill);
+      col.appendChild(bar);
+      col.appendChild(el('span', 'monthn', String(m.papers)));
+      col.appendChild(el('span', 'monthlabel', m.month.slice(2)));
+      if (!m.papers) {
+        col.tabIndex = 0;
+        col.setAttribute('role', 'button');
+        const go = () => backfill(m.month, col);
+        col.addEventListener('click', go);
+        col.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+        });
+      }
+      chart.appendChild(col);
+    });
+    card.appendChild(chart);
+    if (cov.outside_window) {
+      card.appendChild(el('p', 'step-note',
+        `${cov.outside_window} older papers sit outside this window, picked up one at `
+        + `a time by searches and cross-listings rather than by a fetch. They are in `
+        + `your library and searchable; they are just not a month you ever pulled.`));
+    }
+    out.appendChild(card);
+  }
+
+  out.appendChild(modelCard());
+
   // The tiers.
   data.tiers.forEach((tier) => {
     const t = draft.tiers[tier.name];
@@ -1395,8 +1603,10 @@ function renderProfile() {
     catHead.appendChild(browse);
     card.appendChild(catHead);
     card.appendChild(el('p', 'sub',
-      'The section of arXiv to look in. The number on each is how many papers you '
-      + 'hold from it; hover for what the code means.'));
+      'The sections of arXiv this tier looks in. The number on each is how many '
+      + 'papers you already hold from it. A zero means you have asked for that '
+      + 'section and got nothing back, which is worth knowing: either it is a slow '
+      + 'section, or your words never match anything in it.'));
     const liveSet = new Set(tier.keywords_this_run);
     card.appendChild(editableChips(t.categories, {
       placeholder: 'cs.AI, stat.ME…',
@@ -1415,10 +1625,19 @@ function renderProfile() {
     const isStretch = tier.name === 'stretch';
     if (!isStretch || t.topics.length) {
       card.appendChild(el('div', 'fieldlabel', 'Topics'));
-      card.appendChild(el('p', 'sub',
-        'Words that must appear in the title or abstract. Leave empty and this tier '
-        + 'takes whatever is newest in its categories, which on a busy category means '
-        + 'the last hour of submissions rather than the day\'s.'));
+      const topicHelp = el('p', 'sub');
+      topicHelp.appendChild(document.createTextNode(
+        'Words a paper has to contain in its title or abstract. A paper only needs '
+        + 'one of them, not all of them. Leave this empty and the tier just takes '
+        + 'whatever is newest, which in a busy section is the last hour of posts '
+        + 'rather than the day\'s best. '));
+      const gold = el('span', 'chip-edit chip-live inline-demo', 'like this');
+      topicHelp.appendChild(gold);
+      topicHelp.appendChild(document.createTextNode(
+        ` means the word is in the next fetch. Only ${data.keywords_per_query} of your `
+        + 'words fit in one request, so it works through the list a few at a time and '
+        + 'the highlight moves along with it.'));
+      card.appendChild(topicHelp);
       card.appendChild(editableChips(t.topics, {
         placeholder: 'add a topic and press Enter',
         empty: 'no topics — this tier takes whatever is newest',
@@ -1443,52 +1662,58 @@ function renderProfile() {
       }));
     }
 
+    card.appendChild(el('div', 'fieldlabel', 'How deep to go'));
     const depth = el('div', 'inline-row');
-    depth.appendChild(el('label', 'fieldlabel', 'Papers per category, per run'));
     const range = el('input', 'range');
     range.type = 'range';
     range.min = '5';
     range.max = '100';
     range.step = '5';
     range.value = String(t.per_category);
+    range.setAttribute('aria-label', 'Papers per category per run');
     const out2 = el('b', 'rangeval', String(t.per_category));
+    const depthNote = el('p', 'profile-meta');
+    const redraw = () => {
+      const n = Number(range.value);
+      depthNote.textContent =
+        `Each of these ${tier.requests} categories hands back its ${n} most recent `
+        + `matching papers, so this tier brings home up to ${n * tier.requests} per run. `
+        + `Turning this up costs no extra time, because it is the same number of trips `
+        + `to arXiv either way. It only means each trip comes back fuller. Turn it up `
+        + `if a category is busy and you suspect you are seeing the last hour instead `
+        + `of the day. Turn it down if the feed is drowning you.`;
+    };
     range.addEventListener('input', () => {
       t.per_category = Number(range.value);
       out2.textContent = range.value;
+      redraw();
       markDirty();
     });
+    redraw();
     depth.appendChild(range);
     depth.appendChild(out2);
     card.appendChild(depth);
-
-    // Cost, in the currency arXiv actually charges in. "Papers per category
-    // per run" says nothing on its own about what a fetch costs or how long
-    // it takes; requests do, because they are what is rate-limited.
-    card.appendChild(el('p', 'profile-meta',
-      `${tier.requests} categories × 1 request each, 5 seconds apart — about `
-      + `${Math.round(tier.requests * 5)}s of this tier's share of a fetch. `
-      + `Up to ${tier.max_papers} papers come back. Raising the slider costs no `
-      + `extra requests; adding a category does.`));
+    card.appendChild(depthNote);
 
     if (tier.example_query) {
       const det = el('details', 'profile-query');
       det.appendChild(el('summary', null, 'The exact query this sends to arXiv'));
       det.appendChild(el('code', null, tier.example_query));
-      // The OR question, answered where it is asked.
+      // The OR question, answered where it gets asked.
       det.appendChild(el('p', 'sub',
-        'Read it as: in this category, AND matching at least one of these words. '
-        + 'The category is ANDed because a paper has to be in the section you asked '
-        + 'for. The words are ORed because they are separate interests, not a '
-        + 'checklist — ANDing them would ask arXiv for the one paper that is about '
-        + 'every topic you have at once, and there is no such paper. Each word is '
-        + 'searched in both the title (ti:) and the abstract (abs:), which is why '
-        + 'each one appears twice.'));
+        'In plain English: find papers in this section that mention any one of these '
+        + 'words.'));
       det.appendChild(el('p', 'sub',
-        `Only ${tier.keywords_this_run.length} of your ${tier.keywords_total} words `
-        + 'are in this query. A search_query is a URL parameter, so the list has to '
-        + 'be bounded; the window moves every run, so the whole list gets covered '
-        + 'over a few days instead of the first few forever. The gold-highlighted '
-        + 'chips above are the ones in the next run.'));
+        'The section is joined with AND because a paper has to be in it to count. '
+        + 'The words are joined with OR because they are separate things you are '
+        + 'interested in, not a checklist a paper has to satisfy. Joining them with '
+        + 'AND would be asking for the single paper that is about every topic you '
+        + 'have at once, and no such paper exists, so you would get nothing back. '
+        + 'Each word appears twice because it is checked against the title and '
+        + 'against the abstract.'));
+      det.appendChild(el('p', 'sub',
+        `This particular query carries ${tier.keywords_this_run.length} of your `
+        + `${tier.keywords_total} words. The next run carries the next few.`));
       card.appendChild(det);
     }
     out.appendChild(card);
@@ -1519,6 +1744,140 @@ function renderProfile() {
   foot.style.marginTop = '18px';
   foot.textContent = `Stored in ${data.home}. Everything on this page is that file.`;
   out.appendChild(foot);
+}
+
+// Which model reads your questions, and where it lives. Local or hosted, your
+// call. The one thing the page will not do is keep saying "stays on your
+// machine" once you have pointed it somewhere else.
+function modelCard() {
+  const card = el('section', 'profile-card');
+  const title = el('div', 'profile-title');
+  title.appendChild(el('h3', null, 'Who reads your questions'));
+  const llm = state.llm || {};
+  const pill = el('span', 'pill', {
+    ready: 'connected', absent: 'not connected', off: 'turned off',
+    no_models: 'no models', model_missing: 'model missing',
+  }[llm.status] || 'unknown');
+  if (llm.status === 'ready') pill.className = 'pill pill-good';
+  title.appendChild(pill);
+  card.appendChild(title);
+  card.appendChild(el('p', 'sub',
+    'Optional. Typing a question works without any of this: there is a built-in '
+    + 'reader that strips the question words and keeps the subject. A model does '
+    + 'that job better on messier sentences. It never decides the order of your '
+    + 'results, and it never decides to go and search arXiv. Those are both yours.'));
+
+  const body = el('div', 'modelgrid');
+  const providers = (state.llmProviders || []);
+
+  const pick = el('select', 'text-input');
+  pick.setAttribute('aria-label', 'Where the model runs');
+  providers.forEach((p) => {
+    const opt = el('option', null, p.label);
+    opt.value = p.key;
+    if (p.key === llm.provider) opt.selected = true;
+    pick.appendChild(opt);
+  });
+  body.appendChild(labelled('Where it runs', pick));
+
+  const url = el('input', 'text-input');
+  url.type = 'text';
+  url.value = llm.base_url || '';
+  url.placeholder = 'http://127.0.0.1:11434';
+  body.appendChild(labelled('Address', url));
+
+  const model = el('input', 'text-input');
+  model.type = 'text';
+  model.value = llm.model || '';
+  model.placeholder = (llm.models || [])[0] || 'qwen2.5:3b';
+  body.appendChild(labelled('Model', model));
+
+  const key = el('input', 'text-input');
+  key.type = 'password';
+  key.value = '';
+  key.placeholder = llm.has_key ? 'saved, leave blank to keep' : 'only for a paid service';
+  key.autocomplete = 'off';
+  body.appendChild(labelled('Key, if it needs one', key));
+  card.appendChild(body);
+
+  const chosen = () => providers.find((p) => p.key === pick.value) || {};
+  const blurb = el('p', 'sub', (chosen().blurb || ''));
+  const setup = el('p', 'step-note', chosen().setup || '');
+  pick.addEventListener('change', () => {
+    blurb.textContent = chosen().blurb || '';
+    setup.textContent = chosen().setup || '';
+    if (!url.value || providers.some((p) => p.default_url === url.value)) {
+      url.value = chosen().default_url || '';
+    }
+  });
+  card.appendChild(blurb);
+  card.appendChild(setup);
+
+  if ((llm.models || []).length) {
+    const found = el('div', 'chips');
+    found.appendChild(el('span', 'reading-tag', 'available'));
+    llm.models.slice(0, 12).forEach((name) => {
+      const b = el('button', 'suggestion', name);
+      b.type = 'button';
+      b.addEventListener('click', () => { model.value = name; });
+      found.appendChild(b);
+    });
+    card.appendChild(found);
+  }
+
+  const status = el('p', llm.local === false ? 'privacy privacy-remote' : 'privacy',
+    llm.privacy || '');
+  card.appendChild(status);
+  if (llm.message) card.appendChild(el('p', 'step-note', llm.message));
+
+  const row = el('div', 'inline-row');
+  const apply = el('button', 'btn', 'Connect');
+  apply.type = 'button';
+  apply.addEventListener('click', async () => {
+    apply.disabled = true;
+    apply.textContent = 'Checking…';
+    const payload = {
+      provider: pick.value, base_url: url.value.trim(),
+      model: model.value.trim(), enabled: true,
+    };
+    if (key.value.trim()) payload.api_key = key.value.trim();
+    const result = await post('/api/llm', payload, { timeoutMs: 20000 });
+    apply.disabled = false;
+    apply.textContent = 'Connect';
+    if (result.status !== 'ok') return toast(result.message || 'Could not save.', 'bad');
+    state.llm = result.llm;
+    state.llmProviders = providers;
+    toast(result.llm.message || 'Saved.');
+    renderProfile();
+    loadLlmStrip();
+  });
+  row.appendChild(apply);
+
+  const off = el('button', 'btn-ghost', llm.enabled === false ? 'Turn on' : 'Turn off');
+  off.type = 'button';
+  off.addEventListener('click', async () => {
+    const result = await post('/api/llm', { enabled: llm.enabled === false });
+    if (result.status !== 'ok') return toast(result.message || 'Could not save.', 'bad');
+    state.llm = result.llm;
+    toast(llm.enabled === false ? 'Model back on.'
+      : 'Turned off. Questions are read by the built-in reader.');
+    renderProfile();
+    loadLlmStrip();
+  });
+  row.appendChild(off);
+  card.appendChild(row);
+  return card;
+}
+
+function labelled(text, field) {
+  const wrap = el('div', 'modelfield');
+  const id = 'f-' + text.toLowerCase().replace(/[^a-z]+/g, '-');
+  field.id = id;
+  const label = el('label', 'fieldlabel', text);
+  label.setAttribute('for', id);
+  wrap.appendChild(label);
+  wrap.appendChild(field);
+  return wrap;
 }
 
 async function previewWorkspace(root, container) {
@@ -1607,6 +1966,7 @@ async function loadLlmStrip() {
   if (data.status !== 'ok') { strip.hidden = true; return; }
   const llm = data.llm || {};
   state.llm = llm;
+  state.llmProviders = data.providers || [];
 
   // Quiet by design. A tool that nags about an optional dependency every time
   // you open it has made the optional dependency mandatory in practice.
@@ -1889,6 +2249,17 @@ async function refreshHeaderMeta() {
       'The exact time was not recorded before this version — the next fetch will show it.');
   } else {
     add('last fetch', 'never');
+  }
+
+  state.coverage = s.coverage || null;
+  if (s.coverage && (s.coverage.gaps || []).length) {
+    const span = el('span', 'meta-stale');
+    span.appendChild(document.createTextNode('missing '));
+    span.appendChild(el('b', null, s.coverage.gaps.length === 1
+      ? prettyMonth(s.coverage.gaps[0])
+      : `${s.coverage.gaps.length} months`));
+    span.title = s.coverage_warning || '';
+    meta.appendChild(span);
   }
   return s;
 }

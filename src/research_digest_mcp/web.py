@@ -226,9 +226,26 @@ def api(path: str, params: dict) -> dict:
         terms = _significant(query.lower().split())
         every = rank_all_query(papers, query.lower().split())
         limit = int(one.get("limit", 25))
+
+        # Say when the answer is thin. Nine papers each matching a third of the
+        # query were presented exactly like nine good hits, and a search for
+        # "NVIDIA-labs" came back led by a paper about animal welfare. A result
+        # list that cannot distinguish "here it is" from "here is the closest
+        # thing I have" is a list that quietly answers the wrong question.
+        best = every[0]["score"] if every else 0.0
+        best_cover = every[0]["why"].get("coverage", 0) if every else 0
+        weak = bool(every) and (best < 0.40 or best_cover < 0.6)
         return {
             "status": "ok", "query": query, "terms": terms,
             "searched": len(papers), "matched": len(every),
+            "best_score": round(best, 3),
+            "weak": weak,
+            "weak_note": (
+                f"Nothing here is a strong match for {query!r}. The best of "
+                f"{len(every)} covers {int(best_cover * 100)}% of what you asked for. "
+                f"Your library may simply not have this yet."
+            ) if weak else "",
+            "coverage": storage.month_coverage(papers) if (weak or not every) else None,
             "results": [{
                 "id": p["id"], "title": p.get("title", ""), "url": p.get("url", ""),
                 "published": p.get("published", ""), "category": p.get("primary_category", ""),
@@ -363,8 +380,18 @@ def api(path: str, params: dict) -> dict:
         from .config import record_fetch
         from .fetchers import ArxivUnavailable, fetch_settings
         settings = load_settings()
+        # A date window makes a missed month recoverable. Without one, every
+        # fetch starts from the newest paper, so a gap stays a gap forever and
+        # the only symptom is a search that confidently finds nothing.
+        since, until = one.get("since"), one.get("until")
         try:
-            result = fetch_settings(settings)
+            if since or until:
+                from .config import load_profile
+                from .fetchers import fetch_profile
+                result = fetch_profile(load_profile(settings), since=since, until=until,
+                                       offset=int(load_state().get("fetch_offset", 0)))
+            else:
+                result = fetch_settings(settings)
         except ArxivUnavailable as exc:
             return {"status": "error", "message": str(exc)}
         if not result["papers"]:
@@ -405,7 +432,8 @@ def api(path: str, params: dict) -> dict:
         # Nested, not spread: probe() has its own status vocabulary (absent,
         # no_models, ready) and spreading it over the envelope made "no local
         # model installed" arrive at the client as a failed request.
-        return {"status": "ok", "llm": llm.probe(load_settings())}
+        return {"status": "ok", "llm": llm.probe(load_settings()),
+                "providers": [{"key": k, **v} for k, v in llm.PROVIDERS.items()]}
 
     if path == "/api/workspace":
         from .workspace import WorkspaceUnavailable, configured_root, scan
@@ -672,29 +700,48 @@ def _write_profile(payload: dict) -> dict:
 
 
 def _write_llm(payload: dict) -> dict:
-    """Save the optional local-model settings. Every field is optional."""
+    """Save the model settings. Every field is optional.
+
+    A remote endpoint is allowed. An earlier version refused anything but
+    localhost, which was the wrong shape of protection: it stopped someone
+    using LM Studio on another box on their own LAN, while the actual
+    requirement is only that the page never claims privacy it is not
+    delivering. So the URL is accepted and `probe` reports, from the URL
+    itself, exactly where questions go. The promise follows the setting rather
+    than the setting being bent to fit the promise.
+
+    What never leaves is unchanged either way: your papers and your workspace
+    files. Only the question text is ever sent.
+    """
     from . import llm
     settings = load_settings()
     block = dict(settings.get("llm") or {})
-    if "enabled" in payload:
-        block["enabled"] = bool(payload["enabled"])
-    if "dismissed" in payload:
-        block["dismissed"] = bool(payload["dismissed"])
+    for flag in ("enabled", "dismissed"):
+        if flag in payload:
+            block[flag] = bool(payload[flag])
+    if "provider" in payload:
+        provider = str(payload["provider"] or "").strip()
+        if provider not in llm.PROVIDERS:
+            return {"status": "error",
+                    "message": f"Unknown provider {provider!r}. "
+                               f"Pick one of: {', '.join(llm.PROVIDERS)}."}
+        block["provider"] = provider
     if "base_url" in payload:
         url = str(payload["base_url"] or "").strip().rstrip("/")
-        # Local only, and enforced here rather than requested in the UI. This
-        # setting decides where your questions are sent.
-        if url and not re.match(r"^https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$", url):
+        if url and not re.match(r"^https?://[^\s/$.?#].[^\s]*$", url):
             return {"status": "error",
-                    "message": ("The model server must be on this machine "
-                                "(127.0.0.1 or localhost). Your questions and your "
-                                "workspace terms are not sent off-box.")}
-        block["base_url"] = url or llm.DEFAULT_BASE_URL
+                    "message": f"{url!r} is not a URL. It should look like "
+                               f"http://127.0.0.1:11434 or https://api.example.com/v1."}
+        block["base_url"] = url
     if "model" in payload:
         block["model"] = str(payload["model"] or "").strip()
+    if "api_key" in payload:
+        block["api_key"] = str(payload["api_key"] or "").strip()
     settings["llm"] = block
     save_settings(settings)
-    return {"status": "ok", "llm": llm.probe(settings)}
+    probed = llm.probe(settings)
+    return {"status": "ok", "llm": probed,
+            "message": probed.get("message", "") + " " + probed.get("privacy", "")}
 
 
 def api_write(path: str, payload: dict) -> dict:

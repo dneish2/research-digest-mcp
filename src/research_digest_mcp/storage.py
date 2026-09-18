@@ -176,6 +176,79 @@ def import_papers(new_papers: List[Dict[str, Any]], run_dates=None) -> Dict[str,
     return {"added": added, "updated": updated, "total": len(papers)}
 
 
+def month_coverage(papers: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Which months the library actually holds papers from, and which it skipped.
+
+    A gap is invisible from every other surface. Search says "9 matched" over a
+    library missing an entire month, and nothing anywhere says the month is
+    missing -- so a paper that exists and was simply never fetched is
+    indistinguishable from a paper that does not exist. That is the worst answer
+    a research tool can give, and it is the one it gave: a July paper could not
+    be found, in a library holding 402 papers from May, 369 from June and none
+    at all from July.
+
+    Counts by publication date, not by when it was fetched, because the question
+    is "what part of the literature am I missing", not "when did I run this".
+    """
+    from datetime import date
+
+    months: Dict[str, int] = {}
+    for paper in papers:
+        stamp = str(paper.get("published") or paper.get("first_seen") or "")[:7]
+        if len(stamp) == 7:
+            months[stamp] = months.get(stamp, 0) + 1
+    if not months:
+        return {"months": [], "gaps": [], "thin": [], "earliest": "", "latest": ""}
+
+    # Only the window you actually fetch in. A library accumulates a long tail
+    # of older papers -- one saved by id, one cross-listed, one pulled in by a
+    # date-ranged backfill -- and measured from its true earliest month this
+    # reported 215 missing months going back to 1995, which is not a gap, it is
+    # a library that was not running in 1995. The window opens at the first
+    # month holding a tenth of the busiest one: that is where deliberate
+    # fetching started, and a hole after that point is a hole worth filling.
+    busiest = max(months.values())
+    floor = max(5, busiest // 10)
+    active = sorted(m for m, n in months.items() if n >= floor)
+    if not active:
+        active = sorted(months)
+    earliest, latest = active[0], max(months)
+
+    span = []
+    year, month = int(earliest[:4]), int(earliest[5:7])
+    today = date.today().strftime("%Y-%m")
+    while True:
+        key = f"{year:04d}-{month:02d}"
+        span.append(key)
+        if key in (latest, today):
+            break
+        month += 1
+        if month > 12:
+            year, month = year + 1, 1
+        if len(span) > 600:                      # a corrupt date must not loop forever
+            break
+
+    held = [{"month": m, "papers": months.get(m, 0)} for m in span]
+    counts = sorted(m["papers"] for m in held if m["papers"])
+    typical = counts[len(counts) // 2] if counts else 0
+    # The current month is always incomplete, so it is never a gap.
+    current = date.today().strftime("%Y-%m")
+    return {
+        "months": held,
+        "gaps": [m["month"] for m in held
+                 if m["papers"] == 0 and m["month"] != current],
+        # A month holding a fraction of a normal one is a partial fetch, which
+        # reads as a quiet month and is not one.
+        "thin": [m["month"] for m in held
+                 if m["month"] != current and 0 < m["papers"] < max(3, typical // 4)],
+        "typical_month": typical,
+        "window_start": earliest,
+        "earliest": min(months),
+        "latest": latest,
+        "outside_window": sum(n for m, n in months.items() if m < earliest),
+    }
+
+
 # --- saved / read ----------------------------------------------------------
 
 def load_saved() -> Dict[str, Any]:

@@ -558,6 +558,78 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
 .starter span{font-size:.79rem;color:var(--ink-2);line-height:1.45}
 .starter-cats{font-family:var(--f-mono);font-size:.66rem;color:var(--ink-3);
   margin-top:3px}
+
+/* ---------- the scoring walkthrough ---------- */
+.step{padding:14px 0;border-bottom:1px solid var(--rule)}
+.step:last-child{border-bottom:0}
+.step-head{display:flex;align-items:baseline;gap:10px}
+.step-n{font-family:var(--f-mono);font-size:.68rem;color:var(--surface);
+  background:var(--accent);border-radius:99px;width:19px;height:19px;
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.step-q{flex:1;font-size:.93rem;font-weight:600;color:var(--ink);line-height:1.35}
+.step-v{font-family:var(--f-mono);font-size:1rem;color:var(--quant);font-weight:600;
+  font-variant-numeric:tabular-nums}
+.step-a{font-size:.85rem;color:var(--ink-2);line-height:1.6;margin-top:6px;
+  padding-left:29px;max-width:58ch}
+.step-note{font-size:.78rem;color:var(--ink-3);line-height:1.55;margin-top:8px;
+  padding-left:29px;max-width:58ch}
+.step-words{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;padding-left:29px}
+.wordchip{display:inline-flex;gap:7px;align-items:baseline;padding:3px 11px;
+  border-radius:99px;background:var(--accent-soft);border:1px solid transparent;
+  font-size:.79rem;color:var(--accent);cursor:help}
+.wordchip b{font-weight:600}
+.wordchip span{font-family:var(--f-mono);font-size:.68rem;opacity:.75}
+.wordchip-weak{background:var(--surface-2);color:var(--ink-3);border-color:var(--rule)}
+.step-total{border-top:2px solid var(--ink);margin-top:6px}
+.step-total .step-q{font-family:var(--f-title);font-size:1.05rem}
+.step-total .step-v{font-size:1.3rem;color:var(--ink)}
+.step-total .step-a{padding-left:0}
+
+/* ---------- scope honesty ---------- */
+.scopebar{display:flex;flex-direction:column;gap:5px;background:var(--warn-soft);
+  border:1px solid rgba(184,134,11,.3);border-left:3px solid var(--warn);
+  border-radius:10px;padding:12px 15px;margin-bottom:18px;font-size:.84rem;
+  color:var(--ink-2);line-height:1.6}
+.scopebar b{color:var(--ink)}
+.howlist{margin:10px 0 0 18px;display:flex;flex-direction:column;gap:8px;
+  font-size:.83rem;line-height:1.6;color:var(--ink-2)}
+.howlist li{padding-left:4px}
+
+/* ---------- model settings ---------- */
+.modelgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:12px;margin:14px 0 4px}
+.modelfield{display:flex;flex-direction:column;gap:5px}
+.modelfield .fieldlabel{margin:0}
+.modelfield select.text-input{font-family:var(--f-body);cursor:pointer}
+.privacy{font-size:.83rem;color:var(--accent);background:var(--accent-soft);
+  border-radius:8px;padding:9px 12px;margin-top:12px;line-height:1.55}
+.privacy-remote{color:var(--warn);background:var(--warn-soft)}
+.pill-good{background:var(--accent-soft);color:var(--accent);
+  border-color:rgba(91,123,106,.35)}
+.inline-demo{margin:0 3px;padding:1px 8px;font-size:.74rem;vertical-align:baseline}
+.pill-warn{background:var(--warn-soft);color:var(--warn);border-color:rgba(184,134,11,.3)}
+
+/* ---------- what the library is missing ---------- */
+.gapnote{display:flex;flex-direction:column;gap:6px;align-items:flex-start;
+  background:var(--warn-soft);border:1px solid rgba(184,134,11,.3);border-radius:10px;
+  padding:12px 15px;margin-top:14px;font-size:.83rem;color:var(--ink-2);
+  line-height:1.55;text-align:left}
+.gapnote b{color:var(--ink)}
+.monthchart{display:flex;gap:4px;align-items:flex-end;margin-top:16px;
+  overflow-x:auto;padding-bottom:4px}
+.monthcol{flex:1 0 34px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  border:0;background:none;font:inherit;color:inherit;padding:0}
+.monthbar{width:100%;height:78px;display:flex;align-items:flex-end;
+  background:var(--surface-2);border-radius:4px;overflow:hidden}
+.monthbar i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0}
+.monthcol-gap{cursor:pointer}
+.monthcol-gap .monthbar{background:var(--warn-soft);
+  border:1px dashed rgba(184,134,11,.5)}
+.monthcol-gap:hover .monthbar{background:var(--warn);opacity:.25}
+.monthcol-gap .monthn{color:var(--warn);font-weight:600}
+.monthn{font-family:var(--f-mono);font-size:.66rem;color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.monthlabel{font-family:var(--f-mono);font-size:.6rem;color:var(--ink-3)}
 .formula .r{align-items:baseline}
 .formula .r small{display:block;font-family:var(--f-body);font-size:.72rem;
   color:var(--ink-3);line-height:1.45;max-width:46ch;margin-top:2px;

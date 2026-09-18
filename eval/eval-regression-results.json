@@ -2,7 +2,7 @@
   "summary": {
     "current": {
       "p@5": 0.7692,
-      "p@10": 0.4692
+      "p@10": 0.4731
     },
     "old_buggy": {
       "p@5": 0.4077,
@@ -87,8 +87,8 @@
         "Optimal Rates for Agentic Networked Information Aggregation",
         "Robust PAC Learning of Concurrent Stochastic Games",
         "Praxist: From Experimental Artifacts to Solution Lineages",
-        "DART-SD: Diamond-topology Aware Retrieval and Tuning for Self-Distillation of Multi-Turn T",
-        "Exploiting Particle Swarm Optimization in Multiple Faults Fuzzy Detection"
+        "Exploiting Particle Swarm Optimization in Multiple Faults Fuzzy Detection",
+        "Random Drift Particle Swarm Optimization"
       ],
       "current_top5_is_positive": [
         true,
@@ -424,8 +424,8 @@
         "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress",
         "Does Your Agent's Memory Survive a Model Upgrade? A Controlled Study of Memory Portability",
         "Deepchecks: Evaluating Retrieval-Augmented Generation (RAG)",
-        "EngiAI: A Multi-Agent Framework and Benchmark Suite for LLM-Driven Engineering Design",
-        "DynaTree: Dynamic Agentic Retrieval Tree for Time-Sensitive News Retrieval"
+        "TechGraphRAG: An Agentic Graph-Augmented RAG Framework for Technical Literature Reasoning",
+        "Evidence Blindness in Direct Corpus Interaction: Persistent Navigation with AtlasNav"
       ],
       "old_buggy_top5_titles": [
         "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress",
@@ -467,8 +467,8 @@
         "Multi-Scale Implicit Transformer with Re-parameterize for Arbitrary-Scale Super-Resolution",
         "Learning to Cluster Faces via Transformer",
         "Towards Scale-Aware Low-Light Enhancement via Structure-Guided Transformer Design",
-        "CaMBRAIN: Real-time, Continuous EEG Inference with Causal State Space Models",
-        "Planetary Prediction Engine: Autonomous Geospatial Prediction via Intelligent Data Selecti"
+        "Attention Debiasing for Token Pruning in Vision Language Models",
+        "CaMBRAIN: Real-time, Continuous EEG Inference with Causal State Space Models"
       ],
       "old_buggy_top5_titles": [
         "VoiceMem: Streaming Dual-Brain Memory for Real-Time Interaction",
@@ -511,7 +511,7 @@
         "A Survey of Multi-Agent Deep Reinforcement Learning with Communication",
         "Investigating the Impact of Direct Punishment on the Emergence of Cooperation in Multi-Age",
         "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning",
-        "From Language Models to World-Acting Systems: Progress and Limits of Agentic AI across Dig"
+        "Deep Reinforcement Learning: An Overview"
       ],
       "old_buggy_top5_titles": [
         "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning",
@@ -711,7 +711,7 @@
       "phrase": "vision language",
       "n_positives": 5,
       "current_p@5": 0.6,
-      "current_p@10": 0.4,
+      "current_p@10": 0.5,
       "old_buggy_p@5": 0.4,
       "old_buggy_p@10": 0.4,
       "recency_p@5": 0.0,
@@ -722,8 +722,8 @@
       "positives_in_ranked": 5,
       "positives_missing_from_ranked": 0,
       "current_top5_titles": [
-        "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu",
         "Domain-adapted large language models for classifying nuclear medicine reports",
+        "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu",
         "Attention Debiasing for Token Pruning in Vision Language Models",
         "HapTile: A Haptic-Informed Vision-Tactile-Language-Action Dataset for Contact-Rich Imitati",
         "BiliVLA: Scene-Aware Vision-Language-Action Model with Reinforcement Learning for Autonomo"
@@ -948,7 +948,7 @@
         "ST-GAN: Spatial Transformer Generative Adversarial Networks for Image Compositing",
         "An overall view of key problems in algorithmic trading and recent progress",
         "Building a research-software catalog with a coding agent: from hackathon prototype to publ",
-        "Trust-Aware Adaptive Disclosure for Inference Privacy Preservation in Multi-Agent Networks"
+        "Generative Iris Prior Embedded Transformer for Iris Restoration"
       ],
       "current_top5_is_positive": [
         true,

@@ -64,6 +64,24 @@ class TestReadingAQuestion(TempHome):
                  "abstract": "We study judging with language models.", "concepts": []}
         self.assertIsNotNone(score_query(paper, ["llm-as-judge"]))
 
+    def test_one_half_of_a_compound_is_not_a_match_regression(self):
+        """The fix above, overdone. Splitting "nvidia-labs" into two independent
+        terms meant a paper saying "labs" anywhere counted as a third of the
+        query and came back as a result: a search for NVIDIA-labs returned a
+        paper about animal welfare in AI travel agents. A compound is one idea.
+        The paper has it, or has all of its parts, or does not have it."""
+        from research_digest_mcp.scoring import score_query
+        half = {"title": "Your AI travel agent would book you a bullfight",
+                "abstract": "Animal welfare in frontier labs and their models.",
+                "concepts": []}
+        other_half = {"title": "GPU fault resilience in NVIDIA MPS",
+                      "abstract": "We design fault-resilient MPS.", "concepts": []}
+        both = {"title": "A report from the NVIDIA labs team",
+                "abstract": "Work done at NVIDIA labs.", "concepts": []}
+        self.assertIsNone(score_query(half, ["nvidia-labs"]))
+        self.assertIsNone(score_query(other_half, ["nvidia-labs"]))
+        self.assertIsNotNone(score_query(both, ["nvidia-labs"]))
+
     def test_scope_is_read_from_the_question(self):
         from research_digest_mcp.askparse import detect_scope
         self.assertEqual(detect_scope("anything new on arxiv about agents"), "arxiv")
