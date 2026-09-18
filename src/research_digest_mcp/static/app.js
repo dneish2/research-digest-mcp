@@ -1273,6 +1273,49 @@ function renderProfile() {
   }
   out.appendChild(costBox);
 
+  // Starting points, for the reader who has just met the word "cs.MA". The
+  // profile screen assumes you already know which corner of arXiv you want,
+  // and a new library ships with whatever the defaults were, forever, because
+  // nothing ever suggests otherwise.
+  const starters = (profileState.catalogue || {}).starters || [];
+  if (starters.length) {
+    const card = el('section', 'profile-card');
+    const title = el('div', 'profile-title');
+    title.appendChild(el('h3', null, 'Start from a shape'));
+    card.appendChild(title);
+    card.appendChild(el('p', 'sub',
+      'Each of these replaces the core and complementary tiers with a set that is '
+      + 'known to return papers. Nothing is saved until you press Save, so you can '
+      + 'try one, look at what it would ask for, and reload from disk to undo.'));
+    const row = el('div', 'starter-row');
+    starters.forEach((s) => {
+      const b = el('button', 'starter');
+      b.type = 'button';
+      b.appendChild(el('b', null, s.label));
+      b.appendChild(el('span', null, s.blurb));
+      b.appendChild(el('span', 'starter-cats',
+        (s.core.categories || []).join('  ')));
+      b.addEventListener('click', () => {
+        if (!window.confirm(
+          `Replace the core and complementary tiers with "${s.label}"?\n\n`
+          + 'Your stretch tier, work context and workspace folder are left alone, '
+          + 'and nothing is written until you press Save.')) return;
+        profileState.starterKey = s.key;
+        ['core', 'complementary'].forEach((tier) => {
+          if (!s[tier]) return;
+          profileState.draft.tiers[tier].categories = (s[tier].categories || []).slice();
+          profileState.draft.tiers[tier].topics = (s[tier].topics || []).slice();
+        });
+        markDirty();
+        renderProfile();
+        toast(`Loaded "${s.label}". Review it, then Save.`);
+      });
+      row.appendChild(b);
+    });
+    card.appendChild(row);
+    out.appendChild(card);
+  }
+
   const bar = el('div', 'savebar');
   const save = el('button', 'btn', 'Saved');
   save.id = 'profile-save';

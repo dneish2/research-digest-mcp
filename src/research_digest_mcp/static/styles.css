@@ -548,6 +548,16 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
 .costbar b{color:var(--ink);font-family:var(--f-mono);font-size:.8rem}
 .costbar-warn{border-left-color:var(--warn);background:var(--warn-soft)}
 .quickdates{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.starter-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));
+  gap:10px;margin-top:14px}
+.starter{display:flex;flex-direction:column;gap:4px;text-align:left;padding:13px 15px;
+  border:1px solid var(--rule);border-radius:10px;background:var(--surface);
+  cursor:pointer;font:inherit;color:inherit}
+.starter:hover{border-color:var(--accent);background:var(--accent-soft)}
+.starter b{font-size:.9rem}
+.starter span{font-size:.79rem;color:var(--ink-2);line-height:1.45}
+.starter-cats{font-family:var(--f-mono);font-size:.66rem;color:var(--ink-3);
+  margin-top:3px}
 .formula .r{align-items:baseline}
 .formula .r small{display:block;font-family:var(--f-body);font-size:.72rem;
   color:var(--ink-3);line-height:1.45;max-width:46ch;margin-top:2px;
