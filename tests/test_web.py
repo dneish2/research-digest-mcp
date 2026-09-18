@@ -470,3 +470,81 @@ class TestFetchTimestamp(TempHome):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheMap(TempHome):
+    """The map makes claims about how a library hangs together, so it has to be
+    countable. Nothing in it is estimated: every line means a specific number
+    of papers mention both ends, and that number is on screen."""
+
+    def _library(self):
+        from research_digest_mcp import storage
+        rows = []
+        # 10 papers pairing agentic with evaluation, which is the ordinary case.
+        for i in range(10):
+            rows.append({"id": f"26.400{i:02d}", "title": "Agentic evaluation study",
+                         "abstract": "We evaluate agentic systems on a benchmark.",
+                         "published": "2026-05-01", "primary_category": "cs.AI",
+                         "concepts": []})
+        # 20 more on each side alone, so both concepts are substantial.
+        for i in range(20):
+            rows.append({"id": f"26.410{i:02d}", "title": "Agentic planning",
+                         "abstract": "An agentic planning approach.",
+                         "published": "2026-05-01", "primary_category": "cs.AI",
+                         "concepts": []})
+            rows.append({"id": f"26.420{i:02d}", "title": "Diffusion models",
+                         "abstract": "We study diffusion for images.",
+                         "published": "2026-05-01", "primary_category": "cs.CV",
+                         "concepts": []})
+        # One paper doing the rare thing: agentic AND diffusion.
+        rows.append({"id": "26.43000", "title": "Agentic control of diffusion models",
+                     "abstract": "An agentic controller for a diffusion model.",
+                     "published": "2026-05-02", "primary_category": "cs.AI",
+                     "concepts": []})
+        storage.merge_papers(rows, date.today().isoformat())
+        return storage
+
+    def test_every_link_is_a_count_you_can_get_back_to(self):
+        from research_digest_mcp.clusters import build
+        storage = self._library()
+        out = build(storage.load_papers())
+        self.assertEqual(out["status"], "ok")
+        for link in out["links"]:
+            self.assertGreaterEqual(link["papers"], 3)
+            self.assertGreater(link["strength"], 0)
+        names = {n["concept"] for n in out["nodes"]}
+        self.assertIn("agentic", names)
+        self.assertIn("diffusion", names)
+
+    def test_the_layout_is_the_same_every_time(self):
+        """A map that moves when you reopen it is not a place. A force
+        simulation would look better and would do exactly that."""
+        from research_digest_mcp.clusters import build
+        storage = self._library()
+        papers = storage.load_papers()
+        first = build(papers)
+        second = build(papers)
+        self.assertEqual([(n["concept"], n["x"], n["y"]) for n in first["nodes"]],
+                         [(n["concept"], n["x"], n["y"]) for n in second["nodes"]])
+
+    def test_a_bridge_is_the_rare_pairing_not_the_common_one(self):
+        """The whole point: a search only finds what you knew to ask for, and
+        the ranked list puts the most typical papers on top."""
+        from research_digest_mcp.clusters import bridges
+        storage = self._library()
+        found = bridges(storage.load_papers())
+        self.assertTrue(found, "the rare pairing should surface")
+        self.assertEqual(found[0]["id"], "26.43000")
+        self.assertEqual(sorted(found[0]["pair"]), ["agentic", "diffusion"])
+        self.assertIn("only 1", found[0]["note"])
+
+    def test_a_thin_library_says_so_instead_of_drawing_noise(self):
+        from research_digest_mcp import storage
+        from research_digest_mcp.clusters import build
+        storage.merge_papers([
+            {"id": "26.9", "title": "One paper", "abstract": "About agentic things.",
+             "published": "2026-05-01", "primary_category": "cs.AI", "concepts": []},
+        ], date.today().isoformat())
+        out = build(storage.load_papers())
+        self.assertEqual(out["status"], "empty")
+        self.assertEqual(out["nodes"], [])

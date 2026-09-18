@@ -416,7 +416,7 @@ function renderReading(data) {
 
   if ((data.ignored_terms || []).length) {
     box.appendChild(el('div', 'reading-drop',
-      `Ignored ${data.ignored_terms.join(', ')} — no paper you hold contains `
+      `Ignored ${data.ignored_terms.join(', ')}. No paper you hold contains `
       + `${data.ignored_terms.length > 1 ? 'them' : 'it'}, so they could only dilute the ranking.`));
   }
 
@@ -686,6 +686,179 @@ async function openPanel(i) {
   body.appendChild(foot);
 }
 
+/* ---------------- the map ---------------- */
+
+const SVG = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs) => {
+  const n = document.createElementNS(SVG, tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => n.setAttribute(k, String(v)));
+  return n;
+};
+
+async function loadMap() {
+  const out = $('#view-map');
+  out.textContent = '';
+  out.appendChild(el('p', 'dim', 'Reading your library…'));
+  const data = await get('/api/map', {}, { timeoutMs: 30000 });
+  out.textContent = '';
+
+  if (data.status === 'empty') {
+    out.appendChild(notice('Not enough to map yet', data.message || ''));
+    return;
+  }
+  if (data.status !== 'ok') {
+    out.appendChild(notice('Could not build the map', data.message || data.status, loadMap));
+    return;
+  }
+
+  const head = el('div', 'view-head');
+  head.appendChild(el('h2', null, 'How your library fits together'));
+  head.appendChild(el('p', 'sub', data.how));
+  out.appendChild(head);
+
+  out.appendChild(mapSvg(data));
+
+  // The part worth having. A search only finds what you already knew to ask
+  // for, and the ranked list puts the most typical papers on top, so the tool
+  // is weakest exactly where reading pays best: a paper joining two things you
+  // care about separately and had never connected.
+  if ((data.bridges || []).length) {
+    const card = el('section', 'profile-card');
+    card.appendChild(el('h3', null, 'Papers joining two things you keep apart'));
+    card.appendChild(el('p', 'sub',
+      'Ranked by how unusual the pairing is in your own library, not by how good '
+      + 'the paper is. A paper covering two subjects that two hundred other papers '
+      + 'also cover together is ordinary. One covering a pairing you hold almost '
+      + 'nothing on is worth a look even if it is otherwise unremarkable. This is '
+      + 'the one list here a search could never have shown you, because you would '
+      + 'have had to already know to ask.'));
+    data.bridges.forEach((row) => {
+      const item = el('div', 'bridge');
+      const link = el('button', 'linkish bridge-title', row.title);
+      link.type = 'button';
+      link.addEventListener('click', () => openById(row.id, row.url));
+      item.appendChild(link);
+      const pair = el('div', 'bridge-pair');
+      row.pair.forEach((concept, i) => {
+        if (i) pair.appendChild(el('span', 'bridge-plus', '+'));
+        const chip = el('button', 'tag tag-live', concept);
+        chip.type = 'button';
+        chip.addEventListener('click', () => { $('#q').value = concept; runSearch('search'); });
+        pair.appendChild(chip);
+      });
+      item.appendChild(pair);
+      item.appendChild(el('div', 'bridge-note', row.note));
+      card.appendChild(item);
+    });
+    out.appendChild(card);
+  }
+}
+
+// Open a paper whether or not it is in the list currently on screen.
+async function openById(id, url) {
+  const at = state.papers.findIndex((p) => p.id === id);
+  if (at >= 0) { setView('grid'); return openPanel(at); }
+  const data = await get('/api/paper', { id });
+  if (data.status !== 'ok') {
+    return window.open(url || `https://arxiv.org/abs/${id}`, '_blank', 'noopener');
+  }
+  // Put it at the front of the current list so the panel's next and previous
+  // keys still mean something, rather than opening a paper in a list of none.
+  state.papers.unshift({ id: data.id, title: data.title, saved: data.saved,
+    read: data.read, concepts: data.concepts, published: data.published,
+    category: data.category, about: data.about, why_text: data.why_text });
+  paperCache.set(cacheKey(id), Promise.resolve(data));
+  setView('grid');
+  renderGrid();
+  openPanel(0);
+}
+
+function mapSvg(data) {
+  const wrap = el('div', 'mapwrap');
+  const size = 620;
+  const pad = 74;
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${size} ${size}`, class: 'conceptmap',
+    role: 'img', 'aria-label': 'Concept map of your library',
+  });
+
+  const at = (v) => pad + ((v + 1) / 2) * (size - pad * 2);
+  const byName = {};
+  data.nodes.forEach((n) => { byName[n.concept] = n; });
+  const biggest = Math.max(...data.nodes.map((n) => n.papers), 1);
+  const radiusOf = (n) => 11 + Math.sqrt(n.papers / biggest) * 26;
+
+  const linkLayer = svgEl('g', { class: 'maplinks' });
+  data.links.forEach((link) => {
+    const a = byName[link.source];
+    const b = byName[link.target];
+    if (!a || !b) return;
+    const line = svgEl('line', {
+      x1: at(a.x), y1: at(a.y), x2: at(b.x), y2: at(b.y),
+      'stroke-width': (0.6 + link.strength * 4.5).toFixed(2),
+      opacity: (0.13 + link.strength * 0.5).toFixed(2),
+    });
+    const t = svgEl('title');
+    t.textContent = `${link.papers} papers mention both ${link.source} and ${link.target}`;
+    line.appendChild(t);
+    linkLayer.appendChild(line);
+  });
+  svg.appendChild(linkLayer);
+
+  const nodeLayer = svgEl('g', { class: 'mapnodes' });
+  data.nodes.forEach((n) => {
+    const g = svgEl('g', { class: 'mapnode', tabindex: '0', role: 'button' });
+    const r = radiusOf(n);
+    g.appendChild(svgEl('circle', { cx: at(n.x), cy: at(n.y), r }));
+    if (n.saved) {
+      // A ring showing how much of this you actually kept. The gap between
+      // what you fetch and what you save is the useful signal.
+      const frac = Math.min(1, n.saved / Math.max(1, n.papers) * 6);
+      const c = 2 * Math.PI * (r + 3.5);
+      g.appendChild(svgEl('circle', {
+        cx: at(n.x), cy: at(n.y), r: r + 3.5, class: 'mapsaved',
+        'stroke-dasharray': `${(c * frac).toFixed(1)} ${c.toFixed(1)}`,
+        transform: `rotate(-90 ${at(n.x)} ${at(n.y)})`,
+      }));
+    }
+    const label = svgEl('text', {
+      x: at(n.x), y: at(n.y) + 3.5, 'text-anchor': 'middle',
+      'font-size': Math.max(8.5, Math.min(12, r * 0.42)),
+    });
+    label.textContent = n.concept.length > 15 ? n.concept.slice(0, 14) + '…' : n.concept;
+    g.appendChild(label);
+    const title = svgEl('title');
+    title.textContent = `${n.concept}: ${n.papers} papers, ${n.share}% of your library`
+      + (n.saved ? `, ${n.saved} saved` : '')
+      + (n.with.length ? `\nMost often alongside ${n.with.map((w) => w.concept).join(', ')}`
+        : '')
+      + '\nClick to search for it.';
+    g.appendChild(title);
+    const go = () => { $('#q').value = n.concept; runSearch('search'); };
+    g.addEventListener('click', go);
+    g.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+    });
+    nodeLayer.appendChild(g);
+  });
+  svg.appendChild(nodeLayer);
+  wrap.appendChild(svg);
+
+  const key = el('div', 'mapkey');
+  [['Bigger circle', 'more of your papers mention it'],
+   ['Thicker line', 'the two turn up together more often'],
+   ['Gold arc', 'how much of it you have saved'],
+   ['Click anything', 'searches your library for it']]
+    .forEach(([term, meaning]) => {
+      const row = el('div', 'mapkey-row');
+      row.appendChild(el('b', null, term));
+      row.appendChild(el('span', null, meaning));
+      key.appendChild(row);
+    });
+  wrap.appendChild(key);
+  return wrap;
+}
+
 /* ---------------- trends ---------------- */
 
 async function loadTrends() {
@@ -697,7 +870,7 @@ async function loadTrends() {
   if (data.status !== 'ok') {
     const reason = data.status === 'error'
       ? (data.message || 'Could not reach the server.')
-      : 'Trends compares this week’s concepts against last week’s — come back '
+      : 'Trends compares this week’s concepts against last week’s. Come back '
         + 'after a few daily fetches and there will be something to compare.';
     out.appendChild(notice(data.status === 'error' ? 'Could not load trends'
       : 'Not enough history yet', reason, loadTrends));
@@ -831,7 +1004,7 @@ function renderCrossing(out, crossing) {
   col.style.marginTop = '18px';
   col.appendChild(el('h3', null, 'Crossing over'));
   col.appendChild(el('p', 'sub',
-    'A concept appearing in a category your library has never held it in before — '
+    'A concept appearing in a category your library has never held it in before. '
     + 'usually worth more attention than the same idea appearing where it always does. '
     + 'The claim is about your library over the months you have been fetching it, not '
     + 'about the literature, and only categories where you already hold 20+ tagged '
@@ -865,7 +1038,7 @@ async function loadDigest() {
     return;
   }
 
-  out.appendChild(el('h2', null, `Today’s digest — ${humanDate(data.date)}`));
+  out.appendChild(el('h2', null, `Today’s digest, ${humanDate(data.date)}`));
   out.appendChild(el('p', 'sub',
     `The top ${data.picks.length} of ${data.considered} papers in your library, one per `
     + 'category where possible. Deterministic: the same library and topics produce the same '
@@ -909,38 +1082,169 @@ async function loadDigest() {
 async function loadQueue() {
   const out = $('#view-queue');
   out.textContent = 'Loading…';
-  const data = await get('/api/papers', { when: 'queue', sort: 'score', limit: 120 });
+  const [data, saved] = await Promise.all([
+    get('/api/papers', { when: 'saved', sort: 'score', limit: 200 }),
+    get('/api/saved', {}, { timeoutMs: 15000 }),
+  ]);
   out.textContent = '';
   if (data.status !== 'ok') {
-    out.appendChild(notice('Could not load the queue', data.message || data.status, loadQueue));
+    out.appendChild(notice('Could not load your shelf', data.message || data.status, loadQueue));
     return;
   }
 
+  const notes = {};
+  (saved.results || []).forEach((row) => {
+    notes[row.id] = { note: row.note || '', saved_at: row.saved_at || '' };
+  });
+
   const head = el('div', 'view-head');
-  head.appendChild(el('h2', null, 'Reading queue'));
+  head.appendChild(el('h2', null, 'Your shelf'));
   head.appendChild(el('p', 'sub',
-    'Papers you starred and have not marked read. Open one and press "Mark read" to clear it.'));
+    'Everything you starred, newest first, with your notes and what each paper says '
+    + 'it does. Built for skimming a stack you already chose rather than searching '
+    + 'one you have not.'));
   out.appendChild(head);
 
   if (!data.results.length) {
     out.appendChild(el('div', 'empty',
-      'Nothing queued. Star a paper in the grid and it lands here until you mark it read.'));
+      'Nothing saved yet. Star a paper anywhere and it lands here.'));
     return;
   }
+
   state.papers = data.results;
   state.query = '';
+
+  const unread = data.results.filter((p) => !p.read);
+  const withNotes = data.results.filter((p) => (notes[p.id] || {}).note);
+  const stats = el('div', 'statrow');
+  [[data.results.length, 'saved'], [unread.length, 'still unread'],
+   [withNotes.length, 'with a note']].forEach(([n, label]) => {
+    const cell = el('div', 'stat');
+    cell.appendChild(el('b', null, String(n)));
+    cell.appendChild(el('span', null, label));
+    stats.appendChild(cell);
+  });
+  out.appendChild(stats);
+
   const bar = el('div', 'exportbar');
-  bar.appendChild(el('span', 'dim', `${data.results.length} queued`));
+  const filters = el('div', 'filter-bar');
+  let mode = 'unread';
+  const rowsFor = (which) => which === 'all' ? data.results
+    : which === 'notes' ? withNotes : unread;
+  [['unread', 'Unread'], ['notes', 'With notes'], ['all', 'Everything']]
+    .forEach(([key, label]) => {
+      const chip = el('button', 'chip' + (key === mode ? ' active' : ''), label);
+      chip.type = 'button';
+      chip.addEventListener('click', () => {
+        mode = key;
+        filters.querySelectorAll('.chip').forEach((c) =>
+          c.classList.toggle('active', c === chip));
+        draw();
+      });
+      filters.appendChild(chip);
+    });
+  bar.appendChild(filters);
   ['markdown', 'bibtex', 'json'].forEach((fmt) => {
-    const b = el('button', 'btn-ghost', fmt === 'bibtex' ? 'BibTeX' : fmt === 'json' ? 'JSON' : 'Markdown');
+    const b = el('button', 'btn-ghost',
+      fmt === 'bibtex' ? 'BibTeX' : fmt === 'json' ? 'JSON' : 'Markdown');
     b.type = 'button';
-    b.addEventListener('click', () => downloadExport('queue', fmt));
+    b.title = `Download everything saved as ${fmt}`;
+    b.addEventListener('click', () => downloadExport('saved', fmt));
     bar.appendChild(b);
   });
   out.appendChild(bar);
-  const grid = el('div', 'grid');
-  renderCards(grid, data.results, 0);
-  out.appendChild(grid);
+
+  const list = el('div', 'shelf');
+  out.appendChild(list);
+
+  // A row you can read, rather than a card you have to open. The old queue was
+  // the same grid as everywhere else, so the one screen where you have already
+  // decided these matter was the screen showing you the least about them.
+  function draw() {
+    list.textContent = '';
+    const rows = rowsFor(mode);
+    if (!rows.length) {
+      list.appendChild(el('div', 'empty',
+        mode === 'unread' ? 'Nothing unread. The whole shelf is read.'
+          : 'No notes yet. Open a paper and write why you kept it.'));
+      return;
+    }
+    rows.forEach((paper) => {
+      const item = el('article', 'shelfrow' + (paper.read ? ' is-read' : ''));
+      const meta = el('div', 'meta');
+      const when = (notes[paper.id] || {}).saved_at;
+      meta.appendChild(el('span', null,
+        [paper.category, humanDate(paper.published)].filter(Boolean).join('  ·  ')));
+      if (when) {
+        const stamp = humanStamp(when);
+        if (stamp) {
+          const s = el('span', 'shelf-when', `saved ${stamp.short}`);
+          s.title = stamp.full;
+          meta.appendChild(s);
+        }
+      }
+      if (paper.read) meta.appendChild(el('span', 'shelf-read', 'read'));
+      item.appendChild(meta);
+
+      const title = el('button', 'linkish shelf-title', paper.title);
+      title.type = 'button';
+      title.addEventListener('click', () => {
+        const at = state.papers.findIndex((p) => p.id === paper.id);
+        setView('grid');
+        openPanel(at >= 0 ? at : 0);
+      });
+      item.appendChild(title);
+
+      if (paper.about) item.appendChild(el('p', 'shelf-about', paper.about));
+
+      const note = (notes[paper.id] || {}).note;
+      if (note) {
+        const quote = el('blockquote', 'shelf-note');
+        quote.appendChild(el('span', 'reading-tag', 'your note'));
+        quote.appendChild(el('p', null, note));
+        item.appendChild(quote);
+      }
+
+      const tags = el('div', 'tags');
+      (paper.concepts || []).slice(0, 6).forEach((c) => {
+        const tag = el('button', 'tag tag-live', c);
+        tag.type = 'button';
+        tag.addEventListener('click', () => { $('#q').value = c; runSearch('search'); });
+        tags.appendChild(tag);
+      });
+      item.appendChild(tags);
+
+      const acts = el('div', 'shelf-acts');
+      const open = el('a', null, 'Open on arXiv');
+      open.href = paper.url || `https://arxiv.org/abs/${paper.id}`;
+      open.target = '_blank';
+      open.rel = 'noopener';
+      acts.appendChild(open);
+      const done = el('button', null, paper.read ? 'Read' : 'Mark read');
+      done.type = 'button';
+      done.addEventListener('click', async () => {
+        await get('/api/read', { id: paper.id });
+        paper.read = true;
+        forgetPaper(paper.id);
+        done.textContent = 'Read';
+        item.classList.add('is-read');
+      });
+      acts.appendChild(done);
+      const drop = el('button', null, 'Remove');
+      drop.type = 'button';
+      drop.addEventListener('click', async () => {
+        const r = await get('/api/save', { id: paper.id });
+        if (r.status !== 'ok' || r.saved) return;
+        forgetPaper(paper.id);
+        toast('Removed from saved.');
+        loadQueue();
+      });
+      acts.appendChild(drop);
+      item.appendChild(acts);
+      list.appendChild(item);
+    });
+  }
+  draw();
 }
 
 // The browser's own download path — a Blob and an object URL. A library you
@@ -1246,7 +1550,7 @@ async function openCategoryPicker(tierName) {
 
   const search = el('input', 'text-input');
   search.type = 'search';
-  search.placeholder = 'filter by name or code — try "vision", "causal", "finance"';
+  search.placeholder = 'filter by name or code. try "vision", "causal", "finance"';
   body.appendChild(search);
 
   const listing = el('div', 'picker-groups');
@@ -1610,11 +1914,11 @@ function renderProfile() {
     const liveSet = new Set(tier.keywords_this_run);
     card.appendChild(editableChips(t.categories, {
       placeholder: 'cs.AI, stat.ME…',
-      empty: 'no categories — this tier fetches nothing',
+      empty: 'no categories, so this tier fetches nothing',
       count: (name) => held[name] || 0,
       describe: (name) => {
         const d = CATEGORY_NAMES[name];
-        return d ? `${name} — ${d.name}. ${d.blurb}` : `${name} — not a category this tool knows.`;
+        return d ? `${name}: ${d.name}. ${d.blurb}` : `${name} is not a category this tool knows.`;
       },
       onChange: (v) => { t.categories = v; },
     }));
@@ -1640,7 +1944,7 @@ function renderProfile() {
       card.appendChild(topicHelp);
       card.appendChild(editableChips(t.topics, {
         placeholder: 'add a topic and press Enter',
-        empty: 'no topics — this tier takes whatever is newest',
+        empty: 'no topics, so this tier takes whatever is newest',
         liveSet,
         suggest: () => suggestTopicsFor(tier.name),
         onChange: (v) => { t.topics = v; },
@@ -1650,7 +1954,7 @@ function renderProfile() {
     if (isStretch || t.structural_keywords.length) {
       card.appendChild(el('div', 'fieldlabel', 'Structural keywords'));
       card.appendChild(el('p', 'sub',
-        'Method words rather than subject words — how a paper was done, not what it '
+        'Method words rather than subject words. How a paper was done, not what it '
         + 'is about. These are this tier\'s search terms: you are not reading '
         + 'econometrics for the economics, you are reading it for how they establish '
         + 'a claim.'));
@@ -2005,7 +2309,7 @@ async function dismissLlm() {
 
 /* ---------------- views ---------------- */
 
-const VIEWS = ['grid', 'digest', 'trends', 'queue', 'profile', 'scoring'];
+const VIEWS = ['grid', 'digest', 'map', 'trends', 'queue', 'profile', 'scoring'];
 
 function setView(name) {
   if (state.view === 'profile' && name !== 'profile' && profileState.dirty) {
@@ -2020,6 +2324,7 @@ function setView(name) {
   $('#sort').style.visibility = name === 'grid' ? '' : 'hidden';
   $('#status').hidden = name !== 'grid';
   if (name === 'digest') loadDigest();
+  if (name === 'map') loadMap();
   if (name === 'trends') loadTrends();
   if (name === 'queue') loadQueue();
   if (name === 'scoring') runLab();
@@ -2084,7 +2389,7 @@ $('#refresh').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = 'Fetching…';
   $('#status').textContent = 'Asking arXiv for papers matching your profile… '
-    + '(one request per category, a few seconds apart — this can take a couple of minutes)';
+    + '(one request per category, a few seconds apart, so give it a couple of minutes)';
   const r = await get('/api/refresh', {}, { timeoutMs: 240000 });
   btn.disabled = false;
   btn.textContent = 'Fetch';
@@ -2104,9 +2409,9 @@ $('#scrim').addEventListener('click', closePanel);
 
 const KEYS = [
   ['/', 'jump to the search box'],
-  ['Enter', 'search — or ask, if what you typed reads as a question'],
+  ['Enter', 'search, or ask if what you typed reads as a question'],
   ['Ctrl/⌘ + Enter', 'always ask, never keyword-search'],
-  ['1 – 6', 'switch view: papers, digest, trends, queue, profile, scoring'],
+  ['1 – 7', 'papers, digest, map, trends, queue, profile, scoring'],
   ['j / k', 'next / previous paper, with one open'],
   ['s', 'star the open paper'],
   ['Esc', 'close the paper, or clear the search'],
@@ -2169,8 +2474,8 @@ document.addEventListener('keydown', (e) => {
     return closePanel();
   }
   if (!$('#picker').hidden) return;
-  // Six views, six keys. The tabs advertised "(6)" while only 1-5 were bound.
-  if (['1', '2', '3', '4', '5', '6'].includes(e.key)) {
+  // One key per tab. The tabs used to advertise a "(6)" that was not bound.
+  if (/^[1-9]$/.test(e.key) && Number(e.key) <= VIEWS.length) {
     return setView(VIEWS[Number(e.key) - 1]);
   }
   if (state.index >= 0) {
@@ -2246,7 +2551,7 @@ async function refreshHeaderMeta() {
     const days = Math.floor(
       (Date.now() - new Date(lastDate + 'T00:00:00').getTime()) / 86400000);
     add('last fetch', humanDate(lastDate), days > 7 ? 'meta-stale' : null,
-      'The exact time was not recorded before this version — the next fetch will show it.');
+      'The exact time was not recorded before this version. The next fetch will show it.');
   } else {
     add('last fetch', 'never');
   }

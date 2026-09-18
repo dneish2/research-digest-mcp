@@ -110,7 +110,7 @@ def run(check_network: bool = False) -> int:
                 sys.executable)
     kind = _install_kind()
     level = WARN if kind.startswith("frozen") else OK
-    report.line(level, f"research_digest_mcp {__version__} — {kind}",
+    report.line(level, f"research_digest_mcp {__version__}: {kind}",
                 str(Path(__file__).resolve().parent),
                 "This is a copy, not your working tree. Edits to the repo will not "
                 "take effect here: reinstall with 'pip install -e .'"
@@ -193,7 +193,7 @@ def run(check_network: bool = False) -> int:
         shape = "three tiers" if tiered else "flat legacy shape (core tier only)"
         report.line(OK if tiered else WARN,
                     f"{len(profile['all_categories'])} categories, "
-                    f"{len(profile['all_topics'])} topics — {shape}",
+                    f"{len(profile['all_topics'])} topics, {shape}",
                     str(SETTINGS_PATH),
                     "" if tiered else
                     "Add a 'profile' block with core/complementary/stretch tiers to "

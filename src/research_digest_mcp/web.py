@@ -59,7 +59,7 @@ def _similar(paper_id: str, limit: int):
                                "similarity search across your library."}
         return {"status": "not_found",
                 "message": (f"This paper was added since the last 'research-digest embed' "
-                             f"({store_count} others are in the store) — run it again to "
+                             f"({store_count} others are in the store). Run it again to "
                              f"include this one."),
                 "results": []}
     by_id = {p["id"]: p for p in storage.load_papers()}
@@ -173,7 +173,7 @@ def _export(what: str, fmt: str) -> dict:
                 "filename": f"research-digest-{what}-{stamp}.bib", "body": body}
 
     if fmt == "markdown":
-        lines = [f"# {label} — {stamp}", "", f"{len(rows)} papers.", ""]
+        lines = [f"# {label}, {stamp}", "", f"{len(rows)} papers.", ""]
         for paper in rows:
             note = (saved.get(paper["id"]) or {}).get("note", "")
             lines.append(f"## {paper.get('title', '')}")
@@ -451,6 +451,13 @@ def api(path: str, params: dict) -> dict:
         except WorkspaceUnavailable as exc:
             return {"status": "error", "message": str(exc)}
 
+    if path == "/api/map":
+        from .clusters import bridges, build
+        papers = storage.load_papers()
+        result = build(papers, storage.load_saved(), limit=int(one.get("limit", 22)))
+        result["bridges"] = bridges(papers)
+        return result
+
     if path == "/api/categories":
         # The picker. Without this the profile screen is a list of codes you
         # either happen to know or quietly stop reading.
@@ -576,7 +583,7 @@ def api(path: str, params: dict) -> dict:
                 "estimated_seconds": int(requests_total * ARXIV_MIN_INTERVAL),
                 "max_papers": sum(t["max_papers"] for t in tiers),
                 "note": (
-                    f"A fetch makes {requests_total} requests — one per category — "
+                    f"A fetch makes {requests_total} requests, one per category, "
                     f"{ARXIV_MIN_INTERVAL:.0f} seconds apart, so it takes about "
                     f"{int(requests_total * ARXIV_MIN_INTERVAL / 60)} min "
                     f"{int(requests_total * ARXIV_MIN_INTERVAL) % 60}s. arXiv answers a "

@@ -83,7 +83,7 @@ TOOLS = [
         "name": "suggest_reading",
         "description": (
             "Suggest unread papers on a topic, ranked by the same explainable keyword "
-            "scorer as search_papers. Keyword-based only — it does not use embeddings, "
+            "scorer as search_papers. Keyword-based only: it does not use embeddings, "
             "even when they are built."
         ),
         "inputSchema": {
@@ -98,7 +98,7 @@ TOOLS = [
     {
         "name": "save_paper",
         "description": (
-            "Add a specific paper to the library by arXiv id or URL and bookmark it — "
+            "Add a specific paper to the library by arXiv id or URL and bookmark it, "
             "for the paper your agent found mid-session that a category fetch may never "
             "surface on its own. If the paper is already in the library, just bookmarks it."
         ),
@@ -117,7 +117,7 @@ TOOLS = [
     {
         "name": "get_digest",
         "description": (
-            "Today's top papers against the user's standing topics — a small, dated, "
+            "Today's top papers against the user's standing topics: a small, dated, "
             "reproducible pick (default 5, capped per category), not the full ranked "
             "library. Also written to a markdown file the user can read outside the agent."
         ),
@@ -140,7 +140,7 @@ TOOLS = [
     {
         "name": "fetch_papers",
         "description": (
-            "Search arXiv itself — not the user's library — and add what comes back. "
+            "Search arXiv itself, not the user's library, and add what comes back. "
             "This is the tool that GROWS the shelf: search_papers can only find what "
             "has already been fetched, so use this when the user asks for something "
             "their library does not hold, or asks for anything newer than its last "
@@ -165,7 +165,7 @@ TOOLS = [
             "Ask a question in plain English ('anything on agent evaluation from this "
             "month?') and get back the query plan plus the matching papers. Use this "
             "instead of search_papers when the user's words are a question rather than "
-            "keywords — it strips the asking, picks the date window, and reports which "
+            "keywords. It strips the asking, picks the date window, and reports which "
             "of their words matched nothing so a typo does not silently cost the answer."
         ),
         "inputSchema": {
@@ -390,7 +390,7 @@ def tool_save_paper(args: Dict[str, Any]) -> Dict[str, Any]:
 
     message = f"Saved {paper.get('title', '')!r}."
     if not already_had:
-        message += " Added to the library — run 'research-digest embed' to include it in similarity search."
+        message += " Added to the library. Run 'research-digest embed' to include it in similarity search."
     return {
         "status": "ok",
         "id": paper["id"],

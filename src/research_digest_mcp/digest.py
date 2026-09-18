@@ -62,7 +62,7 @@ def build_digest(papers: List[Dict[str, Any]], topics: List[str],
 
 
 def render_markdown(digest: Dict[str, Any]) -> str:
-    lines = [f"# Research digest — {digest['date']}", ""]
+    lines = [f"# Research digest, {digest['date']}", ""]
     lines.append(
         f"{len(digest['picks'])} of {digest['considered']} papers matching "
         f"{', '.join(digest['topics']) or 'your topics'}, best first."
