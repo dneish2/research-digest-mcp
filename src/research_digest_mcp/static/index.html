@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Research digest</title>
+<!-- Inline SVG so the icon needs no extra file, no extra request, and no
+     network at all: a page with a bookmark, in the palette the app already
+     uses (sage --accent, gold --quant, warm --paper). -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%235b7b6a'/><rect x='7' y='5' width='17' height='22' rx='2.5' fill='%23fafaf8'/><path d='M11 13h9M11 17h9M11 21h6' stroke='%235b7b6a' stroke-width='1.8' stroke-linecap='round'/><path d='M17.5 5H23v10l-2.75-2.2L17.5 15z' fill='%23c4850c'/></svg>">
+<meta name="theme-color" content="#5b7b6a">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -11,24 +16,35 @@
 <header>
   <div class="header-top">
     <a class="logo" href="/">Research <span>digest</span></a>
-    <button class="refresh-btn" id="refresh" title="Fetch today's papers from arXiv">Fetch</button>
+    <!-- The fetch button sits next to the freshness line on purpose: the fact
+         that motivates the action is the label above the action. -->
     <div class="header-meta" id="header-meta"></div>
+    <button class="refresh-btn" id="refresh"
+            title="Ask arXiv for new papers matching your profile">Fetch</button>
+    <button class="icon-btn" id="keymap-open" title="Keyboard shortcuts (press ?)"
+            aria-label="Keyboard shortcuts">⌘</button>
   </div>
 
   <div class="search-row">
-    <input class="search-input" id="q" type="search"
-           placeholder="Search your library, or press / to focus" autocomplete="off">
+    <div class="search-shell">
+      <input class="search-input" id="q" type="search"
+             placeholder="Search, or ask: what should I read about agent memory?"
+             autocomplete="off" aria-describedby="search-help">
+      <kbd class="slash-hint" id="slash-hint" title="Press / anywhere to jump here">/</kbd>
+    </div>
     <button class="btn" id="go">Search</button>
+    <button class="btn-ghost" id="ask" title="Read the question, then search (Ctrl+Enter)">Ask</button>
   </div>
   <div class="search-status" id="status"></div>
 
   <div class="controls-row">
     <div class="view-tabs" id="view-tabs">
-      <button class="view-tab active" data-view="grid" title="Papers (1)">Papers</button>
-      <button class="view-tab" data-view="digest" title="Today's picks (2)">Digest</button>
-      <button class="view-tab view-tab-secondary" data-view="trends" title="Trends (3)">Trends</button>
-      <button class="view-tab view-tab-secondary" data-view="queue" title="Reading queue (4)">Queue</button>
-      <button class="view-tab view-tab-secondary" data-view="scoring" title="How scoring works (5)">Scoring</button>
+      <button class="view-tab active" data-view="grid" title="Papers — press 1">Papers</button>
+      <button class="view-tab" data-view="digest" title="Today's picks — press 2">Digest</button>
+      <button class="view-tab view-tab-secondary" data-view="trends" title="Trends — press 3">Trends</button>
+      <button class="view-tab view-tab-secondary" data-view="queue" title="Reading queue — press 4">Queue</button>
+      <button class="view-tab view-tab-secondary" data-view="profile" title="What gets fetched, and edit it — press 5">Profile</button>
+      <button class="view-tab view-tab-secondary" data-view="scoring" title="How ranking works — press 6">Scoring</button>
     </div>
     <div class="filter-bar" id="filters">
       <span class="filter-label">When</span>
@@ -41,9 +57,12 @@
   </div>
 </header>
 
+<div class="strip" id="llm-strip" hidden></div>
+
 <main>
   <div class="view-panel" id="view-grid">
     <div class="welcome-hero" id="hero"></div>
+    <div class="reading" id="reading" hidden></div>
     <div class="grid" id="grid"></div>
     <div class="empty" id="grid-empty" hidden></div>
   </div>
@@ -51,13 +70,15 @@
   <div class="view-panel" id="view-digest" hidden></div>
   <div class="view-panel" id="view-trends" hidden></div>
   <div class="view-panel" id="view-queue" hidden></div>
+  <div class="view-panel" id="view-profile" hidden></div>
 
   <div class="view-panel" id="view-scoring" hidden>
     <div class="lab">
       <div>
         <h2>How a paper gets ranked</h2>
         <p class="sub">Change anything here and watch the score recompute. This is the same
-          function that orders the grid and the reading suggestions.</p>
+          function that orders the grid and the reading suggestions — no model is involved
+          in deciding what is worth reading.</p>
         <div class="field">
           <label for="lab-topics">Your topics</label>
           <input id="lab-topics" value="agent, evaluation, multi-agent, learning">
@@ -72,7 +93,10 @@
         </div>
         <div class="field">
           <label for="lab-published">Published</label>
-          <input id="lab-published" placeholder="YYYY-MM-DD">
+          <!-- A real date input, so the browser supplies the calendar and the
+               format instead of asking someone to type YYYY-MM-DD correctly. -->
+          <input id="lab-published" type="date">
+          <div class="quickdates" id="lab-quickdates"></div>
         </div>
       </div>
       <div>
@@ -99,6 +123,30 @@
   </div>
   <div class="detail-body" id="d-body"></div>
 </aside>
+
+<div class="toast" id="toast" hidden></div>
+
+<div class="modal" id="picker" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="picker-title">Add categories</h3>
+      <button class="panel-x" id="picker-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="picker-body"></div>
+    <div class="modal-foot">
+      <span class="dim">Changes land in the tier. Save on the Profile screen to keep them.</span>
+      <button class="btn" id="picker-done">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="keymap" id="keymap" hidden>
+  <div class="keymap-card">
+    <h3>Keyboard</h3>
+    <dl id="keymap-list"></dl>
+    <button class="btn-ghost" id="keymap-close">Close</button>
+  </div>
+</div>
 
 <script src="/app.js"></script>
 </body>
