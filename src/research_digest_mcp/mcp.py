@@ -514,14 +514,25 @@ def tool_fetch_papers(args: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": "Give me something to search arXiv for."}
     limit = max(1, min(int(args.get("limit", 20) or 20), 100))
 
-    from .fetchers import ArxivUnavailable, search as arxiv_search
+    from .fetchers import ArxivUnavailable, cooldown_detail
+    from .fetchers import search as arxiv_search
     try:
         found = arxiv_search(query, limit)
     except ArxivUnavailable as exc:
-        return {"status": "unavailable", "message": str(exc), "results": []}
+        # Kept distinct from "nothing matched" on purpose. They look the same
+        # on screen and mean opposite things: one says the paper is not out
+        # there, the other says we were not allowed to look.
+        return {"status": "unavailable", "message": str(exc), "results": [],
+                "blocked": True, "cooldown": cooldown_detail(),
+                "what_now": ("This is a limit on how often this machine may ask "
+                             "arXiv, not a problem with your search. Your library "
+                             "is unaffected and nothing was lost. arxiv.org itself "
+                             "still works in a browser.")}
     if not found:
         return {"status": "no_match",
-                "message": f"arXiv returned nothing for {query!r}.", "results": []}
+                "message": (f"arXiv answered, and has nothing matching {query!r}. "
+                            f"That is arXiv's answer, not a failure to reach it."),
+                "results": []}
 
     for paper in found:
         paper["concepts"] = extract_concepts(paper)

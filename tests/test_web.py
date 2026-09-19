@@ -548,3 +548,78 @@ class TestTheMap(TempHome):
         out = build(storage.load_papers())
         self.assertEqual(out["status"], "empty")
         self.assertEqual(out["nodes"], [])
+
+
+class TestARefusalNeverLooksLikeAnEmptyResult(TempHome):
+    """The two states look identical on screen and mean opposite things. One
+    says the paper is not out there; the other says we were not allowed to
+    look. A backfill that was actually rate-limited reported "arXiv returned
+    nothing. Nothing was written.", and the real cause sat unread in an errors
+    list no surface displayed.
+    """
+
+    def test_the_backoff_escalates_instead_of_resetting_to_the_same_wait(self):
+        """A flat five minutes meant: wait five, ask, get refused, wait five
+        again. A client arXiv had decided to refuse stayed in a loop of
+        politely spaced refusals forever."""
+        from research_digest_mcp import fetchers
+        waits = []
+        for _ in range(4):
+            fetchers._begin_cooldown(429)
+            waits.append(fetchers.cooldown_remaining())
+        for earlier, later in zip(waits, waits[1:]):
+            self.assertGreater(later, earlier)
+        self.assertLessEqual(waits[-1], 3600.0 + 1)
+        self.assertEqual(fetchers.cooldown_detail()["strikes"], 4)
+        self.assertEqual(fetchers.cooldown_detail()["last_code"], 429)
+
+    def test_an_answer_clears_the_escalation(self):
+        """Only a parsed feed counts. A bare 200 can be a cached edge response
+        served while the origin is still refusing this client."""
+        from research_digest_mcp import fetchers
+        fetchers._begin_cooldown(406)
+        fetchers._begin_cooldown(406)
+        self.assertGreater(fetchers.cooldown_remaining(), 0)
+        fetchers.parse_atom(
+            b'<?xml version="1.0"?>'
+            b'<feed xmlns="http://www.w3.org/2005/Atom"></feed>')
+        self.assertEqual(fetchers.cooldown_remaining(), 0.0)
+        self.assertEqual(fetchers.cooldown_detail()["strikes"], 0)
+
+    def test_a_cooling_down_client_says_so_before_it_asks(self):
+        from research_digest_mcp import fetchers
+        fetchers._begin_cooldown(406)
+        with self.assertRaises(fetchers.ArxivCoolingDown) as caught:
+            fetchers._get({"search_query": "cat:cs.AI"})
+        message = str(caught.exception)
+        self.assertIn("refusing this client", message)
+        self.assertIn("nothing is wrong with your", message.lower())
+
+    def test_a_blocked_refresh_reports_the_block_not_an_empty_month(self):
+        from research_digest_mcp import fetchers
+        from research_digest_mcp.web import api
+        fetchers._begin_cooldown(429)
+        out = api("/api/refresh", {"since": ["2026-07-01"], "until": ["2026-07-31"]})
+        self.assertEqual(out["status"], "error")
+        self.assertTrue(out["blocked"])
+        self.assertNotIn("returned nothing", out["message"])
+        self.assertIn("refus", out["message"].lower())
+        self.assertGreater(out["cooldown"]["remaining"], 0)
+
+    def test_a_blocked_arxiv_search_is_unavailable_not_no_match(self):
+        from research_digest_mcp import fetchers
+        from research_digest_mcp.mcp import tool_fetch_papers
+        fetchers._begin_cooldown(406)
+        out = tool_fetch_papers({"query": "nvidia"})
+        self.assertEqual(out["status"], "unavailable")
+        self.assertTrue(out["blocked"])
+        self.assertIn("not a problem with your search", out["what_now"])
+
+    def test_an_empty_search_says_how_many_papers_were_checked(self):
+        """"Nothing matched" over 1,443 papers reads as a broken search. The
+        same fact, with the denominator, reads as an answer."""
+        from research_digest_mcp.web import api
+        self.seed()
+        out = api("/api/search", {"q": ["zzzznotathing"]})
+        self.assertEqual(out["matched"], 0)
+        self.assertEqual(out["searched"], 2)

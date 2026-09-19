@@ -59,6 +59,12 @@ STATE_PATH = HOME / "state.json"
 ARXIV_API = "https://export.arxiv.org/api/query"
 ARXIV_MIN_INTERVAL = 5.0
 ARXIV_COOLDOWN = 300.0
+# The ceiling on the escalating backoff. A flat five minutes was wrong in the
+# way that matters: five minutes after a block we asked again, got refused
+# again, and reset the same five minutes, so a client arXiv had decided to
+# refuse stayed in a loop of politely-spaced refusals and every surface said
+# "arXiv returned nothing" instead of "arXiv is refusing us".
+ARXIV_MAX_COOLDOWN = 3600.0
 
 DEFAULT_SETTINGS = {
     "categories": ["cs.AI", "cs.LG", "cs.CL", "cs.MA", "cs.SE"],

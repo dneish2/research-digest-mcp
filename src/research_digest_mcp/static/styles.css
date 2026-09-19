@@ -615,6 +615,15 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
   padding:12px 15px;margin-top:14px;font-size:.83rem;color:var(--ink-2);
   line-height:1.55;text-align:left}
 .gapnote b{color:var(--ink)}
+/* A refusal is not a glitch and must not look like one. It stays on screen,
+   because the reader's instinct on a vanishing error is to try again, which
+   is exactly what lengthens the block. */
+.blockbar{grid-column:1/-1;display:flex;flex-direction:column;gap:7px;
+  background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;
+  padding:15px 18px;margin-bottom:16px;font-size:.85rem;color:var(--ink-2);
+  line-height:1.6;text-align:left}
+.blockbar b{color:var(--ink);font-size:.92rem}
+.blockbar-when{color:var(--warn);font-weight:500}
 .monthchart{display:flex;gap:4px;align-items:flex-end;margin-top:16px;
   overflow-x:auto;padding-bottom:4px}
 .monthcol{flex:1 0 34px;display:flex;flex-direction:column;align-items:center;gap:4px;

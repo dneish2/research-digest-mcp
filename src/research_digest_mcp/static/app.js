@@ -266,9 +266,16 @@ function renderGrid() {
     empty.hidden = false;
     empty.textContent = '';
     empty.appendChild(el('p', null, state.query
-      ? `Nothing in your library matched “${state.query}”.`
+      ? `None of your ${state.searched || 0} papers mention “${state.query}”.`
       : 'No papers in this view yet.'));
     if (state.query) {
+      // Say what was actually checked. "Nothing matched" over a library of
+      // 1,443 reads as a broken search; "none of your 1,443 papers mention
+      // this" reads as an answer, and it is the same fact.
+      empty.appendChild(el('p', 'dim',
+        'Every paper you hold was checked, against the title, the abstract and the '
+        + 'concept tags. This is your shelf being thin on the subject, not the '
+        + 'search giving up early.'));
       // A library search that finds nothing is not the end of the road, and
       // pretending it was is the single biggest thing this tool got wrong: it
       // could not reach past what it already held.
@@ -355,6 +362,8 @@ async function backfill(month, button) {
   button.disabled = false;
   if (r.status !== 'ok') {
     button.textContent = `Fetch ${prettyMonth(month)} now`;
+    $('#status').textContent = '';
+    if (r.blocked) return showBlocked(r);
     return toast(r.message || 'arXiv did not answer.', 'bad');
   }
   toast(r.message);
@@ -386,8 +395,9 @@ async function loadGrid(append) {
   state.hasMore = Boolean(data.has_more);
   state.weakNote = data.weak ? data.weak_note : '';
   if (data.coverage) state.coverage = data.coverage;
+  state.searched = data.searched || data.total || 0;
   $('#status').textContent = state.query
-    ? `${data.matched} of ${data.searched} papers matched`
+    ? `${data.matched} of your ${data.searched} papers mention this`
     : `Showing ${state.papers.length} of ${data.total} papers`;
   $('#status').className = 'search-status on';
   renderHeroText();
@@ -494,10 +504,14 @@ async function runAsk() {
 
 async function searchArxiv(query) {
   if (!query) return;
-  $('#status').textContent = `Asking arXiv for “${query}”… (a few seconds)`;
+  $('#status').textContent = `Asking arXiv for “${query}”…`;
   const data = await get('/api/arxiv', { q: query, limit: 25 }, { timeoutMs: 90000 });
   if (data.status !== 'ok') {
     $('#status').textContent = '';
+    // A toast that vanishes in four seconds is the wrong surface for "you are
+    // rate limited for the next 20 minutes". It reads as a glitch, and the
+    // reader's next move is to try again, which is exactly what deepens it.
+    if (data.blocked) return showBlocked(data);
     toast(data.message || 'arXiv did not answer.', 'bad');
     return;
   }
@@ -506,6 +520,35 @@ async function searchArxiv(query) {
   $('#q').value = query;
   await runSearch('search');
   await refreshHeaderMeta();
+}
+
+// A refusal, stated plainly and left on screen. Distinguishing "arXiv has
+// nothing" from "arXiv would not talk to us" matters more than almost anything
+// else here: they look identical and mean opposite things.
+function showBlocked(data) {
+  const cool = data.cooldown || {};
+  const mins = Math.ceil((cool.remaining || 0) / 60);
+  const box = el('div', 'blockbar');
+  box.appendChild(el('b', null, 'arXiv is not taking requests from this machine.'));
+  box.appendChild(el('span', null, data.message || ''));
+  if (data.what_now) box.appendChild(el('span', null, data.what_now));
+  if (mins > 0) {
+    box.appendChild(el('span', 'blockbar-when',
+      `It will be asked again in about ${mins} minute${mins > 1 ? 's' : ''}`
+      + `${cool.strikes > 1 ? `, after ${cool.strikes} refusals in a row` : ''}. `
+      + 'Waiting is the fix. Retrying sooner is what makes the wait longer.'));
+  }
+  const grid = $('#grid');
+  const existing = grid.querySelector('.blockbar');
+  if (existing) existing.remove();
+  grid.insertBefore(box, grid.firstChild);
+  const empty = $('#grid-empty');
+  if (!empty.hidden) {
+    const dup = empty.querySelector('.blockbar');
+    if (dup) dup.remove();
+    empty.appendChild(box.cloneNode(true));
+  }
+  setView('grid');
 }
 
 function runSearch(mode) {
@@ -2399,6 +2442,9 @@ $('#refresh').addEventListener('click', async () => {
     (r.errors || []).forEach((line) => toast(line, 'bad'));
     paperCache.clear();
     await boot();
+  } else if (r.blocked) {
+    $('#status').textContent = '';
+    showBlocked(r);
   } else {
     toast(r.message || 'Fetch failed.', 'bad');
   }

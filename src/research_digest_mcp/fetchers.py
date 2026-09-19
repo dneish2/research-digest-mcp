@@ -15,8 +15,8 @@ from datetime import date
 from typing import Any, Dict, List
 
 from .config import (
-    ARXIV_API, ARXIV_COOLDOWN, ARXIV_MIN_INTERVAL, COOLDOWN_PATH,
-    KEYWORDS_PER_QUERY)
+    ARXIV_API, ARXIV_COOLDOWN, ARXIV_MAX_COOLDOWN, ARXIV_MIN_INTERVAL,
+    COOLDOWN_PATH, KEYWORDS_PER_QUERY)
 
 NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
 USER_AGENT = "research-digest-mcp (+https://github.com/dneish2/research-digest-mcp)"
@@ -40,30 +40,74 @@ def _throttle() -> None:
     _last_request = time.monotonic()
 
 
-def cooldown_remaining() -> float:
-    """Seconds left before arXiv should be asked again. 0 when clear."""
+def _cooldown_state() -> dict:
     try:
         import json
         state = json.loads(COOLDOWN_PATH.read_text(encoding="utf-8"))
-        return max(0.0, float(state.get("until", 0)) - time.time())
+        return state if isinstance(state, dict) else {}
     except (OSError, ValueError, TypeError):
+        return {}
+
+
+def cooldown_remaining() -> float:
+    """Seconds left before arXiv should be asked again. 0 when clear."""
+    try:
+        return max(0.0, float(_cooldown_state().get("until", 0)) - time.time())
+    except (TypeError, ValueError):
         return 0.0
 
 
-def _begin_cooldown() -> None:
+def cooldown_detail() -> dict:
+    """The full backoff picture, for a surface that has to explain a refusal."""
+    state = _cooldown_state()
+    return {
+        "remaining": cooldown_remaining(),
+        "strikes": int(state.get("strikes", 0) or 0),
+        "last_code": state.get("code"),
+        "since": state.get("since", ""),
+    }
+
+
+def _begin_cooldown(code: int = 429) -> None:
     """Record a refusal so the next run waits instead of repeating it.
 
-    A 429 is not a transient error to retry past; it is arXiv asking for a
-    pause. Retrying through it is what turns a short throttle into a long
+    A 429 or a 406 is not a transient error to retry past; it is arXiv asking
+    for a pause. Retrying through it is what turns a short throttle into a long
     block, so this is written to disk and checked before every request.
+
+    The wait escalates. A flat five minutes was wrong in exactly the way that
+    matters: five minutes after a block we would ask again, get refused again,
+    and reset the same five minutes, so a client that had annoyed arXiv stayed
+    in a loop of politely-spaced refusals indefinitely and every surface read
+    "arXiv returned nothing". Each consecutive strike roughly quadruples the
+    wait, up to an hour, and a success clears the count.
     """
     import json
+    state = _cooldown_state()
+    strikes = int(state.get("strikes", 0) or 0) + 1
+    wait = min(ARXIV_COOLDOWN * (4 ** (strikes - 1)), ARXIV_MAX_COOLDOWN)
     try:
         COOLDOWN_PATH.parent.mkdir(parents=True, exist_ok=True)
-        COOLDOWN_PATH.write_text(
-            json.dumps({"until": time.time() + ARXIV_COOLDOWN}), encoding="utf-8")
+        COOLDOWN_PATH.write_text(json.dumps({
+            "until": time.time() + wait,
+            "strikes": strikes,
+            "code": code,
+            "since": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "waited": wait,
+        }), encoding="utf-8")
     except OSError:
         pass          # a cooldown we cannot persist is not worth failing over
+
+
+def note_success() -> None:
+    """A request got through, so the escalation resets.
+
+    Only called from a real parsed response. The block is per-client and
+    expires on arXiv's schedule, not ours, so the only evidence that we are
+    forgiven is an answer.
+    """
+    if COOLDOWN_PATH.exists():
+        clear_cooldown()
 
 
 def clear_cooldown() -> None:
@@ -82,8 +126,13 @@ def _get(params: Dict[str, Any], timeout: int = 40) -> bytes:
     """
     left = cooldown_remaining()
     if left > 0:
+        detail = cooldown_detail()
         raise ArxivCoolingDown(
-            f"arXiv refused this client recently. Waiting {left:.0f}s more before asking again.")
+            f"arXiv is refusing this client (HTTP {detail.get('last_code', 429)} at "
+            f"{detail.get('since', 'recently')}). Waiting {left / 60:.0f} more minutes "
+            f"before asking again; this is refusal number {detail.get('strikes', 1)} in "
+            f"a row, so the wait has been lengthened. Nothing is wrong with your "
+            f"library or your query.")
 
     url = f"{ARXIV_API}?{urllib.parse.urlencode(params)}"
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -106,10 +155,13 @@ def _get(params: Dict[str, Any], timeout: int = 40) -> bytes:
             # practice when it has decided a client is asking too often, so it
             # is treated the same way rather than as a malformed request.
             if exc.code in (429, 406):
-                _begin_cooldown()
+                _begin_cooldown(exc.code)
+                left = cooldown_remaining()
                 raise ArxivUnavailable(
-                    f"arXiv refused this client (HTTP {exc.code}). "
-                    f"Backing off {ARXIV_COOLDOWN:.0f}s before the next request."
+                    f"arXiv refused this client (HTTP {exc.code}). This is a rate "
+                    f"limit on us, not a problem with the search: a request for one "
+                    f"paper gets the same answer. Backing off {left / 60:.0f} minutes. "
+                    f"Nothing was written, and your library is unchanged."
                 ) from exc
             raise ArxivUnavailable(f"arXiv returned HTTP {exc.code}.") from exc
         except (urllib.error.URLError, TimeoutError) as exc:
@@ -130,6 +182,12 @@ def parse_atom(payload: bytes) -> List[Dict[str, Any]]:
         root = ET.fromstring(payload)
     except ET.ParseError as exc:
         raise ArxivUnavailable(f"arXiv returned a response that is not valid Atom: {exc}") from exc
+
+    # A parsed Atom feed is the only proof that arXiv is serving us again, so
+    # the escalating backoff resets here and nowhere else. Not on a 200: arXiv
+    # sits behind a CDN and a cached edge response can arrive while the origin
+    # is still refusing this client.
+    note_success()
 
     papers = []
     for entry in root.findall("atom:entry", NS):

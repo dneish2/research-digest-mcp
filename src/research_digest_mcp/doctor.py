@@ -208,12 +208,19 @@ def run(check_network: bool = False) -> int:
 
     # 6. arXiv state. No request unless asked, so the doctor cannot itself throttle you.
     print("\narXiv")
-    from .fetchers import cooldown_remaining
-    left = cooldown_remaining()
+    from .fetchers import cooldown_detail
+    cool = cooldown_detail()
+    left = cool["remaining"]
     if left > 0:
-        report.line(WARN, f"cooling down for another {left:.0f}s", str(COOLDOWN_PATH),
-                    "arXiv refused this client recently. Fetches will wait. "
-                    "This clears itself.")
+        report.line(WARN,
+                    f"arXiv is refusing this machine, {left / 60:.0f} minutes left",
+                    f"HTTP {cool.get('last_code')} at {cool.get('since')}, "
+                    f"{cool.get('strikes')} refusal(s) in a row.\n"
+                    f"{COOLDOWN_PATH}",
+                    "This is a limit on how often this machine may ask arXiv. It is "
+                    "not a problem with your library, your profile or your query: a "
+                    "request for a single paper gets the same answer. Waiting is the "
+                    "fix, and the wait lengthens each time it is retried early.")
     else:
         report.line(OK, "no cooldown active")
     if check_network:

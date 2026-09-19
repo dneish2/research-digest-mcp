@@ -378,7 +378,7 @@ def api(path: str, params: dict) -> dict:
     if path == "/api/refresh":
         # Fetch from the browser, so a daily pull does not need the terminal.
         from .config import record_fetch
-        from .fetchers import ArxivUnavailable, fetch_settings
+        from .fetchers import ArxivUnavailable, cooldown_detail, fetch_settings
         settings = load_settings()
         # A date window makes a missed month recoverable. Without one, every
         # fetch starts from the newest paper, so a gap stays a gap forever and
@@ -393,11 +393,28 @@ def api(path: str, params: dict) -> dict:
             else:
                 result = fetch_settings(settings)
         except ArxivUnavailable as exc:
-            return {"status": "error", "message": str(exc)}
+            return {"status": "error", "message": str(exc),
+                    "blocked": True, "cooldown": cooldown_detail()}
         if not result["papers"]:
-            return {"status": "error",
-                    "message": "arXiv returned nothing. Nothing was written.",
-                    "errors": result["errors"]}
+            # "arXiv returned nothing" was a lie whenever arXiv had refused us,
+            # and refusal is by far the likeliest reason for an empty fetch.
+            # The real cause was in `errors` and no surface ever showed it, so
+            # a rate limit looked like an empty month. Report the cause.
+            reasons = result["errors"] or []
+            blocked = any("refus" in str(r).lower() or "429" in str(r)
+                          or "406" in str(r) for r in reasons)
+            if blocked:
+                message = reasons[0]
+            elif reasons:
+                message = (f"Nothing came back, and {len(reasons)} categories "
+                           f"reported a problem. First: {reasons[0]}")
+            else:
+                message = ("arXiv answered, and had no papers matching your topics "
+                           "in that window. Nothing was written. Widening the date "
+                           "range or the topic list is what changes this.")
+            return {"status": "error", "message": message,
+                    "blocked": blocked, "errors": reasons,
+                    "cooldown": cooldown_detail()}
         stats = storage.merge_papers(result["papers"], result["run_date"])
         # The browser button used to skip this, so fetching from the UI left the
         # header still reporting the last *terminal* fetch -- the surface you

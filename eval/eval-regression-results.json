@@ -5,7 +5,7 @@
       "p@10": 0.4731
     },
     "old_buggy": {
-      "p@5": 0.4077,
+      "p@5": 0.4154,
       "p@10": 0.3154
     },
     "recency": {
@@ -450,49 +450,6 @@
       ]
     },
     {
-      "phrase": "method achieves state-of-the-art performance",
-      "n_positives": 3,
-      "current_p@5": 0.6,
-      "current_p@10": 0.3,
-      "old_buggy_p@5": 0.2,
-      "old_buggy_p@10": 0.3,
-      "recency_p@5": 0.0,
-      "recency_p@10": 0.0,
-      "random_p@5": 0.0,
-      "random_p@10": 0.0,
-      "strict_ordering_ok": true,
-      "positives_in_ranked": 3,
-      "positives_missing_from_ranked": 0,
-      "current_top5_titles": [
-        "Multi-Scale Implicit Transformer with Re-parameterize for Arbitrary-Scale Super-Resolution",
-        "Learning to Cluster Faces via Transformer",
-        "Towards Scale-Aware Low-Light Enhancement via Structure-Guided Transformer Design",
-        "Attention Debiasing for Token Pruning in Vision Language Models",
-        "CaMBRAIN: Real-time, Continuous EEG Inference with Causal State Space Models"
-      ],
-      "old_buggy_top5_titles": [
-        "VoiceMem: Streaming Dual-Brain Memory for Real-Time Interaction",
-        "Learning to Cluster Faces via Transformer",
-        "Glance-and-Gaze Vision Transformer",
-        "Visual Attention Network",
-        "First De-Trend then Attend: Rethinking Attention for Time-Series Forecasting"
-      ],
-      "current_top5_is_positive": [
-        true,
-        true,
-        true,
-        false,
-        false
-      ],
-      "old_buggy_top5_is_positive": [
-        false,
-        true,
-        false,
-        false,
-        false
-      ]
-    },
-    {
       "phrase": "multi-agent reinforcement learning systems",
       "n_positives": 3,
       "current_p@5": 0.6,
@@ -708,6 +665,49 @@
       ]
     },
     {
+      "phrase": "method achieves state-of-the-art performance",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Multi-Scale Implicit Transformer with Re-parameterize for Arbitrary-Scale Super-Resolution",
+        "Learning to Cluster Faces via Transformer",
+        "Towards Scale-Aware Low-Light Enhancement via Structure-Guided Transformer Design",
+        "Attention Debiasing for Token Pruning in Vision Language Models",
+        "CaMBRAIN: Real-time, Continuous EEG Inference with Causal State Space Models"
+      ],
+      "old_buggy_top5_titles": [
+        "Learning to Cluster Faces via Transformer",
+        "Glance-and-Gaze Vision Transformer",
+        "Visual Attention Network",
+        "First De-Trend then Attend: Rethinking Attention for Time-Series Forecasting",
+        "Multi-Scale Implicit Transformer with Re-parameterize for Arbitrary-Scale Super-Resolution"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
       "phrase": "vision language",
       "n_positives": 5,
       "current_p@5": 0.6,
@@ -723,10 +723,10 @@
       "positives_missing_from_ranked": 0,
       "current_top5_titles": [
         "Domain-adapted large language models for classifying nuclear medicine reports",
-        "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu",
         "Attention Debiasing for Token Pruning in Vision Language Models",
         "HapTile: A Haptic-Informed Vision-Tactile-Language-Action Dataset for Contact-Rich Imitati",
-        "BiliVLA: Scene-Aware Vision-Language-Action Model with Reinforcement Learning for Autonomo"
+        "BiliVLA: Scene-Aware Vision-Language-Action Model with Reinforcement Learning for Autonomo",
+        "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu"
       ],
       "old_buggy_top5_titles": [
         "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu",
@@ -738,9 +738,9 @@
       "current_top5_is_positive": [
         true,
         true,
-        true,
         false,
-        false
+        false,
+        true
       ],
       "old_buggy_top5_is_positive": [
         true,
@@ -898,7 +898,7 @@
         "MemTrace: Tracing and Attributing Errors in Large Language Model Memory Systems",
         "Exploring Autonomous Agentic Data Engineering for Model Specialization",
         "Degradation-Aware Unfolding Half-Shuffle Transformer for Spectral Compressive Imaging",
-        "When LLM Decompilers Recompile More and Preserve Less"
+        "Unlocking Dense Metric Depth Estimation in VLMs"
       ],
       "old_buggy_top5_titles": [
         "Degradation-Aware Unfolding Half-Shuffle Transformer for Spectral Compressive Imaging",
@@ -940,8 +940,8 @@
         "A Deep Generative Model for Synthesizing Labeled Wireless Signals",
         "ST-GAN: Spatial Transformer Generative Adversarial Networks for Image Compositing",
         "An overall view of key problems in algorithmic trading and recent progress",
-        "Building a research-software catalog with a coding agent: from hackathon prototype to publ",
-        "Generative Iris Prior Embedded Transformer for Iris Restoration"
+        "Generative Iris Prior Embedded Transformer for Iris Restoration",
+        "Building a research-software catalog with a coding agent: from hackathon prototype to publ"
       ],
       "old_buggy_top5_titles": [
         "A Deep Generative Model for Synthesizing Labeled Wireless Signals",
@@ -1069,8 +1069,8 @@
         "PQ-Transformer: Jointly Parsing 3D Objects and Layouts from Point Clouds",
         "A Survey on Transformer Compression",
         "MA$^{2}$P: A Meta-Cognitive Autonomous Intelligent Agents Framework for Complex Persuasion",
-        "An Empirical Study on Learning Paths and Gender Dynamics in Scrum Master Roles",
-        "ASTRA: A Scalable Next-Generation ATCO Training Simulator with Autonomous Simpilots"
+        "ASTRA: A Scalable Next-Generation ATCO Training Simulator with Autonomous Simpilots",
+        "An Empirical Study on Learning Paths and Gender Dynamics in Scrum Master Roles"
       ],
       "old_buggy_top5_titles": [
         "PQ-Transformer: Jointly Parsing 3D Objects and Layouts from Point Clouds",
