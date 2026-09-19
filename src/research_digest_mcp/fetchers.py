@@ -196,6 +196,18 @@ def parse_atom(payload: bytes) -> List[Dict[str, Any]]:
             continue
         paper_id = raw_id.rsplit("/abs/", 1)[-1]
         primary = entry.find("arxiv:primary_category", NS)
+
+        # Affiliations, when the authors bothered to file them. This is the
+        # only field in the feed that can answer "papers out of NVIDIA" or
+        # "papers from DeepMind", and it was being dropped on the floor. It is
+        # optional and frequently absent, so it improves that kind of search
+        # without ever being able to complete it.
+        affiliations = []
+        for author in entry.findall("atom:author", NS):
+            affiliation = author.find("arxiv:affiliation", NS)
+            if affiliation is not None and (affiliation.text or "").strip():
+                affiliations.append(affiliation.text.strip())
+
         papers.append({
             "id": paper_id,
             "title": " ".join(_text(entry, "atom:title").split()),
@@ -207,6 +219,11 @@ def parse_atom(payload: bytes) -> List[Dict[str, Any]]:
                 _text(a, "atom:name")
                 for a in entry.findall("atom:author", NS)
             ][:8],
+            "affiliations": list(dict.fromkeys(affiliations))[:8],
+            # "Accepted at NeurIPS 2026", "12 pages, 4 figures". Venue is one
+            # of the things people most want to filter on and it lives here.
+            "comment": " ".join(_text(entry, "arxiv:comment").split()),
+            "journal_ref": " ".join(_text(entry, "arxiv:journal_ref").split()),
             "primary_category": primary.get("term") if primary is not None else "",
             "categories": [
                 c.get("term") for c in entry.findall("atom:category", NS) if c.get("term")

@@ -306,6 +306,31 @@ function renderGrid() {
   }
   renderCards(grid, state.papers, 0);
 
+  // A second answer to a different question. The list above is what contains
+  // your words; this is what sits next to it. Kept visibly separate, because
+  // quietly blending them would mean a result you cannot explain.
+  const rel = state.related;
+  if (rel && rel.status === 'ok' && rel.results.length) {
+    const band = el('div', 'relatedband');
+    const head = el('div', 'relatedband-head');
+    head.appendChild(el('h3', null, 'Close to these, without using your words'));
+    head.appendChild(el('span', 'pill', `${rel.results.length} found by meaning`));
+    band.appendChild(head);
+    band.appendChild(el('p', 'sub', rel.how || ''));
+    grid.appendChild(band);
+    const offset = state.papers.length;
+    state.papers = state.papers.concat(rel.results);
+    renderCards(grid, rel.results, offset);
+  } else if (rel && rel.status === 'unavailable' && state.query) {
+    const band = el('div', 'relatedband');
+    band.appendChild(el('h3', null, 'Searching by meaning is switched off'));
+    band.appendChild(el('p', 'sub',
+      'With vectors built, a thin keyword result can be widened to the papers '
+      + 'sitting next to it, which is how a search for a word your library barely '
+      + 'uses still finds the shelf it belongs to. ' + (rel.message || '')));
+    grid.appendChild(band);
+  }
+
   if (state.hasMore) {
     const more = el('button', 'load-more', 'Load more papers');
     more.type = 'button';
@@ -394,6 +419,7 @@ async function loadGrid(append) {
   state.topics = data.terms || data.topics || [];
   state.hasMore = Boolean(data.has_more);
   state.weakNote = data.weak ? data.weak_note : '';
+  state.related = append ? state.related : (data.related_papers || null);
   if (data.coverage) state.coverage = data.coverage;
   state.searched = data.searched || data.total || 0;
   $('#status').textContent = state.query
@@ -532,11 +558,51 @@ function showBlocked(data) {
   box.appendChild(el('b', null, 'arXiv is not taking requests from this machine.'));
   box.appendChild(el('span', null, data.message || ''));
   if (data.what_now) box.appendChild(el('span', null, data.what_now));
-  if (mins > 0) {
-    box.appendChild(el('span', 'blockbar-when',
-      `It will be asked again in about ${mins} minute${mins > 1 ? 's' : ''}`
-      + `${cool.strikes > 1 ? `, after ${cool.strikes} refusals in a row` : ''}. `
-      + 'Waiting is the fix. Retrying sooner is what makes the wait longer.'));
+  if ((cool.remaining || 0) > 0) {
+    // A live countdown, because "wait 20 minutes" with no clock attached is
+    // the kind of instruction people ignore and then retry into. Watching the
+    // number go down is the whole reason this is on screen instead of a toast.
+    const when = el('div', 'blockbar-when');
+    const bar = el('div', 'waitbar');
+    const fill = el('i');
+    bar.appendChild(fill);
+    const label = el('span', 'waitlabel');
+    when.appendChild(label);
+    when.appendChild(bar);
+    box.appendChild(when);
+
+    const total = cool.remaining;
+    const started = Date.now();
+    const tick = () => {
+      const left = Math.max(0, total - (Date.now() - started) / 1000);
+      fill.style.width = (100 - (left / total) * 100).toFixed(1) + '%';
+      if (left <= 0) {
+        clearInterval(timer);
+        label.textContent = 'arXiv can be asked again now.';
+        const retry = el('button', 'btn-ghost', 'Try again');
+        retry.type = 'button';
+        retry.addEventListener('click', () => {
+          box.remove();
+          if (state.query) searchArxiv(state.query);
+        });
+        when.appendChild(retry);
+        return;
+      }
+      const m = Math.floor(left / 60);
+      const s = Math.floor(left % 60);
+      label.textContent =
+        `Asking again in ${m}:${String(s).padStart(2, '0')}`
+        + `${cool.strikes > 1 ? ` (refusal ${cool.strikes} in a row, so the wait `
+          + `was lengthened)` : ''}. Waiting is the fix; retrying sooner extends it.`;
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    // Stop the clock if the notice is taken off screen, so a hidden interval
+    // is not left running for the life of the tab.
+    const watch = new MutationObserver(() => {
+      if (!box.isConnected) { clearInterval(timer); watch.disconnect(); }
+    });
+    watch.observe(document.body, { childList: true, subtree: true });
   }
   const grid = $('#grid');
   const existing = grid.querySelector('.blockbar');
@@ -2597,7 +2663,12 @@ async function refreshHeaderMeta() {
     const days = Math.floor(
       (Date.now() - new Date(lastDate + 'T00:00:00').getTime()) / 86400000);
     add('last fetch', humanDate(lastDate), days > 7 ? 'meta-stale' : null,
-      'The exact time was not recorded before this version. The next fetch will show it.');
+      `${humanDate(lastDate)}, ${days === 0 ? 'today' : days === 1 ? 'yesterday'
+        : days + ' days ago'}.\n\n`
+      + 'The clock time was not recorded before this version, so only the date is '
+      + 'known. Rather than show a time it would have to invent, it shows none. '
+      + 'The next fetch records the exact minute.\n\n'
+      + `${runs.length} runs recorded. Library spans ${s.earliest} to ${s.latest}.`);
   } else {
     add('last fetch', 'never');
   }
@@ -2605,11 +2676,21 @@ async function refreshHeaderMeta() {
   state.coverage = s.coverage || null;
   if (s.coverage && (s.coverage.gaps || []).length) {
     const span = el('span', 'meta-stale');
-    span.appendChild(document.createTextNode('missing '));
-    span.appendChild(el('b', null, s.coverage.gaps.length === 1
-      ? prettyMonth(s.coverage.gaps[0])
-      : `${s.coverage.gaps.length} months`));
-    span.title = s.coverage_warning || '';
+    const cov = s.coverage;
+    // "missing July 2026" on its own is a riddle. It reads as though the app
+    // lost something. It means: no paper you hold was published that month.
+    span.appendChild(document.createTextNode('no papers from '));
+    span.appendChild(el('b', null, cov.gaps.length === 1
+      ? prettyMonth(cov.gaps[0])
+      : `${cov.gaps.length} months`));
+    span.title =
+      `No paper in your library was published in `
+      + `${cov.gaps.map(prettyMonth).join(', ')}.\n\n`
+      + `You hold papers published from ${prettyMonth(cov.window_start)} onwards, `
+      + `about ${cov.typical_month} in a normal month. Nothing was deleted: those `
+      + `months were never fetched, because a fetch always asks for the newest `
+      + `papers and cannot reach backwards on its own.\n\n`
+      + `Open Profile to see the whole run and fill a month in with one click.`;
     meta.appendChild(span);
   }
   return s;

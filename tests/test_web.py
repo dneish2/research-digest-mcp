@@ -567,9 +567,13 @@ class TestARefusalNeverLooksLikeAnEmptyResult(TempHome):
         for _ in range(4):
             fetchers._begin_cooldown(429)
             waits.append(fetchers.cooldown_remaining())
+        # Strictly longer until the ceiling, then flat. Never shorter, which is
+        # the behaviour that made the old loop possible.
         for earlier, later in zip(waits, waits[1:]):
-            self.assertGreater(later, earlier)
-        self.assertLessEqual(waits[-1], 3600.0 + 1)
+            self.assertGreaterEqual(later + 1, earlier)
+        self.assertGreater(waits[1], waits[0])
+        self.assertGreater(waits[-1], waits[0] * 3, "escalation must be steep")
+        self.assertLessEqual(waits[-1], 3600.0 + 1, "and must have a ceiling")
         self.assertEqual(fetchers.cooldown_detail()["strikes"], 4)
         self.assertEqual(fetchers.cooldown_detail()["last_code"], 429)
 

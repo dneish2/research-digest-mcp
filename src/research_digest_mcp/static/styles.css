@@ -623,7 +623,20 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
   padding:15px 18px;margin-bottom:16px;font-size:.85rem;color:var(--ink-2);
   line-height:1.6;text-align:left}
 .blockbar b{color:var(--ink);font-size:.92rem}
-.blockbar-when{color:var(--warn);font-weight:500}
+.blockbar-when{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.waitlabel{color:var(--warn);font-weight:500;font-size:.83rem}
+.waitbar{height:5px;background:rgba(184,134,11,.18);border-radius:3px;overflow:hidden}
+.waitbar i{display:block;height:100%;background:var(--warn);
+  transition:width 1s linear;border-radius:3px}
+.blockbar-when .btn-ghost{align-self:flex-start;margin-top:4px}
+/* The vector half of a search. Visibly a different answer to a different
+   question, because blending it into the keyword list would produce a result
+   nobody could explain. */
+.relatedband{grid-column:1/-1;border-top:1px solid var(--rule);padding-top:18px;
+  margin-top:8px}
+.relatedband-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.relatedband h3{font-family:var(--f-title);font-size:1.08rem;margin:0}
+.relatedband .sub{margin:6px 0 0;max-width:72ch}
 .monthchart{display:flex;gap:4px;align-items:flex-end;margin-top:16px;
   overflow-x:auto;padding-bottom:4px}
 .monthcol{flex:1 0 34px;display:flex;flex-direction:column;align-items:center;gap:4px;

@@ -144,8 +144,24 @@ _ABOUT_MAX_CHARS = 220
 
 
 def paper_text(paper: Dict[str, Any]) -> str:
+    """Everything a search is allowed to look at.
+
+    Authors were not in here, which meant author search did not exist: an
+    author with five papers in the library returned one result, and that one
+    was a coincidental word match. The names were stored on 1,182 of 1,443
+    papers the whole time and simply never read.
+
+    Affiliation, comment and journal_ref are here for the same reason and were
+    not even being parsed out of the feed. Affiliation is the only field that
+    can answer "papers out of NVIDIA"; comment is where "Accepted at NeurIPS
+    2026" lives, which is a thing people genuinely want to filter on.
+    """
     parts = [paper.get("title", ""), paper.get("abstract", "")]
     parts.extend(paper.get("concepts", []) or [])
+    parts.extend(paper.get("authors", []) or [])
+    parts.extend(paper.get("affiliations", []) or [])
+    parts.append(paper.get("comment", "") or "")
+    parts.append(paper.get("journal_ref", "") or "")
     return " ".join(str(p) for p in parts).lower()
 
 

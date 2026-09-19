@@ -246,3 +246,68 @@ class TestAnsweringWithoutAModel(TempHome):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWhatSearchIsAllowedToRead(TempHome):
+    """Author names sat on 1,182 of 1,443 papers and were never read, so author
+    search did not exist. Affiliation, comment and journal_ref were not even
+    parsed out of the feed, and affiliation is the only field that can answer
+    "papers out of NVIDIA"."""
+
+    def _paper(self, **over):
+        base = {"id": "26.1", "title": "A study of widgets",
+                "abstract": "We propose a widget.", "concepts": [],
+                "authors": ["Ada Lovelace", "Grace Hopper"],
+                "affiliations": ["NVIDIA"], "comment": "Accepted at NeurIPS 2026",
+                "journal_ref": "JMLR 2026"}
+        base.update(over)
+        return base
+
+    def test_an_author_is_findable(self):
+        from research_digest_mcp.scoring import score_query
+        self.assertIsNotNone(score_query(self._paper(), ["lovelace"]))
+        self.assertIsNotNone(score_query(self._paper(), ["grace", "hopper"]))
+
+    def test_an_affiliation_is_findable_when_arxiv_supplies_one(self):
+        from research_digest_mcp.scoring import score_query
+        self.assertIsNotNone(score_query(self._paper(), ["nvidia"]))
+        self.assertIsNone(score_query(self._paper(affiliations=[]), ["nvidia"]))
+
+    def test_a_venue_is_findable_through_the_comment_field(self):
+        from research_digest_mcp.scoring import score_query
+        self.assertIsNotNone(score_query(self._paper(), ["neurips"]))
+
+    def test_the_feed_parser_keeps_the_fields_search_needs(self):
+        """They were being dropped on the floor at parse time, so no amount of
+        work in the scorer could have found them."""
+        from research_digest_mcp.fetchers import parse_atom
+        feed = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<feed xmlns="http://www.w3.org/2005/Atom" '
+            '      xmlns:arxiv="http://arxiv.org/schemas/atom">'
+            '<entry>'
+            '<id>http://arxiv.org/abs/2601.00001v1</id>'
+            '<title>Fast widgets</title><summary>We make widgets fast.</summary>'
+            '<published>2026-01-01T00:00:00Z</published>'
+            '<updated>2026-01-02T00:00:00Z</updated>'
+            '<author><name>Ada Lovelace</name>'
+            '  <arxiv:affiliation>NVIDIA</arxiv:affiliation></author>'
+            '<author><name>Grace Hopper</name></author>'
+            '<arxiv:comment>Accepted at NeurIPS 2026</arxiv:comment>'
+            '<arxiv:journal_ref>JMLR 2026</arxiv:journal_ref>'
+            '<arxiv:primary_category term="cs.AI"/>'
+            '<category term="cs.AI"/>'
+            '</entry></feed>'
+        ).encode("utf-8")
+        paper = parse_atom(feed)[0]
+        self.assertEqual(paper["authors"], ["Ada Lovelace", "Grace Hopper"])
+        self.assertEqual(paper["affiliations"], ["NVIDIA"])
+        self.assertIn("NeurIPS", paper["comment"])
+        self.assertIn("JMLR", paper["journal_ref"])
+
+    def test_a_paper_with_none_of_these_fields_still_works(self):
+        """Every paper fetched before this change lacks all four."""
+        from research_digest_mcp.scoring import paper_text, score_query
+        bare = {"id": "26.2", "title": "Widgets", "abstract": "About widgets."}
+        self.assertIn("widgets", paper_text(bare))
+        self.assertIsNotNone(score_query(bare, ["widgets"]))

@@ -71,6 +71,66 @@ def _similar(paper_id: str, limit: int):
         for pid, s in hits]}
 
 
+def _semantic_expand(seed_ids: list, exclude: set, limit: int = 12) -> dict:
+    """Papers near the ones a keyword search already found, by vector.
+
+    This is the one thing the embedding store could always have done for
+    search and never did. `find_similar` answers "papers like this paper", and
+    because the fitted vectoriser is thrown away after embedding there is no
+    way to turn a typed query into a vector at all. But the keyword hits are
+    papers, so they can seed the vector side: search for "nvidia", get the 7
+    papers that say it, then ask the vectors what sits near those 7.
+
+    On a real library that turns 7 literal matches into a shelf of GPU
+    scheduling, kernel and inference-serving papers that never use the word.
+    Presented separately and labelled, because it answers a different question:
+    the keyword list is what you asked for, this is what it is next to.
+    """
+    if not seed_ids:
+        return {"status": "no_seeds", "results": []}
+    try:
+        from .similarity import MixedBasis, SimilaritySearch
+    except ImportError:
+        return {"status": "unavailable", "message": NEEDS_EXTRA, "results": []}
+    try:
+        hits = SimilaritySearch().find_similar_to_group(seed_ids, limit + len(exclude))
+    except MixedBasis as exc:
+        return {"status": "needs_rebuild", "message": str(exc), "results": []}
+    except Exception:
+        return {"status": "unavailable", "message": NEEDS_EXTRA, "results": []}
+
+    by_id = {p["id"]: p for p in storage.load_papers()}
+    saved, read = storage.load_saved(), storage.load_read()
+    rows = []
+    for pid, score in hits:
+        if pid in exclude or pid not in by_id:
+            continue
+        paper = by_id[pid]
+        rows.append({
+            "id": pid, "title": paper.get("title", ""),
+            "url": paper.get("url", "") or f"https://arxiv.org/abs/{pid}",
+            "published": paper.get("published", ""),
+            "category": paper.get("primary_category", ""),
+            "about": about_sentence(paper),
+            "concepts": (paper.get("concepts") or [])[:6],
+            "similarity": score,
+            "saved": pid in saved, "read": pid in read,
+            "why_text": f"Does not contain your words. Sits close to the papers that "
+                        f"do, at {score:.2f} similarity.",
+        })
+        if len(rows) >= limit:
+            break
+    if not rows:
+        return {"status": "no_match", "results": []}
+    return {
+        "status": "ok",
+        "results": rows,
+        "how": ("Found by comparing vectors, not words. Each of these sits near the "
+                "papers your search matched, so they are about the same thing "
+                "without necessarily saying it the same way."),
+    }
+
+
 def _paper_detail(pid: str, query: str = "") -> dict:
     """Everything the detail panel needs, in one call: the full record, the
     lead sentence, and the precomputed similar list. UI-4: before this, opening
@@ -246,6 +306,12 @@ def api(path: str, params: dict) -> dict:
                 f"Your library may simply not have this yet."
             ) if weak else "",
             "coverage": storage.month_coverage(papers) if (weak or not every) else None,
+            # Offered when the literal answer is thin, which is exactly when
+            # "what is this next to" is more use than "what says this word".
+            "related_papers": (
+                _semantic_expand([p["id"] for p in every[:8]],
+                                 {p["id"] for p in every})
+                if every and (weak or len(every) < 25) else None),
             "results": [{
                 "id": p["id"], "title": p.get("title", ""), "url": p.get("url", ""),
                 "published": p.get("published", ""), "category": p.get("primary_category", ""),
