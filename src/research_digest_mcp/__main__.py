@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date
 
 from . import storage
 from .config import (
@@ -238,6 +239,50 @@ def cmd_ask(args) -> int:
     return 0
 
 
+def cmd_harvest(args) -> int:
+    """Bulk backfill through arXiv's OAI-PMH feed.
+
+    A different service from the search API, with its own budget. When search
+    is rate-limited this still works, and it returns about a thousand records
+    per request instead of two hundred.
+    """
+    from .config import load_profile
+    from .harvest import HarvestUnavailable, harvest_profile
+
+    settings = load_settings()
+    profile = load_profile(settings)
+    until = args.until or date.today().isoformat()
+    print(f"Harvesting {len(profile['all_categories'])} categories, "
+          f"{args.since} to {until}"
+          f"{' (by publication date)' if args.published_only else ''}...", flush=True)
+
+    def page(oai_set, pages, seen, kept):
+        print(f"  {oai_set:<10} page {pages:<3} scanned {seen:<7} kept {kept}",
+              flush=True)
+
+    try:
+        result = harvest_profile(profile, since=args.since, until=until,
+                                 on_page=page, published_only=args.published_only)
+    except HarvestUnavailable as exc:
+        print(f"Could not harvest: {exc}", file=sys.stderr)
+        return 1
+
+    for error in result["errors"]:
+        print(f"  warning: {error}", file=sys.stderr)
+    if not result["papers"]:
+        print("\nNothing matched your categories in that window. "
+              "Nothing was written.", file=sys.stderr)
+        return 1
+
+    stats = storage.merge_papers(result["papers"], result["run_date"])
+    print(f"\nScanned {result['seen']}, kept {result['kept']} in your categories, "
+          f"{stats['added']} new. Library now holds {stats['total']}.")
+    if stats["added"]:
+        print("Run 'research-digest embed' to include them in similarity search.")
+    record_fetch(stats["added"], stats["total"], source="harvest")
+    return 0
+
+
 def cmd_arxiv(args) -> int:
     """Search arXiv itself and add what comes back. The only command that grows
     the library outside of a profile fetch."""
@@ -446,6 +491,17 @@ def main(argv=None) -> int:
                      help="skip the local model even if one is configured, and read "
                           "the question by rule only")
     ask.set_defaults(func=cmd_ask)
+
+    harv = sub.add_parser(
+        "harvest",
+        help="bulk backfill a date range (uses arXiv's harvest feed, not search)")
+    harv.add_argument("--since", required=True, metavar="YYYY-MM-DD")
+    harv.add_argument("--until", default=None, metavar="YYYY-MM-DD")
+    harv.add_argument("--published-only", action="store_true",
+                      help="keep only papers first published in the window. "
+                           "Without this you also get older papers revised in it, "
+                           "because arXiv's harvest filters on last-modified date.")
+    harv.set_defaults(func=cmd_harvest)
 
     arxiv = sub.add_parser("arxiv", help="search arXiv itself and add what comes back")
     arxiv.add_argument("query", nargs="+")

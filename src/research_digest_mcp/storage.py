@@ -132,10 +132,17 @@ def merge_papers(new_papers: List[Dict[str, Any]], run_date: str) -> Dict[str, i
             continue
         key = base_id(pid)
         if key in papers:
-            papers[key].update({k: v for k, v in paper.items() if k != "first_seen"})
+            # An update must not overwrite where the paper originally came from
+            # or when it arrived. Once the library is assembled from several
+            # services with different coverage and different freshness, "which
+            # one told me this" stops being trivia and starts being the only
+            # way to defend a number on screen.
+            papers[key].update({k: v for k, v in paper.items()
+                                if k not in ("first_seen", "source")})
         else:
             paper = dict(paper)
             paper.setdefault("first_seen", run_date)
+            paper.setdefault("source", "search")
             papers[key] = paper
             added += 1
     runs = [r for r in archive["runs"] if r != run_date]
@@ -174,6 +181,38 @@ def import_papers(new_papers: List[Dict[str, Any]], run_dates=None) -> Dict[str,
     archive["runs"] = sorted(runs)
     write_json(ARCHIVE_PATH, archive)
     return {"added": added, "updated": updated, "total": len(papers)}
+
+
+SOURCE_LABELS = {
+    "oai": "harvested in bulk",
+    "search": "matched a keyword fetch",
+    "arxiv_search": "found by searching arXiv",
+    "saved": "added by you, by id",
+    "import": "imported from a file",
+    "": "arrived before this was recorded",
+}
+
+
+def source_breakdown(papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """How the library was assembled, by count.
+
+    Every score in this tool explains itself. This is the same idea one level
+    up: a paper is going to become an assembly of several services with
+    different coverage, and "which one told me this" is how you defend what is
+    on screen.
+    """
+    counts: Dict[str, int] = {}
+    for paper in papers:
+        key = str(paper.get("source") or "")
+        counts[key] = counts.get(key, 0) + 1
+    total = max(1, len(papers))
+    return [
+        {"source": key or "unrecorded",
+         "label": SOURCE_LABELS.get(key, key),
+         "papers": n,
+         "share": round(n / total * 100, 1)}
+        for key, n in sorted(counts.items(), key=lambda kv: -kv[1])
+    ]
 
 
 def month_coverage(papers: List[Dict[str, Any]]) -> Dict[str, Any]:

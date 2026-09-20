@@ -637,6 +637,21 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
 .relatedband-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .relatedband h3{font-family:var(--f-title);font-size:1.08rem;margin:0}
 .relatedband .sub{margin:6px 0 0;max-width:72ch}
+
+/* ---------- provenance ---------- */
+.sourcebar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:14px 0 12px;
+  background:var(--surface-2)}
+.sourceseg{height:100%}
+.sourceseg-0{background:var(--accent)}
+.sourceseg-1{background:var(--quant)}
+.sourceseg-2{background:var(--ink-3)}
+.sourceseg-3{background:var(--rule-2)}
+.sourcelegend{display:flex;flex-direction:column;gap:6px}
+.sourcerow{display:flex;align-items:baseline;gap:9px;font-size:.83rem;color:var(--ink-2)}
+.sourcerow b{font-family:var(--f-mono);font-size:.78rem;color:var(--ink);
+  min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
+.sourcedot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.sourcerow .dim{margin-left:auto;font-family:var(--f-mono);font-size:.72rem}
 .monthchart{display:flex;gap:4px;align-items:flex-end;margin-top:16px;
   overflow-x:auto;padding-bottom:4px}
 .monthcol{flex:1 0 34px;display:flex;flex-direction:column;align-items:center;gap:4px;

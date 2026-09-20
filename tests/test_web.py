@@ -603,12 +603,64 @@ class TestARefusalNeverLooksLikeAnEmptyResult(TempHome):
         from research_digest_mcp import fetchers
         from research_digest_mcp.web import api
         fetchers._begin_cooldown(429)
-        out = api("/api/refresh", {"since": ["2026-07-01"], "until": ["2026-07-31"]})
+        out = api("/api/refresh", {})
         self.assertEqual(out["status"], "error")
         self.assertTrue(out["blocked"])
         self.assertNotIn("returned nothing", out["message"])
         self.assertIn("refus", out["message"].lower())
         self.assertGreater(out["cooldown"]["remaining"], 0)
+
+    def test_a_dated_backfill_uses_the_harvest_feed_not_search(self):
+        """They are separate services with separate budgets. Measured while the
+        search API was refusing a request for one paper, the harvest endpoint
+        served a thousand records. Routing backfill through search is what made
+        a fillable gap look permanent.
+
+        Stubbed rather than called: no test here touches the network.
+        """
+        from research_digest_mcp import fetchers, harvest
+        from research_digest_mcp.web import api
+
+        calls = {"harvest": 0, "search": 0}
+
+        def fake_harvest(profile, since=None, until=None, **kw):
+            calls["harvest"] += 1
+            return {"papers": [{"id": "2607.00001", "title": "A July paper",
+                                "abstract": "x", "published": "2026-07-15",
+                                "primary_category": "cs.AI", "categories": ["cs.AI"],
+                                "concepts": [], "source": "oai"}],
+                    "errors": [], "run_date": "2026-09-19", "seen": 1, "kept": 1}
+
+        def fake_search(settings):
+            calls["search"] += 1
+            raise AssertionError("backfill must not go through the search API")
+
+        harvest.harvest_profile = fake_harvest
+        fetchers.fetch_settings = fake_search
+        # A live search cooldown must not stop a harvest: different service.
+        fetchers._begin_cooldown(406)
+
+        out = api("/api/refresh", {"since": ["2026-07-01"], "until": ["2026-07-31"]})
+        self.assertEqual(calls["harvest"], 1)
+        self.assertEqual(calls["search"], 0)
+        self.assertEqual(out["status"], "ok")
+        self.assertEqual(out["added"], 1)
+
+    def test_provenance_survives_a_later_update(self):
+        """Once papers arrive from several services, "which one told me this"
+        is the only way to defend what is on screen. An update that overwrote
+        it would erase that quietly."""
+        from research_digest_mcp import storage
+        storage.merge_papers([{"id": "26.1", "title": "A", "abstract": "x",
+                               "published": "2026-07-01", "source": "oai"}],
+                             "2026-09-19")
+        storage.merge_papers([{"id": "26.1", "title": "A revised", "abstract": "y",
+                               "published": "2026-07-01", "source": "search"}],
+                             "2026-09-20")
+        paper = storage.load_papers()[0]
+        self.assertEqual(paper["title"], "A revised", "content should update")
+        self.assertEqual(paper["source"], "oai", "origin must not be rewritten")
+        self.assertEqual(paper["first_seen"], "2026-09-19")
 
     def test_a_blocked_arxiv_search_is_unavailable_not_no_match(self):
         from research_digest_mcp import fetchers

@@ -452,10 +452,23 @@ def api(path: str, params: dict) -> dict:
         since, until = one.get("since"), one.get("until")
         try:
             if since or until:
+                # Backfill goes through the harvest feed, not search. They are
+                # different services with different budgets: measured on a
+                # machine the search API was refusing outright, the harvest
+                # endpoint served a thousand records a request. Filling a hole
+                # is also exactly the job it is built for, since it takes a
+                # date range directly instead of always starting from the
+                # newest paper.
                 from .config import load_profile
-                from .fetchers import fetch_profile
-                result = fetch_profile(load_profile(settings), since=since, until=until,
-                                       offset=int(load_state().get("fetch_offset", 0)))
+                from .harvest import HarvestUnavailable, harvest_profile
+                try:
+                    result = harvest_profile(
+                        load_profile(settings), since=since, until=until,
+                        published_only=True)
+                    result["run_date"] = result.get("run_date") or date.today().isoformat()
+                except HarvestUnavailable as exc:
+                    return {"status": "error", "message": str(exc),
+                            "blocked": True, "cooldown": cooldown_detail()}
             else:
                 result = fetch_settings(settings)
         except ArxivUnavailable as exc:
@@ -655,6 +668,7 @@ def api(path: str, params: dict) -> dict:
             "library_total": len(papers),
             "workspace_root": str(settings.get("workspace_root") or ""),
             "home": str(HOME),
+            "sources": storage.source_breakdown(papers),
             # What a fetch actually costs, in the only currency arXiv charges
             # in. arXiv asks for one request at a time a few seconds apart, and
             # this tool waits 5s between them on purpose, so the run time is

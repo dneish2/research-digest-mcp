@@ -1993,6 +1993,41 @@ function renderProfile() {
     out.appendChild(card);
   }
 
+  // Where the library came from. Every score in this tool explains itself;
+  // this is the same idea applied to the papers, and it goes in before more
+  // sources arrive rather than after, because a library assembled from four
+  // services where you cannot tell which is which produces exactly the
+  // confusion the scores were fixed to avoid.
+  const sources = data.sources || [];
+  if (sources.length) {
+    const card = el('section', 'profile-card');
+    card.appendChild(el('h3', null, 'Where your papers came from'));
+    card.appendChild(el('p', 'sub',
+      'Different routes into the library reach different things. A keyword fetch '
+      + 'only ever finds papers matching words you already chose. A bulk harvest '
+      + 'takes everything in your categories for a stretch of time, which is why '
+      + 'it is the one that fills holes.'));
+    const bar = el('div', 'sourcebar');
+    sources.forEach((s, i) => {
+      const seg = el('div', 'sourceseg sourceseg-' + (i % 4));
+      seg.style.flexGrow = String(Math.max(1, s.papers));
+      seg.title = `${s.papers} papers (${s.share}%) — ${s.label}`;
+      bar.appendChild(seg);
+    });
+    card.appendChild(bar);
+    const legend = el('div', 'sourcelegend');
+    sources.forEach((s, i) => {
+      const row = el('div', 'sourcerow');
+      row.appendChild(el('span', 'sourcedot sourceseg-' + (i % 4)));
+      row.appendChild(el('b', null, String(s.papers)));
+      row.appendChild(el('span', null, s.label));
+      row.appendChild(el('span', 'dim', `${s.share}%`));
+      legend.appendChild(row);
+    });
+    card.appendChild(legend);
+    out.appendChild(card);
+  }
+
   out.appendChild(modelCard());
 
   // The tiers.
