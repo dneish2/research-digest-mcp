@@ -825,3 +825,22 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
 }
 .conn-pending{font-size:.77rem;color:var(--ink-3);line-height:1.5;margin:9px 0 0;
   padding-left:10px;border-left:2px solid var(--rule-2)}
+
+/* ---------------- spelling suggestions ---------------- */
+/* Drawn from the library's own vocabulary, so every suggestion carries the
+   number of papers it will actually return. */
+.spellfix{margin-top:13px;padding:11px 13px;background:var(--surface-2);
+  border:1px solid var(--rule);border-left:3px solid var(--quant);
+  border-radius:9px;font-size:.83rem;line-height:1.55}
+.spellfix-main i{color:var(--ink-3);font-style:italic}
+.spellfix-main b{color:var(--ink)}
+.spellfix .linkish{margin-top:7px;font-size:.78rem}
+.spellfix-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.spellchip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;
+  border:1px solid var(--rule-2);border-radius:99px;background:var(--surface);
+  cursor:pointer;font-size:.78rem;font-family:inherit;color:var(--ink)}
+.spellchip:hover{border-color:var(--quant);background:var(--quant-soft)}
+.spellchip i{color:var(--ink-3);font-style:italic}
+.spellchip b{color:var(--ink)}
+.spellchip-arrow{color:var(--ink-3)}
+.spellchip-n{font-family:var(--f-mono);font-size:.69rem;color:var(--ink-3)}

@@ -287,6 +287,27 @@ def api(path: str, params: dict) -> dict:
         every = rank_all_query(papers, query.lower().split())
         limit = int(one.get("limit", 25))
 
+        # A typo used to be reported and then left with the reader: "ignored
+        # memroy (in no paper you hold)" is honest and it is still a dead end.
+        # The suggestion is drawn from the library's own vocabulary, so anything
+        # offered is a word that will return papers, and it carries the count.
+        from .scoring import live_terms
+        from .spelling import corrections, repair
+        _live, dead = live_terms(papers, query.lower().split())
+        fixes = corrections(dead, papers) if dead else []
+        corrected_from = ""
+        # `exact` is how the reader insists. Sometimes the word that matches
+        # nothing is the right word, and the answer is that this library does
+        # not hold it yet, which is a different and more useful fact.
+        if fixes and not every and one.get("exact") != "1":
+            # Nothing at all matched, so there is no result to protect and the
+            # corrected query is simply the better answer. Run it, and say so
+            # rather than quietly showing results for a query nobody typed.
+            fixed = repair(query.lower().split(), fixes)
+            corrected_from, query = query, " ".join(fixed)
+            terms = _significant(fixed)
+            every = rank_all_query(papers, fixed)
+
         # Say when the answer is thin. Nine papers each matching a third of the
         # query were presented exactly like nine good hits, and a search for
         # "NVIDIA-labs" came back led by a paper about animal welfare. A result
@@ -299,6 +320,11 @@ def api(path: str, params: dict) -> dict:
             "status": "ok", "query": query, "terms": terms,
             "searched": len(papers), "matched": len(every),
             "best_score": round(best, 3),
+            # What was typed, when it is not what was searched for. Named so the
+            # reader can go back to their own spelling, because sometimes the
+            # typo is the right word and the library is the thing that is wrong.
+            "corrected_from": corrected_from,
+            "corrections": fixes,
             "weak": weak,
             "weak_note": (
                 f"Nothing here is a strong match for {query!r}. The best of "
