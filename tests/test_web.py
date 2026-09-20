@@ -599,16 +599,125 @@ class TestARefusalNeverLooksLikeAnEmptyResult(TempHome):
         self.assertIn("refusing this client", message)
         self.assertIn("nothing is wrong with your", message.lower())
 
-    def test_a_blocked_refresh_reports_the_block_not_an_empty_month(self):
-        from research_digest_mcp import fetchers
+    def test_a_search_block_does_not_stop_a_fetch_any_more(self):
+        """The bug this whole route exists for.
+
+        arXiv rate-limits search on client reputation, so one machine can be
+        refused for an hour over a single query. The fetch button was wired to
+        that service alone, and reported an hour of enforced idleness as arXiv
+        being unavailable. It was not: measured while search was answering 406
+        with 59 minutes left on its backoff, the harvest feed served 1,140 cs
+        records in 0.2s.
+
+        Stubbed rather than called: no test here touches the network.
+        """
+        from research_digest_mcp import fetchers, harvest
         from research_digest_mcp.web import api
+        self.seed()
+
+        def fake_harvest(profile, since=None, until=None, **kw):
+            return {"papers": [{"id": "2609.00009", "title": "Fresh paper",
+                                "abstract": "x", "published": "2026-09-18",
+                                "primary_category": "cs.AI", "categories": ["cs.AI"],
+                                "concepts": [], "source": "oai"}],
+                    "errors": [], "run_date": "2026-09-20", "seen": 900, "kept": 1}
+
+        def fake_search(settings):
+            raise AssertionError("a search block must not be waited out")
+
+        harvest.harvest_profile = fake_harvest
+        fetchers.fetch_settings = fake_search
+        fetchers._begin_cooldown(406)
+
+        out = api("/api/refresh", {})
+        self.assertEqual(out["status"], "ok")
+        self.assertEqual(out["route"], "harvest")
+        self.assertEqual(out["added"], 1)
+
+    def test_a_refusal_from_both_services_reports_the_block(self):
+        """The one case that really is "arXiv is unavailable". It has to name
+        both services, because "arXiv refused" while one of its two endpoints
+        was never asked is the misreport this route was built to end."""
+        from research_digest_mcp import fetchers, harvest
+        from research_digest_mcp.web import api
+        self.seed()
+
+        def dead_harvest(profile, since=None, until=None, **kw):
+            raise harvest.HarvestUnavailable("returned HTTP 503")
+
+        def dead_search(settings):
+            raise fetchers.ArxivUnavailable("refusing this client")
+
+        harvest.harvest_profile = dead_harvest
+        fetchers.fetch_settings = dead_search
         fetchers._begin_cooldown(429)
+
         out = api("/api/refresh", {})
         self.assertEqual(out["status"], "error")
         self.assertTrue(out["blocked"])
         self.assertNotIn("returned nothing", out["message"])
-        self.assertIn("refus", out["message"].lower())
+        self.assertIn("503", out["message"])
+        self.assertIn("refusing this client", out["message"])
         self.assertGreater(out["cooldown"]["remaining"], 0)
+
+    def test_a_catch_up_starts_at_the_oldest_recent_day_it_holds_nothing_from(self):
+        """Starting at the newest paper steps over every hole behind it.
+
+        Measured on the real library: 672 papers from Sep 16 and 531 from Sep
+        17, and nothing at all from Sep 11 to Sep 15. A catch-up anchored to
+        the newest paper would have skipped those five days every day forever,
+        and a search across them would have returned a confident nothing.
+        """
+        from datetime import date as _date
+        from research_digest_mcp import storage
+        from research_digest_mcp.fetchjob import plan, recent_gaps
+        today = _date(2026, 9, 20)
+        storage.merge_papers([
+            {"id": "a", "title": "old", "abstract": "x", "published": "2026-09-10",
+             "primary_category": "cs.AI"},
+            {"id": "b", "title": "new", "abstract": "x", "published": "2026-09-17",
+             "primary_category": "cs.AI"},
+        ], today.isoformat())
+
+        gaps = recent_gaps(storage.load_papers(), today)
+        self.assertIn("2026-09-11", gaps["holes"],
+                      "we hold a paper from the 17th, so the 11th was reachable")
+        self.assertNotIn("2026-09-10", gaps["holes"], "a day we hold is not a hole")
+        self.assertIn("2026-09-19", gaps["pending"],
+                      "newer than anything we hold, so not yet announced")
+        self.assertNotIn("2026-09-19", gaps["holes"],
+                         "an unannounced day must never be reported as missing data")
+
+        window = plan(today=today)["window"]
+        self.assertLessEqual(window["since"], "2026-09-11")
+        self.assertEqual(window["until"], "2026-09-20")
+
+    def test_a_run_is_logged_whether_it_worked_or_not(self):
+        """"Did the daily fetch run" is a question about attempts. A log that
+        only records successes answers it wrong in the one case that matters,
+        which is the morning it stopped working."""
+        from research_digest_mcp import fetchers, harvest
+        from research_digest_mcp.fetchjob import log_days, log_tail
+        from research_digest_mcp.web import api
+        self.seed()
+
+        def dead_harvest(profile, since=None, until=None, **kw):
+            raise harvest.HarvestUnavailable("returned HTTP 503")
+
+        harvest.harvest_profile = dead_harvest
+        fetchers.fetch_settings = lambda settings: (_ for _ in ()).throw(
+            fetchers.ArxivUnavailable("refusing this client"))
+
+        api("/api/refresh", {})
+        runs = log_tail(5)
+        self.assertEqual(len(runs), 1)
+        self.assertFalse(runs[0]["ok"])
+        self.assertTrue(runs[0]["blocked"])
+        self.assertEqual(runs[0]["source"], "web")
+
+        today = log_days(3)[-1]
+        self.assertEqual(today["runs"], 1)
+        self.assertEqual(today["failed"], 1)
 
     def test_a_dated_backfill_uses_the_harvest_feed_not_search(self):
         """They are separate services with separate budgets. Measured while the

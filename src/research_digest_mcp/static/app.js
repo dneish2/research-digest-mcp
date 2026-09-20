@@ -377,23 +377,26 @@ function lastDayOf(key) {
   return new Date(y, m, 0).toISOString().slice(0, 10);
 }
 
+/* A month is the longest thing this tool does: one real month of cs is tens of
+   thousands of records. It used to be a held-open request behind a disabled
+   button, which is the same picture whether it is working or hung. It now runs
+   as the same background job as any other fetch, and reports itself in the
+   connection panel, where a fetch belongs. */
 async function backfill(month, button) {
   button.disabled = true;
   button.textContent = `Fetching ${prettyMonth(month)}…`;
-  $('#status').textContent = `Asking arXiv for papers published in ${prettyMonth(month)}. `
-    + 'This walks every category, so give it a couple of minutes.';
-  const r = await get('/api/refresh',
-    { since: month + '-01', until: lastDayOf(month) }, { timeoutMs: 300000 });
+  setView('grid');
+  await renderConn('#conn-grid');
+  const box = $('#conn-grid').querySelector('.conn-box');
+  const started = await get('/api/fetch/start',
+    { since: month + '-01', until: lastDayOf(month) }, { timeoutMs: 20000 });
   button.disabled = false;
-  if (r.status !== 'ok') {
-    button.textContent = `Fetch ${prettyMonth(month)} now`;
-    $('#status').textContent = '';
-    if (r.blocked) return showBlocked(r);
-    return toast(r.message || 'arXiv did not answer.', 'bad');
+  button.textContent = `Fetch ${prettyMonth(month)} now`;
+  if (started.status !== 'ok') {
+    return toast(started.message || 'Could not start the backfill.', 'bad');
   }
-  toast(r.message);
-  paperCache.clear();
-  await boot();
+  if (box) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  watchFetch(box);
 }
 
 const PAGE_SIZE = 120;
@@ -428,6 +431,214 @@ async function loadGrid(append) {
   $('#status').className = 'search-status on';
   renderHeroText();
   renderGrid();
+}
+
+/* ---------------- the connection to arXiv ---------------- */
+
+/* Written after a report that read, in full: "how am I getting rate limited
+   for 1 search, don't we have two APIs available here?"
+
+   We do, and the button was wired to the one that was refusing. Everything in
+   here exists so that question is answerable from the screen: which service is
+   being used, what state each is in, what window is about to be asked for, and
+   what came back. A fetch that cannot say what it did cannot be trusted when
+   it says nothing came back. */
+
+function humanWait(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s}s`;
+  const m = Math.round(s / 60);
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+function endpointPill(ep, inUse) {
+  const pill = el('div', `epill epill-${ep.state}${inUse ? ' epill-live' : ''}`);
+  const top = el('div', 'epill-top');
+  top.appendChild(el('b', null, ep.label));
+  top.appendChild(el('span', 'epill-state',
+    ep.state === 'cooling' ? `refusing, ${humanWait(ep.remaining)} left` : 'ready'));
+  pill.appendChild(top);
+  pill.appendChild(el('div', 'epill-host', ep.host));
+  pill.appendChild(el('div', 'epill-note', ep.note));
+  if (inUse) pill.appendChild(el('div', 'epill-using', 'in use for this fetch'));
+  return pill;
+}
+
+/* One line saying whether anything needs attention, for the top of a screen
+   whose job is papers rather than plumbing. */
+function connSummary(plan) {
+  const lib = plan.library || {};
+  const search = plan.endpoints.search;
+  const bits = [];
+  if (search.state === 'cooling') {
+    bits.push(`search API refusing for ${humanWait(search.remaining)}, `
+      + 'harvest feed answering');
+  }
+  if ((lib.holes || []).length) {
+    bits.push(`${lib.holes.length} days missing in the last ${lib.lookback}`);
+  }
+  if (!bits.length) {
+    bits.push(`both arXiv services ready, newest paper ${humanDate(lib.newest_published)}`);
+  }
+  return bits.join(' · ');
+}
+
+/* The panel. Same component on Papers and on Digest, because a reader who
+   pressed Fetch on one of them and got nothing needs the same four facts.
+   Collapsed on Papers, where the job of the screen is papers. */
+function connectionPanel(plan, collapsed) {
+  const box = el('section', 'conn-box');
+  const lib = plan.library || {};
+
+  // Collapsed renders the same body inside a details, so there is exactly one
+  // description of the connection and one place to fix it.
+  let host = box;
+  if (collapsed) {
+    const wrap = el('details', 'conn-details');
+    const sum = el('summary', 'conn-summary');
+    sum.appendChild(el('span', 'conn-dot conn-dot-'
+      + (plan.endpoints.search.state === 'cooling' ? 'warn' : 'ok')));
+    sum.appendChild(el('span', null, connSummary(plan)));
+    wrap.appendChild(sum);
+    box.appendChild(wrap);
+    host = wrap;
+  }
+
+  const head = el('div', 'conn-head');
+  head.appendChild(el('h3', null, 'arXiv connection'));
+  if (lib.behind_days != null) {
+    head.appendChild(el('span', 'conn-edge',
+      `newest paper ${humanDate(lib.newest_published)}, ${lib.behind_days} days back`));
+  }
+  host.appendChild(head);
+
+  // Two services, side by side, each with its own state. Collapsing them into
+  // one "arXiv" status is what let a block on the one we were not obliged to
+  // use read as arXiv being down.
+  const pills = el('div', 'epills');
+  ['harvest', 'search'].forEach((name) => {
+    pills.appendChild(endpointPill(plan.endpoints[name], plan.route === name));
+  });
+  host.appendChild(pills);
+
+  // The announcement delay, said once, where the confusion happens. A library
+  // whose newest paper is three days old looks broken and is not.
+  host.appendChild(el('p', 'conn-lag', plan.lag_note));
+
+  /* Two kinds of empty day, kept apart on purpose. A hole is ours to fix; a
+     pending day is arXiv's announcement delay and nothing can be done about
+     it. Showing them as one list would have flagged an ordinary Friday as
+     missing data, and gap warnings you learn to ignore are worse than none. */
+  const holes = lib.holes || [];
+  if (holes.length) {
+    const note = el('div', 'conn-gaps');
+    note.appendChild(el('b', null,
+      `You hold nothing published on ${holes.length} of the last ${lib.lookback} days, `
+      + `starting ${humanDate(holes[0])}.`));
+    note.appendChild(el('span', null,
+      'These are real holes: you hold papers published after them, so they were '
+      + 'reachable. A fetch anchored to your newest paper would step over them '
+      + 'every time, so this one starts at the oldest instead.'));
+    host.appendChild(note);
+  }
+  const pending = lib.pending || [];
+  if (pending.length) {
+    host.appendChild(el('p', 'conn-pending',
+      `${pending.length} more recent day${pending.length > 1 ? 's' : ''} `
+      + `(${pending.map(humanDate).join(', ')}) `
+      + `${pending.length > 1 ? 'are' : 'is'} empty because arXiv has not `
+      + 'announced them yet. Not a hole, and not something a fetch can fix today.'));
+  }
+
+  const w = plan.window || {};
+  const plans = el('div', 'conn-plan');
+  plans.appendChild(el('span', null,
+    `Fetch asks the ${plan.endpoints[plan.route].label} for papers published `
+    + `${humanDate(w.since)} to ${humanDate(w.until)}, ${w.days} days, walked in `
+    + `pages of about ${w.page_size.toLocaleString()} records. Progress appears `
+    + 'here as it goes.'));
+  if (plan.capped) plans.appendChild(el('span', 'conn-cap', plan.cap_note));
+  host.appendChild(plans);
+
+  const run = el('button', 'btn conn-run', 'Fetch now');
+  run.type = 'button';
+  run.addEventListener('click', () => startFetch({}, box));
+  host.appendChild(run);
+
+  const live = el('div', 'conn-live');
+  live.hidden = true;
+  host.appendChild(live);
+  return box;
+}
+
+async function renderConn(targetId) {
+  const target = $(targetId);
+  if (!target) return;
+  target.textContent = '';
+  const plan = await get('/api/fetch/status', {}, { timeoutMs: 20000 });
+  if (plan.status !== 'ok') return;
+  state.fetchPlan = plan;
+  target.appendChild(connectionPanel(plan, true));
+  if (plan.running) watchFetch(target.querySelector('.conn-box'));
+}
+
+/* Start the fetch on the server and watch it, rather than holding a request
+   open for the three minutes a 22 day catch-up takes. The harvest reports
+   every page it reads and nothing was listening to it. */
+async function startFetch(params, box) {
+  const started = await get('/api/fetch/start', params, { timeoutMs: 20000 });
+  if (started.status !== 'ok') return toast(started.message || 'Could not start.', 'bad');
+  watchFetch(box);
+}
+
+function watchFetch(box) {
+  if (!box) return;
+  const live = box.querySelector('.conn-live');
+  const run = box.querySelector('.conn-run');
+  if (!live) return;
+  // A fetch running behind a closed disclosure is a spinner with extra steps.
+  const details = box.querySelector('.conn-details');
+  if (details) details.open = true;
+  live.hidden = false;
+  run.disabled = true;
+  run.textContent = 'Fetching…';
+
+  const tick = async () => {
+    const out = await get('/api/fetch/progress', {}, { timeoutMs: 15000 });
+    const p = (out && out.progress) || {};
+    live.textContent = '';
+
+    if (p.state === 'running') {
+      const bar = el('div', 'conn-running');
+      bar.appendChild(el('b', null, p.message || 'Working…'));
+      bar.appendChild(el('span', 'dim', `${humanWait(p.elapsed || 0)} elapsed`));
+      live.appendChild(bar);
+      const log = el('div', 'conn-log');
+      (p.lines || []).slice(-8).reverse().forEach((line) => {
+        const row = el('div', 'conn-log-row');
+        row.appendChild(el('span', 'conn-log-at', line.at));
+        row.appendChild(el('span', null,
+          `${line.set} request ${line.page}: ${line.seen.toLocaleString()} records read, `
+          + `${line.kept.toLocaleString()} in your categories`));
+        log.appendChild(row);
+      });
+      live.appendChild(log);
+      setTimeout(tick, 1200);
+      return;
+    }
+
+    run.disabled = false;
+    run.textContent = 'Fetch now';
+    const r = p.result || {};
+    live.appendChild(el('div', r.ok ? 'conn-done' : 'conn-failed',
+      r.message || 'Finished.'));
+    if (r.ok && r.added) {
+      paperCache.clear();
+      await boot();
+    }
+    if (!r.ok && r.blocked) showBlocked(r);
+  };
+  tick();
 }
 
 /* ---------------- asking a question ---------------- */
@@ -1136,6 +1347,41 @@ function renderCrossing(out, crossing) {
 
 /* ---------------- digest ---------------- */
 
+/* Fourteen days of "did the fetch run, and did it work".
+
+   The empty days are the point. A history that only draws the runs that
+   happened cannot show you the morning the scheduled job stopped firing, which
+   is the single failure this is meant to catch: everything looks normal, the
+   digest still renders, and it is quietly built on a library that stopped
+   growing a week ago. */
+function fetchHistory(days) {
+  const card = el('section', 'profile-card');
+  card.appendChild(el('h3', null, 'Fetch history'));
+  const ran = days.filter((d) => d.runs).length;
+  const failed = days.filter((d) => d.failed).length;
+  card.appendChild(el('p', 'sub',
+    `A fetch ran on ${ran} of the last ${days.length} days`
+    + (failed ? `, and was refused on ${failed} of them. ` : '. ')
+    + 'A blank column is a day with no run recorded at all, which is what a '
+    + 'stopped scheduled job looks like from here.'));
+
+  const strip = el('div', 'histstrip');
+  days.forEach((d) => {
+    const kind = !d.runs ? 'none' : (d.failed && !d.ok ? 'bad' : 'ok');
+    const cell = el('div', `histcell hist-${kind}`);
+    cell.appendChild(el('span', 'histday', d.day.slice(8)));
+    cell.title = !d.runs
+      ? `${d.day}: no fetch recorded`
+      : `${d.day}: ${d.runs} run${d.runs > 1 ? 's' : ''}, ${d.added} papers added`
+        + (d.failed ? `, ${d.failed} refused` : '')
+        + ` (${d.sources.join(', ')})`;
+    if (d.added) cell.appendChild(el('b', null, String(d.added)));
+    strip.appendChild(cell);
+  });
+  card.appendChild(strip);
+  return card;
+}
+
 async function loadDigest() {
   const out = $('#view-digest');
   out.textContent = 'Loading…';
@@ -1148,10 +1394,23 @@ async function loadDigest() {
   }
 
   out.appendChild(el('h2', null, `Today’s digest, ${humanDate(data.date)}`));
+  /* This line used to read "the top 5 of 10125 papers in your library" while
+     the header said 13,478. Both numbers were right and one was mislabelled:
+     10,125 was how many papers matched a topic at all. Two surfaces claiming
+     two library sizes is worse than either number being wrong. */
   out.appendChild(el('p', 'sub',
-    `The top ${data.picks.length} of ${data.considered} papers in your library, one per `
-    + 'category where possible. Deterministic: the same library and topics produce the same '
-    + 'picks, so this is worth skimming once a day rather than re-running.'));
+    `The top ${data.picks.length} of the ${data.considered.toLocaleString()} papers `
+    + `in your library of ${data.library.toLocaleString()} that match at least one of `
+    + 'your topics, one per category where possible. Deterministic: the same library '
+    + 'and topics produce the same picks, so this is worth skimming once a day rather '
+    + 'than re-running.'));
+
+  if (data.fetch) {
+    const panel = connectionPanel(data.fetch);
+    out.appendChild(panel);
+    if (data.fetch.running) watchFetch(panel);
+  }
+  if (data.history) out.appendChild(fetchHistory(data.history));
 
   if (!data.picks.length) {
     out.appendChild(el('div', 'empty',
@@ -2528,27 +2787,18 @@ function looksLikeQuestion(text) {
     || /\b(related to|papers about|papers on|looking for|anything about)\b/.test(low);
 }
 
+/* The header button now does what the panel's button does, and shows it in the
+   same place. It used to hold a request open for up to four minutes behind the
+   word "Fetching…", which is the same amount of information as a spinner: you
+   could not tell a long harvest from a hung one, or find out which service it
+   was even talking to. */
 $('#refresh').addEventListener('click', async () => {
-  const btn = $('#refresh');
-  btn.disabled = true;
-  btn.textContent = 'Fetching…';
-  $('#status').textContent = 'Asking arXiv for papers matching your profile… '
-    + '(one request per category, a few seconds apart, so give it a couple of minutes)';
-  const r = await get('/api/refresh', {}, { timeoutMs: 240000 });
-  btn.disabled = false;
-  btn.textContent = 'Fetch';
-  $('#status').textContent = r.message || r.status;
-  $('#status').className = 'search-status on';
-  if (r.status === 'ok') {
-    (r.errors || []).forEach((line) => toast(line, 'bad'));
-    paperCache.clear();
-    await boot();
-  } else if (r.blocked) {
-    $('#status').textContent = '';
-    showBlocked(r);
-  } else {
-    toast(r.message || 'Fetch failed.', 'bad');
-  }
+  setView('grid');
+  await renderConn('#conn-grid');
+  const box = $('#conn-grid').querySelector('.conn-box');
+  if (!box) return;
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  startFetch({}, box);
 });
 
 $('#panel-x').addEventListener('click', closePanel);
@@ -2742,6 +2992,7 @@ async function boot() {
   }
   state.settingsTopics = s.topics || [];
   loadLlmStrip();
+  renderConn('#conn-grid');
 
   const hero = $('#hero');
   hero.textContent = '';
