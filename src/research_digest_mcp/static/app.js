@@ -96,6 +96,8 @@ const state = {
   topics: [],       // whatever produced the CURRENT list's ranking
   settingsTopics: [],
   hasMore: false,
+  corrections: [],   // query words in no paper, with the nearest word that is
+  correctedFrom: '', // what was typed, when it is not what was searched for
 };
 
 // Detail-panel data, keyed by paper id AND the query that ranked the list,
@@ -401,11 +403,12 @@ async function backfill(month, button) {
 
 const PAGE_SIZE = 120;
 
-async function loadGrid(append) {
+async function loadGrid(append, extra) {
   const offset = append ? state.papers.length : 0;
   $('#status').textContent = append ? 'Loading more…' : 'Loading…';
   const data = state.query
-    ? await get('/api/search', { q: state.query, limit: PAGE_SIZE })
+    ? await get('/api/search',
+      Object.assign({ q: state.query, limit: PAGE_SIZE }, extra || {}))
     : await get('/api/papers',
       { when: state.when, sort: state.sort, limit: PAGE_SIZE, offset });
 
@@ -425,6 +428,15 @@ async function loadGrid(append) {
   state.related = append ? state.related : (data.related_papers || null);
   if (data.coverage) state.coverage = data.coverage;
   state.searched = data.searched || data.total || 0;
+  state.corrections = data.corrections || [];
+  state.correctedFrom = data.corrected_from || '';
+  // The server may have searched for something other than what was typed, and
+  // the box has to agree with the results or the reader is reading one query
+  // and looking at another.
+  if (state.correctedFrom && data.query) {
+    state.query = data.query;
+    $('#q').value = data.query;
+  }
   $('#status').textContent = state.query
     ? `${data.matched} of your ${data.searched} papers mention this`
     : `Showing ${state.papers.length} of ${data.total} papers`;
@@ -828,13 +840,13 @@ function showBlocked(data) {
   setView('grid');
 }
 
-function runSearch(mode) {
+function runSearch(mode, extra) {
   state.mode = mode || 'search';
   if (state.mode === 'ask') return runAsk();
   state.query = $('#q').value.trim();
   renderReading(null);
   setView('grid');
-  return loadGrid(false);
+  return loadGrid(false, extra);
 }
 
 /* ---------------- detail panel ---------------- */
@@ -1746,6 +1758,64 @@ async function runLab() {
   }
 }
 
+/* What was typed, when it was not what was searched for.
+
+   Reported as: a typo "doesn't correct me or show me things which probably I
+   was looking for". It used to name the dead word and stop there, which is
+   honest and still leaves you to find your own slip. Every suggestion here is a
+   word that appears in papers you hold, so it carries the count, and the
+   original spelling stays one click away because sometimes the word is right
+   and the library is what is missing. */
+function spellNotice() {
+  const from = state.correctedFrom;
+  const fixes = state.corrections || [];
+  if (!from && !fixes.length) return null;
+  const box = el('div', 'spellfix');
+
+  if (from) {
+    const line = el('div', 'spellfix-main');
+    line.appendChild(el('span', null, 'Nothing in your library matched '));
+    line.appendChild(el('i', null, `“${from}”`));
+    line.appendChild(el('span', null, `, so this is showing results for `));
+    line.appendChild(el('b', null, state.query));
+    line.appendChild(el('span', null, '.'));
+    box.appendChild(line);
+    const keep = el('button', 'linkish', `Search for “${from}” exactly`);
+    keep.type = 'button';
+    keep.addEventListener('click', () => {
+      $('#q').value = from;
+      runSearch('search', { exact: '1' });
+    });
+    box.appendChild(keep);
+    return box;
+  }
+
+  // Some words landed and some did not, so the results on screen are real and
+  // the offer sits beside them rather than replacing them.
+  const line = el('div', 'spellfix-main');
+  line.appendChild(el('span', null,
+    fixes.length > 1 ? 'These words are in no paper you hold: ' : 'This word is in no paper you hold: '));
+  box.appendChild(line);
+  const row = el('div', 'spellfix-row');
+  fixes.forEach((fix) => {
+    const chip = el('button', 'spellchip');
+    chip.type = 'button';
+    chip.appendChild(el('i', null, fix.term));
+    chip.appendChild(el('span', 'spellchip-arrow', '→'));
+    chip.appendChild(el('b', null, fix.suggestion));
+    chip.appendChild(el('span', 'spellchip-n', `${fix.papers.toLocaleString()} papers`));
+    chip.title = `Replace ${fix.term} with ${fix.suggestion} and search again`;
+    chip.addEventListener('click', () => {
+      $('#q').value = ($('#q').value || '').split(/\s+/)
+        .map((w) => (w.toLowerCase() === fix.term ? fix.suggestion : w)).join(' ');
+      runSearch('search');
+    });
+    row.appendChild(chip);
+  });
+  box.appendChild(row);
+  return box;
+}
+
 function renderHeroText() {
   const hero = $('#hero');
   const old = hero.querySelector('.hero-text');
@@ -1757,6 +1827,8 @@ function renderHeroText() {
     wrap.appendChild(el('p', null,
       'Ranked by how much of your query each paper covers, best first. Open any '
       + 'paper for what it’s about and its nearest neighbours. Esc clears the search.'));
+    const fixed = spellNotice();
+    if (fixed) wrap.appendChild(fixed);
   } else {
     wrap.appendChild(el('h1', null, 'Your library'));
     wrap.appendChild(el('p', null,
@@ -2270,7 +2342,7 @@ function renderProfile() {
     sources.forEach((s, i) => {
       const seg = el('div', 'sourceseg sourceseg-' + (i % 4));
       seg.style.flexGrow = String(Math.max(1, s.papers));
-      seg.title = `${s.papers} papers (${s.share}%) — ${s.label}`;
+      seg.title = `${s.papers} papers (${s.share}%), ${s.label}`;
       bar.appendChild(seg);
     });
     card.appendChild(bar);
@@ -2808,7 +2880,7 @@ const KEYS = [
   ['/', 'jump to the search box'],
   ['Enter', 'search, or ask if what you typed reads as a question'],
   ['Ctrl/⌘ + Enter', 'always ask, never keyword-search'],
-  ['1 – 7', 'papers, digest, map, trends, queue, profile, scoring'],
+  ['1 to 7', 'papers, digest, map, trends, queue, profile, scoring'],
   ['j / k', 'next / previous paper, with one open'],
   ['s', 'star the open paper'],
   ['Esc', 'close the paper, or clear the search'],
