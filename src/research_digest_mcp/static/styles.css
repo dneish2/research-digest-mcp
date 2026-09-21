@@ -749,3 +749,79 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
   .header-meta{order:3;flex:1 1 100%;margin-left:0}
   .header-meta span:nth-child(n+4){display:inline}
 }
+
+/* ---------------- the arXiv connection panel ---------------- */
+/* Two services shown side by side, each with its own state. The previous
+   design had no surface for this at all, so a block on one of arXiv's two
+   endpoints was indistinguishable from arXiv being down. */
+.conn{margin:0 0 16px}
+.conn-box{background:var(--surface);border:1px solid var(--rule);
+  border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow-sm)}
+.conn-details>summary{list-style:none;cursor:pointer;display:flex;gap:9px;
+  align-items:center;font-size:.82rem;color:var(--ink-2);margin:-2px 0}
+.conn-details>summary::-webkit-details-marker{display:none}
+.conn-details>summary::after{content:'▸';margin-left:auto;color:var(--ink-3);
+  transition:transform .15s}
+.conn-details[open]>summary::after{transform:rotate(90deg)}
+.conn-details[open]>summary{margin-bottom:12px;padding-bottom:10px;
+  border-bottom:1px solid var(--rule)}
+.conn-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.conn-dot-ok{background:var(--accent)}
+.conn-dot-warn{background:var(--warn)}
+.conn-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:11px}
+.conn-head h3{font-family:var(--f-title);font-size:1.02rem;margin:0}
+.conn-edge{font-family:var(--f-mono);font-size:.73rem;color:var(--ink-3);margin-left:auto}
+
+.epills{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.epill{border:1px solid var(--rule);border-radius:10px;padding:10px 12px;
+  background:var(--surface-2)}
+.epill-live{border-color:var(--accent);background:var(--accent-soft)}
+.epill-cooling{border-color:var(--warn);background:var(--warn-soft)}
+.epill-top{display:flex;align-items:baseline;gap:8px}
+.epill-top b{font-size:.84rem}
+.epill-state{font-family:var(--f-mono);font-size:.71rem;margin-left:auto;color:var(--ink-2)}
+.epill-cooling .epill-state{color:var(--warn)}
+.epill-host{font-family:var(--f-mono);font-size:.7rem;color:var(--ink-3);margin-top:2px}
+.epill-note{font-size:.75rem;color:var(--ink-2);margin-top:6px;line-height:1.45}
+.epill-using{font-size:.7rem;color:var(--accent);margin-top:6px;font-weight:600;
+  text-transform:lowercase}
+
+.conn-lag{font-size:.78rem;color:var(--ink-2);line-height:1.55;margin:11px 0 0}
+.conn-gaps{margin-top:10px;padding:9px 11px;background:var(--warn-soft);
+  border:1px solid var(--warn);border-radius:9px;font-size:.78rem;line-height:1.5}
+.conn-gaps b{display:block;margin-bottom:3px}
+.conn-gaps span{color:var(--ink-2)}
+.conn-plan{margin-top:11px;font-size:.78rem;color:var(--ink-2);line-height:1.5;
+  display:flex;flex-direction:column;gap:5px}
+.conn-cap{color:var(--warn)}
+.conn-run{margin-top:12px}
+
+.conn-live{margin-top:12px;border-top:1px solid var(--rule);padding-top:11px}
+.conn-running{display:flex;align-items:baseline;gap:10px;font-size:.8rem}
+.conn-running b{color:var(--accent)}
+.conn-log{margin-top:8px;font-family:var(--f-mono);font-size:.71rem;
+  color:var(--ink-3);display:flex;flex-direction:column;gap:3px;
+  max-height:150px;overflow-y:auto}
+.conn-log-at{color:var(--ink-3);opacity:.7;margin-right:8px}
+.conn-done{font-size:.8rem;color:var(--ink-2);line-height:1.55}
+.conn-failed{font-size:.8rem;color:var(--fall);line-height:1.55}
+
+/* ---------------- fetch history ---------------- */
+/* The blank cells carry the information. A strip that only drew the days a
+   fetch ran could not show the morning the scheduled job stopped firing. */
+.histstrip{display:flex;gap:4px;margin-top:11px;flex-wrap:wrap}
+.histcell{flex:1;min-width:34px;border-radius:7px;padding:7px 4px 6px;text-align:center;
+  border:1px solid var(--rule);background:var(--surface-2)}
+.histcell b{display:block;font-size:.73rem;margin-top:3px;font-family:var(--f-mono)}
+.histday{font-size:.65rem;color:var(--ink-3);font-family:var(--f-mono)}
+.hist-ok{background:var(--accent-soft);border-color:var(--accent)}
+.hist-ok b{color:var(--accent)}
+.hist-bad{background:var(--warn-soft);border-color:var(--warn)}
+.hist-none{background:transparent;border-style:dashed;border-color:var(--rule-2)}
+
+@media (max-width:640px){
+  .epills{grid-template-columns:1fr}
+  .conn-edge{margin-left:0}
+}
+.conn-pending{font-size:.77rem;color:var(--ink-3);line-height:1.5;margin:9px 0 0;
+  padding-left:10px;border-left:2px solid var(--rule-2)}

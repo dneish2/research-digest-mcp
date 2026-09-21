@@ -416,8 +416,18 @@ def api(path: str, params: dict) -> dict:
         settings = load_settings()
         result = build_digest(papers, ranking_topics(settings), for_date=one.get("date"))
         digest_path = write_digest(result)
+        from .fetchjob import log_days, plan
         return {
             "status": "ok", "date": result["date"], "considered": result["considered"],
+            # `considered` is the number of papers that matched at least one
+            # topic, and the page was printing it as the size of the library.
+            # Two surfaces then reported two different library sizes (10,125 on
+            # the digest, 13,478 in the header) and neither said which it meant.
+            "library": len(papers),
+            "newest_published": max(
+                (str(p.get("published") or "")[:10] for p in papers), default=""),
+            "fetch": plan(settings),
+            "history": log_days(14),
             "picks": [{
                 "id": p["id"], "title": p.get("title", ""), "url": p.get("url", ""),
                 "published": p.get("published", ""), "category": p.get("primary_category", ""),
@@ -442,73 +452,36 @@ def api(path: str, params: dict) -> dict:
         return {"status": "ok", "note": note}
 
     if path == "/api/refresh":
-        # Fetch from the browser, so a daily pull does not need the terminal.
-        from .config import record_fetch
-        from .fetchers import ArxivUnavailable, cooldown_detail, fetch_settings
-        settings = load_settings()
-        # A date window makes a missed month recoverable. Without one, every
-        # fetch starts from the newest paper, so a gap stays a gap forever and
-        # the only symptom is a search that confidently finds nothing.
-        since, until = one.get("since"), one.get("until")
-        try:
-            if since or until:
-                # Backfill goes through the harvest feed, not search. They are
-                # different services with different budgets: measured on a
-                # machine the search API was refusing outright, the harvest
-                # endpoint served a thousand records a request. Filling a hole
-                # is also exactly the job it is built for, since it takes a
-                # date range directly instead of always starting from the
-                # newest paper.
-                from .config import load_profile
-                from .harvest import HarvestUnavailable, harvest_profile
-                try:
-                    result = harvest_profile(
-                        load_profile(settings), since=since, until=until,
-                        published_only=True)
-                    result["run_date"] = result.get("run_date") or date.today().isoformat()
-                except HarvestUnavailable as exc:
-                    return {"status": "error", "message": str(exc),
-                            "blocked": True, "cooldown": cooldown_detail()}
-            else:
-                result = fetch_settings(settings)
-        except ArxivUnavailable as exc:
-            return {"status": "error", "message": str(exc),
-                    "blocked": True, "cooldown": cooldown_detail()}
-        if not result["papers"]:
-            # "arXiv returned nothing" was a lie whenever arXiv had refused us,
-            # and refusal is by far the likeliest reason for an empty fetch.
-            # The real cause was in `errors` and no surface ever showed it, so
-            # a rate limit looked like an empty month. Report the cause.
-            reasons = result["errors"] or []
-            blocked = any("refus" in str(r).lower() or "429" in str(r)
-                          or "406" in str(r) for r in reasons)
-            if blocked:
-                message = reasons[0]
-            elif reasons:
-                message = (f"Nothing came back, and {len(reasons)} categories "
-                           f"reported a problem. First: {reasons[0]}")
-            else:
-                message = ("arXiv answered, and had no papers matching your topics "
-                           "in that window. Nothing was written. Widening the date "
-                           "range or the topic list is what changes this.")
-            return {"status": "error", "message": message,
-                    "blocked": blocked, "errors": reasons,
-                    "cooldown": cooldown_detail()}
-        stats = storage.merge_papers(result["papers"], result["run_date"])
-        # The browser button used to skip this, so fetching from the UI left the
-        # header still reporting the last *terminal* fetch -- the surface you
-        # just used was the one that did not update.
-        record_fetch(stats["added"], stats["total"], source="web",
-                     next_offset=result.get("next_offset"))
-        return {
-            "status": "ok", "fetched": len(result["papers"]),
-            "added": stats["added"], "total": stats["total"],
-            "errors": result["errors"],
-            "message": (f"Fetched {len(result['papers'])}, {stats['added']} new. "
-                        f"Library holds {stats['total']}."
-                        + (" Re-run embed to include them in similarity search."
-                           if stats["added"] else "")),
-        }
+        # Two services, and this used to reach for the blocked one. Search
+        # rate-limits on client reputation, so a machine it has decided to
+        # refuse gets 406 for everything, while the harvest feed on a different
+        # host keeps answering. Routing now lives in fetchjob, which also
+        # records what it did.
+        from .fetchjob import run_fetch
+        return run_fetch(load_settings(), since=one.get("since", ""),
+                         until=one.get("until", ""), source="web")
+
+    if path == "/api/fetch/status":
+        # What a fetch would do right now, and the health of each endpoint
+        # separately. Read by Papers and Digest on every load, so the state of
+        # the connection is visible before anything is pressed rather than
+        # discovered by pressing it.
+        from .fetchjob import plan
+        return plan(load_settings())
+
+    if path == "/api/fetch/start":
+        from .fetchjob import start_background
+        return start_background(load_settings(), since=one.get("since", ""),
+                                until=one.get("until", ""), source="web")
+
+    if path == "/api/fetch/progress":
+        from .fetchjob import progress
+        return {"status": "ok", "progress": progress()}
+
+    if path == "/api/fetch/log":
+        from .fetchjob import log_days, log_tail
+        return {"status": "ok", "runs": log_tail(int(one.get("limit", 20))),
+                "days": log_days(int(one.get("days", 14)))}
 
     if path == "/api/ask":
         # The question box. Same function the ask_library MCP tool runs.
