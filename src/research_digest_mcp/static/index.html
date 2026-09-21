@@ -87,11 +87,21 @@
           in deciding what is worth reading.</p>
         <div class="field">
           <label for="lab-topics">Your topics</label>
-          <input id="lab-topics" value="agent, evaluation, multi-agent, learning">
+          <!-- Click to add or drop, the same way the date row works below.
+               A blank box asked the reader to type terms correctly with no way
+               to know which ones this library even contains. -->
+          <div class="pickchips" id="lab-topic-chips"></div>
+          <input id="lab-topics" value="agent, evaluation, multi-agent, learning"
+                 aria-label="Your topics, comma separated">
         </div>
         <div class="field">
-          <label for="lab-title">Paper title</label>
-          <input id="lab-title" value="Agentic evaluation of multi-agent reasoning">
+          <label for="lab-title">Paper</label>
+          <!-- Nobody remembers a full arXiv title, so the blank box was a wall.
+               These fill the title, the abstract and the date from a paper you
+               actually hold. -->
+          <div class="quickdates" id="lab-examples"></div>
+          <input id="lab-title" value="Agentic evaluation of multi-agent reasoning"
+                 aria-label="Paper title">
         </div>
         <div class="field">
           <label for="lab-abstract">Abstract</label>
@@ -110,6 +120,9 @@
           <h3>The arithmetic</h3>
           <div class="formula" id="lab-formula"></div>
           <div class="why" id="lab-why"></div>
+          <!-- Where that number sits among real papers. Without this the scale
+               reads as a percentage, and it is not one. -->
+          <div class="scale" id="lab-scale"></div>
         </div>
         <div class="card">
           <h3>Words that count for less</h3>

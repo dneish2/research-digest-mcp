@@ -2007,6 +2007,144 @@ async function downloadExport(what, format) {
 
 let labTimer = null;
 
+/* The controls on the scoring page.
+
+   Reported as: the topics box should "be able to kind of like fill in the blank
+   and populate it instead of potentially having user errors there typing
+   something"; and for the title, "who knows the full title all the time, it
+   goes back to my first point about error handling or mistyping".
+
+   So the two free-text boxes get the same treatment the date row already had:
+   something to click. The boxes stay, because the page is a playground and
+   typing your own nonsense into it is the point. They are just no longer the
+   only way in. */
+
+const LAB_SUGGESTED = [
+  'agent', 'evaluation', 'multi-agent', 'reasoning', 'memory', 'retrieval',
+  'benchmark', 'alignment', 'interpretability', 'reliability', 'learning',
+  'robustness', 'planning', 'tool use', 'safety',
+];
+
+function labTopics() {
+  return ($('#lab-topics').value || '').split(',')
+    .map((t) => t.trim().toLowerCase()).filter(Boolean);
+}
+
+function setLabTopics(list) {
+  $('#lab-topics').value = list.join(', ');
+  drawTopicChips();
+  runLab();
+}
+
+function drawTopicChips() {
+  const box = $('#lab-topic-chips');
+  if (!box) return;
+  const chosen = labTopics();
+  // Your own profile first, then the common ones, so the list is about you
+  // before it is about the field.
+  const offer = [];
+  (state.settingsTopics || []).concat(LAB_SUGGESTED).forEach((t) => {
+    const term = String(t).toLowerCase();
+    if (term && !offer.includes(term)) offer.push(term);
+  });
+  chosen.forEach((t) => { if (!offer.includes(t)) offer.unshift(t); });
+
+  box.textContent = '';
+  offer.slice(0, 18).forEach((term) => {
+    const on = chosen.includes(term);
+    const chip = el('button', `pickchip${on ? ' on' : ''}`, term);
+    chip.type = 'button';
+    chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+    chip.title = on ? `Drop ${term} and watch the score fall`
+      : `Add ${term} and watch the score move`;
+    chip.addEventListener('click', () => {
+      const next = on ? chosen.filter((t) => t !== term) : chosen.concat([term]);
+      setLabTopics(next);
+    });
+    box.appendChild(chip);
+  });
+}
+
+async function drawLabExamples() {
+  const box = $('#lab-examples');
+  if (!box || box.childElementCount) return;
+  const data = await get('/api/explain/examples', {}, { timeoutMs: 20000 });
+  if (data.status !== 'ok' || !data.results.length) return;
+  box.textContent = '';
+  box.appendChild(el('span', 'filter-label', 'Load a real paper'));
+  data.results.slice(0, 6).forEach((p) => {
+    const short = p.title.length > 38 ? `${p.title.slice(0, 37)}…` : p.title;
+    const b = el('button', 'quickdate', short);
+    b.type = 'button';
+    b.title = `${p.title}\n${p.category} · ${p.published}`
+      + (p.saved ? '\nOn your shelf.' : '');
+    b.addEventListener('click', () => {
+      $('#lab-title').value = p.title;
+      $('#lab-abstract').value = p.abstract;
+      $('#lab-published').value = p.published;
+      runLab();
+    });
+    box.appendChild(b);
+  });
+}
+
+/* What 0.1 and 0.9 actually mean.
+
+   Reported as: "we have to explain what's the difference between 0.1 and 0.9
+   and make it intuitive." The honest answer turned out to be surprising enough
+   to be worth drawing: against a real library the median matching paper scores
+   about 0.12, a 0.50 is already above 97.6% of it, and this page's own worked
+   example scores 0.70, which beats 99.5%. The scale is not a percentage. It is
+   a position in a distribution squashed against the bottom, and the only way to
+   say that is to show it. */
+function drawScale(score, scale, percentile) {
+  const box = $('#lab-scale');
+  if (!box) return;
+  box.textContent = '';
+  if (!scale) {
+    box.appendChild(el('p', 'sub',
+      'Add a topic to see where this score sits among your own papers.'));
+    return;
+  }
+
+  box.appendChild(el('div', 'sec', 'What that number is worth'));
+  box.appendChild(el('p', 'scale-lead',
+    `${score.toFixed(2)} is higher than ${percentile}% of the `
+    + `${scale.library.toLocaleString()} papers you hold, scored against these same `
+    + `topics. The middle paper that matches anything at all scores `
+    + `${scale.median.toFixed(2)}, and the best paper in your library scores `
+    + `${scale.top_score.toFixed(2)}.`));
+
+  const bar = el('div', 'scalebar');
+  scale.landmarks.forEach((lm) => {
+    const tick = el('i', 'scaletick');
+    tick.style.left = `${lm.score * 100}%`;
+    tick.title = `${lm.score.toFixed(1)} beats ${lm.above}% of your library`;
+    bar.appendChild(tick);
+  });
+  const fill = el('i', 'scalefill');
+  fill.style.width = `${Math.min(100, score * 100)}%`;
+  bar.appendChild(fill);
+  const pin = el('i', 'scalepin');
+  pin.style.left = `${Math.min(100, score * 100)}%`;
+  bar.appendChild(pin);
+  box.appendChild(bar);
+
+  const ticks = el('div', 'scalerow');
+  scale.landmarks.forEach((lm) => {
+    const cell = el('div', 'scalecell');
+    cell.appendChild(el('b', null, lm.score.toFixed(1)));
+    cell.appendChild(el('span', null, `beats ${lm.above}%`));
+    ticks.appendChild(cell);
+  });
+  box.appendChild(ticks);
+
+  box.appendChild(el('p', 'scale-note',
+    'Which is why the numbers look small. A paper has to match several of your '
+    + 'topics, repeatedly, and be new, to reach even half way. Nothing is wrong '
+    + 'with a 0.3.'));
+}
+
 async function runLab() {
   const data = await get('/api/explain', {
     topics: $('#lab-topics').value,
@@ -2110,6 +2248,7 @@ async function runLab() {
   box.appendChild(total);
 
   $('#lab-why').textContent = data.why_text;
+  drawScale(data.score, data.scale, data.percentile);
 
   const chips = $('#lab-boiler');
   if (!chips.childElementCount) {
@@ -3161,7 +3300,11 @@ function setView(name) {
   if (name === 'map') loadMap();
   if (name === 'trends') loadTrends();
   if (name === 'queue') loadQueue();
-  if (name === 'scoring') runLab();
+  if (name === 'scoring') {
+    drawTopicChips();
+    drawLabExamples();
+    runLab();
+  }
   if (name === 'profile') loadProfile();
 }
 
@@ -3333,7 +3476,7 @@ document.addEventListener('keydown', (e) => {
 ['#lab-topics', '#lab-title', '#lab-abstract', '#lab-published'].forEach((sel) => {
   $(sel).addEventListener('input', () => {
     clearTimeout(labTimer);
-    labTimer = setTimeout(runLab, 180);
+    labTimer = setTimeout(() => { drawTopicChips(); runLab(); }, 180);
   });
 });
 

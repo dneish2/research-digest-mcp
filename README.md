@@ -15,6 +15,33 @@ Nothing leaves your machine. There is no account, no API key, and no server.
 
 ---
 
+## What it does, in one line each
+
+| | |
+|---|---|
+| **Papers** | everything you have fetched, best match first. Search it, or ask it a question |
+| **Digest** | a small dated pick for today, the same every time you open it |
+| **Map** | which subjects your library actually holds, and which ones turn up together. Click anything for the papers behind it |
+| **Trends** | what arXiv as a whole is publishing more and less of, week over week |
+| **Shelf** | what you saved, with your notes |
+| **Profile** | what gets fetched. Edit it here |
+| **Scoring** | the ranking function, with the arithmetic shown, and a scale that says what a score is worth |
+
+Two things it does that are worth knowing about up front:
+
+**It uses both of arXiv's services.** arXiv runs a search API and a bulk
+harvest feed on separate hosts. Search rate-limits on reputation and will refuse
+one machine for an hour at a time, so fetching goes through the harvest feed and
+falls back to search rather than the other way around. Whichever one is
+answering, the screen says so.
+
+**It measures the field without downloading it.** The Trends tab counts every cs
+paper arXiv published, by streaming the harvest feed and keeping only the daily
+totals. Three months of the whole field is a few kilobytes on disk, and your
+library is not touched.
+
+---
+
 ## Install
 
 ```bash
@@ -38,7 +65,7 @@ uvx --from git+https://github.com/dneish2/research-digest-mcp research-digest fe
 ```
 
 Working on the code itself, not just using it? See
-[Development](#development) below — an editable install needs a local clone.
+[Development](#development) below. An editable install needs a local clone.
 
 ### Check the install
 
@@ -108,16 +135,22 @@ research-digest status     # see what you have
 research-digest profile    # what it fetches for you, and the query it sends
 ```
 
-Missed a stretch of days? A plain `fetch` cannot reach them: it asks for the
-newest papers, so a gap stays a gap. Give it a date window instead:
+Missed a stretch of days? `fetch` finds them itself. It starts at the oldest
+recent day you hold nothing from, rather than at your newest paper, because
+anchoring to the newest paper steps over every hole behind it. For anything
+older than three weeks, give it a window:
 
 ```bash
 research-digest fetch --since 2026-07-01 --until 2026-07-31
 ```
 
+Both go through arXiv's harvest feed, which takes a date range directly and is
+provisioned separately from the search API, so a search rate limit does not stop
+a fetch.
+
 `fetch` is safe to run daily. It only adds papers you have not seen, and arXiv
 hands back roughly the same recent batch each time, so the library grows a few
-dozen papers a day — put it on a cron job, launchd agent, or Windows scheduled
+dozen papers a day, so put it on a cron job, launchd agent, or Windows scheduled
 task if you want it to run itself. Run it for a week and the trends view starts
 to mean something.
 
@@ -128,7 +161,7 @@ machine? Load it in one shot instead of waiting on daily fetches to catch up:
 research-digest import ~/old-library/archive.json
 ```
 
-Safe to run more than once — papers already present are updated, not
+Safe to run more than once: papers already present are updated, not
 duplicated, and stale scoring output from whatever wrote the file is dropped
 rather than carried in, since the running code recomputes it on every read.
 
@@ -151,13 +184,24 @@ read as: Searched your library for agent, memory; ignored memroy (in no paper yo
 
 That line is the point. When an answer looks wrong you need to know whether the
 question was misread or the library is simply thin, and those need opposite
-fixes. A word appearing in zero papers is dropped rather than searched for,
-because ranking is by how much of your query a paper covers — a dead term
-lowers every real result by the same amount, which is how a typo silently costs
-you the answer.
+fixes.
+
+A word appearing in zero papers is not searched for, because ranking is by how
+much of your query a paper covers, so a dead term lowers every real result by
+the same amount. That is how a typo silently costs you the answer. Instead you
+are offered the nearest word the library does contain, with the number of papers
+it will return:
+
+```
+Nothing matched "memroy", so this is showing results for memory.
+```
+
+The suggestion comes from your own papers and nowhere else, so it is never a
+word that returns nothing. If the odd spelling was deliberate, ask for it
+exactly and get the honest zero.
 
 No model is needed for any of this. If you have a local one (Ollama, any small
-model) it is used for one job — turning your sentence into search terms — and
+model) it is used for one job, turning your sentence into search terms, and
 it is held to two rules enforced in code, not asked for in a prompt: it may
 re-word your question but not re-topic it, and it never decides to go online.
 Nothing ranks your results except arithmetic you can read.
@@ -179,7 +223,7 @@ command can fail there even when it works when you type it. Use `python3` or
 claude mcp add research-digest -- python -m research_digest_mcp mcp
 ```
 
-**Codex CLI** — add to `~/.codex/config.toml`:
+**Codex CLI**, add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.research-digest]
@@ -187,7 +231,7 @@ command = "python"
 args = ["-m", "research_digest_mcp", "mcp"]
 ```
 
-**GitHub Copilot CLI** — add to `~/.copilot/mcp-config.json`:
+**GitHub Copilot CLI**, add to `~/.copilot/mcp-config.json`:
 
 ```json
 {
@@ -226,7 +270,8 @@ broken is in the client config.
 | `search_papers` | Keyword search, with the score breakdown for every hit |
 | `fetch_papers` | Searches **arXiv itself** and adds what it finds to the library |
 | `get_similar` | Nearest papers by embedding similarity |
-| `get_trends` | Concepts rising and falling, as shares of each week's papers |
+| `get_trends` | Concepts rising and falling **in your own feed**, as shares of each week's papers |
+| `get_field_trends` | What **arXiv as a whole** is publishing more or less of, comparing any two windows |
 | `get_saved` | Your bookmarked papers and notes |
 | `suggest_reading` | Unread papers on a topic, best first |
 | `suggest_profile_terms` | What you save that your fetch profile never asks for |
@@ -237,6 +282,11 @@ broken is in the client config.
 `fetch_papers` is the one that changes what an agent can do for you. Every
 other tool reads a shelf; without this one, "find me something on X" answers
 "nothing found" for a paper that exists and simply has not been fetched yet.
+
+`get_trends` and `get_field_trends` answer different questions and are kept
+apart on purpose. The first is what you fetched, the second is what was
+published. "How many papers on RAG came out this week" answered from a personal
+library is a wrong answer that looks like a right one.
 
 ---
 
@@ -270,7 +320,7 @@ above: results are ordered by how much of your query each paper covers,
 weighted by how distinctive each matched word is, with a bonus for the exact
 phrase and for terms that recur rather than appear once. Function words like
 "the" and "of" are ignored for matching but still count inside a phrase match,
-and a query reaches inside hyphenated compounds — "chain of thought" finds
+and a query reaches inside hyphenated compounds, so "chain of thought" finds
 papers that wrote it "chain-of-thought".
 
 Every result carries its own derivation, in the MCP response and in the web
@@ -284,24 +334,24 @@ For 5 results, precision@5 is how many of them are actually relevant, out of 5.
 
 Two separate checks, in [`docs/EVAL.md`](docs/EVAL.md):
 
-- **Exact-phrase queries** — 26 queries where "relevant" can be checked by a
+- **Exact-phrase queries**: 26 queries where "relevant" can be checked by a
   script (the phrase is in the paper or it is not). Precision@5: **0.769**.
   Two baselines on the same queries show this is a real result and not an
   artifact of easy questions: sorting by recency alone gets 0.031, and random
   order gets 0.000.
-- **Semantic queries** — 8 queries where relevance is a judgment call, not a
+- **Semantic queries**: 8 queries where relevance is a judgment call, not a
   script. An LLM made that call 115 times, blind to which ranker produced
   which result. Precision@5: **0.80**.
 
 The 26-query number is the one to trust day to day: it runs in CI on every
 push, against a corpus frozen so the score cannot drift out from under a
-change to the ranker. The 8-query number is directional — eight queries is not
+change to the ranker. The 8-query number is directional. Eight queries is not
 a benchmark, and there is no held-out set behind it.
 
 Read the limitations section in `docs/EVAL.md` before leaning on either number.
 Exact-phrase positives reward a keyword matcher by construction. It also walks
 through the one query where this ranker scores zero, and why no ranker could
-do better on it — that's the most useful part of the document.
+do better on it, which is the most useful part of the document.
 
 ---
 
@@ -394,7 +444,7 @@ uv venv && uv pip install -e ".[dev]"
 python -m unittest discover -s tests -v
 ```
 
-Any Python installer works here — `pip install -e ".[dev]"` is the same
+Any Python installer works here. `pip install -e ".[dev]"` is the same
 install without uv.
 
 The MCP server is plain JSON-RPC over stdin and stdout, about 350 lines, with no

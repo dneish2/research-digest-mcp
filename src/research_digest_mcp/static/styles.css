@@ -938,3 +938,35 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
   display:block;margin:2px 0 3px}
 .mappaper-saved{font-size:.7rem;color:var(--quant);font-family:var(--f-mono)}
 .mapdetail .btn-ghost{margin-top:12px}
+
+/* ---------------- the scoring page's controls ---------------- */
+/* The two free-text boxes get what the date row already had: something to
+   click. The boxes stay, because typing your own nonsense into a playground is
+   the point; they are just no longer the only way in. */
+.pickchips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.pickchip{padding:3px 10px;border:1px solid var(--rule-2);border-radius:99px;
+  background:var(--surface);font-size:.74rem;cursor:pointer;color:var(--ink-3);
+  font-family:inherit}
+.pickchip:hover{border-color:var(--accent);color:var(--ink)}
+.pickchip.on{background:var(--accent-soft);border-color:var(--accent);
+  color:var(--accent);font-weight:600}
+.pickchip.on::before{content:'¹3 ';font-size:.7rem}
+
+/* ---------------- what a score is worth ---------------- */
+/* The scale is not a percentage. Against a real library the median matching
+   paper scores about 0.12 and a 0.5 beats 97.6%, so the bar has to show the
+   distribution rather than imply an even one. */
+.scale{margin-top:15px;padding-top:13px;border-top:1px solid var(--rule)}
+.scale-lead{font-size:.8rem;color:var(--ink-2);line-height:1.6;margin:0 0 11px}
+.scalebar{position:relative;height:10px;border-radius:5px;
+  background:var(--surface-2);border:1px solid var(--rule);margin:0 0 5px}
+.scalefill{position:absolute;left:0;top:0;bottom:0;background:var(--accent-soft);
+  border-radius:5px 0 0 5px}
+.scaletick{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--rule-2)}
+.scalepin{position:absolute;top:-4px;bottom:-4px;width:3px;border-radius:2px;
+  background:var(--quant);transform:translateX(-1px)}
+.scalerow{display:flex;justify-content:space-between;gap:4px}
+.scalecell{display:flex;flex-direction:column;align-items:center;flex:1}
+.scalecell b{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2)}
+.scalecell span{font-size:.63rem;color:var(--ink-3);white-space:nowrap}
+.scale-note{font-size:.76rem;color:var(--ink-3);line-height:1.55;margin:11px 0 0}

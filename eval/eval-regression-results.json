@@ -2,11 +2,11 @@
   "summary": {
     "current": {
       "p@5": 0.7692,
-      "p@10": 0.4731
+      "p@10": 0.4692
     },
     "old_buggy": {
       "p@5": 0.4154,
-      "p@10": 0.3154
+      "p@10": 0.3115
     },
     "recency": {
       "p@5": 0.0308,
@@ -296,7 +296,7 @@
         "On the Viability of Requirements Generation From Code: An Experience Report",
         "Morescient GAI for Software Engineering (Extended Version)",
         "DeNovoSWE: Scaling Long-Horizon Environments for Generating Entire Repositories from Scrat",
-        "When LLM Decompilers Recompile More and Preserve Less"
+        "SmellBench: Towards Fine-Grained Evaluation of Code Agents on Refactoring Tasks"
       ],
       "old_buggy_top5_titles": [
         "When LLM Decompilers Recompile More and Preserve Less",
@@ -369,7 +369,7 @@
       "current_p@5": 1.0,
       "current_p@10": 0.9,
       "old_buggy_p@5": 0.6,
-      "old_buggy_p@10": 0.7,
+      "old_buggy_p@10": 0.6,
       "recency_p@5": 0.0,
       "recency_p@10": 0.0,
       "random_p@5": 0.0,
@@ -388,8 +388,8 @@
         "Same Request, Different Answer: Quantization Amplifies Cache-Induced Divergence in LLM Ser",
         "EviDx: Evidence-Aware Active Diagnosis with Scaffolded LLM Agents",
         "Free-Energy-Gated Plasticity for Real-Time Online Motor Learning in Physical Human--Robot ",
-        "LLM Agents Perform Controlled Experiments Using Simulation Models",
-        "A Web-based modeling tool for the SEMAT Essence theory of Software Engineering"
+        "A Web-based modeling tool for the SEMAT Essence theory of Software Engineering",
+        "Thermodynamic Isomorphism of Transformers: A Lagrangian Approach to Attention Dynamics"
       ],
       "current_top5_is_positive": [
         true,
@@ -425,7 +425,7 @@
         "Does Your Agent's Memory Survive a Model Upgrade? A Controlled Study of Memory Portability",
         "Deepchecks: Evaluating Retrieval-Augmented Generation (RAG)",
         "TechGraphRAG: An Agentic Graph-Augmented RAG Framework for Technical Literature Reasoning",
-        "Evidence Blindness in Direct Corpus Interaction: Persistent Navigation with AtlasNav"
+        "\"ENERGY STAR\" LLM-Enabled Software Engineering Tools"
       ],
       "old_buggy_top5_titles": [
         "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress",
@@ -711,7 +711,7 @@
       "phrase": "vision language",
       "n_positives": 5,
       "current_p@5": 0.6,
-      "current_p@10": 0.5,
+      "current_p@10": 0.4,
       "old_buggy_p@5": 0.4,
       "old_buggy_p@10": 0.4,
       "recency_p@5": 0.0,

@@ -20,8 +20,8 @@ from urllib.parse import parse_qs, urlparse
 
 from . import storage
 from .config import HOME, load_settings, load_state, ranking_topics, save_settings
-from .scoring import (BOILERPLATE, about_sentence, explain_sentence, rank_all_query,
-                      score_paper, score_query)
+from .scoring import (BOILERPLATE, about_sentence, explain_sentence, rank_all,
+                      rank_all_query, score_paper, score_query)
 from .trends import compute_trends, cross_pollination
 
 STATIC = Path(__file__).parent / "static"
@@ -632,11 +632,52 @@ def api(path: str, params: dict) -> dict:
             "concepts": [],
         }
         result = score_paper(paper, topics)
+        # Where that number sits among real papers. Without it a reader has no
+        # way to tell 0.1 from 0.9 except that one is bigger, and the scale is
+        # not a percentage: the median matching paper scores about 0.16, and a
+        # 0.50 is already above 99.7% of a real library.
+        from .scoring import percentile_of, score_distribution
+        papers = storage.load_papers()
+        dist = score_distribution(papers, topics) if (papers and topics) else None
         return {
             "status": "ok", "score": result["score"], "why": result["why"],
             "why_text": explain_sentence(result["why"]),
             "boilerplate": sorted(BOILERPLATE),
+            "scale": ({k: v for k, v in dist.items() if not k.startswith("_")}
+                      if dist else None),
+            "percentile": percentile_of(result["score"], dist) if dist else None,
         }
+
+    if path == "/api/explain/examples":
+        # Real papers to try the scorer on, because "paper title" as a blank box
+        # asks the reader to remember a full arXiv title, which nobody does.
+        papers = storage.load_papers()
+        saved = storage.load_saved()
+        query = one.get("q", "").strip().lower()
+        if query:
+            pool = [p for p in papers if query in str(p.get("title", "")).lower()][:12]
+        else:
+            # A spread rather than the top of one list: something you kept,
+            # something new, and something ordinary, so the score visibly moves.
+            topics = ranking_topics()
+            ranked = rank_all(papers, topics)
+            newest = sorted(papers, key=lambda p: str(p.get("published") or ""),
+                            reverse=True)[:3]
+            kept = [p for p in papers if p["id"] in saved][:3]
+            middle = ranked[len(ranked) // 2:len(ranked) // 2 + 2] if ranked else []
+            pool, seen = [], set()
+            for paper in kept + ranked[:3] + newest + middle:
+                if paper["id"] in seen:
+                    continue
+                seen.add(paper["id"])
+                pool.append(paper)
+        return {"status": "ok", "results": [{
+            "id": p["id"], "title": p.get("title", ""),
+            "abstract": p.get("abstract", ""),
+            "published": str(p.get("published") or "")[:10],
+            "category": p.get("primary_category", ""),
+            "saved": p["id"] in saved,
+        } for p in pool[:12]]}
 
     if path == "/api/settings":
         return {"status": "ok", "home": str(HOME), **load_settings()}
