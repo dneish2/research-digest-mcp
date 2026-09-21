@@ -66,10 +66,37 @@ TOOLS = [
     {
         "name": "get_trends",
         "description": (
-            "Concepts rising or falling in the user's feed week over week. Reports "
-            "'no_data' rather than a false decline when a week is empty."
+            "Concepts rising or falling in the user's own FEED week over week. This "
+            "is what they fetched, not what the field published. For the field, use "
+            "get_field_trends. Reports 'no_data' rather than a false decline when a "
+            "week is empty."
         ),
         "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_field_trends",
+        "description": (
+            "How much arXiv itself is publishing on each tracked subject, comparing "
+            "two windows. Counted over every cs paper in each window, not over the "
+            "user's library, from a local census built by streaming arXiv and "
+            "keeping only the daily counts. Use this for 'is RAG growing', 'what is "
+            "the field doing on memory', or any comparison across weeks or months. "
+            "Returns 'no_data' with instructions if the census has not been built."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "window": {"type": "integer", "default": 7,
+                           "description": "Length of the recent window, in days."},
+                "against": {"type": "integer", "default": 7,
+                            "description": "Length of the comparison window, in days."},
+                "against_offset": {
+                    "type": "integer", "default": 7,
+                    "description": ("How many days back the comparison window ends. "
+                                    "7 is the previous week, 30 is a month ago."),
+                },
+            },
+        },
     },
     {
         "name": "get_saved",
@@ -301,6 +328,24 @@ def tool_get_trends(args: Dict[str, Any]) -> Dict[str, Any]:
     if not papers:
         return _no_library()
     return compute_trends(papers)
+
+
+def tool_get_field_trends(args: Dict[str, Any]) -> Dict[str, Any]:
+    """The field, not the feed.
+
+    Kept a separate tool rather than a flag on get_trends, because an agent that
+    can confuse the two will: "how many papers on RAG this week" answered from a
+    personal library is a wrong answer that looks like a right one.
+    """
+    from .census import compare, coverage
+    window = int(args.get("window", 7) or 7)
+    result = compare(
+        window=window,
+        against=int(args.get("against", window) or window),
+        against_offset=int(args.get("against_offset", window) or window),
+    )
+    result["coverage"] = coverage()
+    return result
 
 
 def tool_get_saved(args: Dict[str, Any]) -> Dict[str, Any]:
@@ -640,6 +685,7 @@ HANDLERS = {
     "suggest_profile_terms": tool_suggest_profile_terms,
     "get_similar": tool_get_similar,
     "get_trends": tool_get_trends,
+    "get_field_trends": tool_get_field_trends,
     "get_saved": tool_get_saved,
     "suggest_reading": tool_suggest_reading,
     "save_paper": tool_save_paper,

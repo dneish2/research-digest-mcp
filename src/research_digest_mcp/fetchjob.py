@@ -504,6 +504,59 @@ def _finish(source: str, route: str, window: Dict[str, Any], started: float,
     }
 
 
+def start_census(days: int = 90, sets: Optional[List[str]] = None,
+                 source: str = "web") -> Dict[str, Any]:
+    """Build the field census on the same single job slot as a fetch.
+
+    One slot rather than two, and not for want of threads: two harvest walks at
+    once is two clients hammering one endpoint, which is how a polite tool earns
+    the 503 it then reports as arXiv being unavailable.
+    """
+    from . import census
+    if is_running():
+        return {"status": "error", "message": "A fetch is already running.",
+                "progress": progress()}
+    job = uuid.uuid4().hex[:8]
+    _reset_progress(state="running", job=job, kind="census", route="harvest",
+                    started_at=time.time(), lines=[], seen=0, kept=0,
+                    message=f"Counting the last {days} days of arXiv.")
+
+    def on_page(oai_set: str, pages: int, seen: int, dated: int) -> None:
+        _set_progress(seen=seen, kept=dated, message=(
+            f"{oai_set}: request {pages}, {seen:,} papers counted, nothing stored"))
+        with _progress_lock:
+            lines = _progress.setdefault("lines", [])
+            lines.append({"at": time.strftime("%H:%M:%S"), "set": oai_set,
+                          "page": pages, "seen": seen, "kept": dated})
+            del lines[:-40]
+
+    def work():
+        started = time.time()
+        try:
+            data = census.backfill(days=days, sets=sets, on_page=on_page)
+            cov = census.coverage(data)
+            entry = {
+                "at": now_stamp(), "source": source, "route": "harvest",
+                "kind": "census", "since": cov["first"], "until": cov["last"],
+                "days": cov["days"], "seen": cov["papers"], "fetched": 0,
+                "added": 0, "total": cov["papers"], "ok": True, "blocked": False,
+                "errors": [], "seconds": round(time.time() - started, 1),
+                "message": (
+                    f"Counted {cov['papers']:,} arXiv papers across {cov['days']} "
+                    f"days, {cov['first']} to {cov['last']}. Nothing was added to "
+                    f"your library: only the daily counts are kept."),
+            }
+            _append_log(entry)
+            _reset_progress(state="done", kind="census", result=entry)
+        except Exception as exc:
+            _reset_progress(state="done", kind="census", result={
+                "ok": False, "blocked": False, "added": 0,
+                "message": f"{type(exc).__name__}: {exc}"})
+
+    threading.Thread(target=work, daemon=True, name=f"census-{job}").start()
+    return {"status": "ok", "job": job, "progress": progress()}
+
+
 def start_background(settings: Optional[Dict[str, Any]] = None, since: str = "",
                      until: str = "", source: str = "web") -> Dict[str, Any]:
     """Run a fetch on a thread so the page can watch it happen.

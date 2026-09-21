@@ -1050,6 +1050,13 @@ async function loadMap() {
 
   out.appendChild(mapSvg(data));
 
+  // Where a click lands. Built empty and kept between clicks so the panel does
+  // not jump the page around as the reader moves from one concept to the next.
+  const detail = el('div', 'map-detail');
+  detail.id = 'map-detail';
+  detail.hidden = true;
+  out.appendChild(detail);
+
   // The part worth having. A search only finds what you already knew to ask
   // for, and the ranked list puts the most typical papers on top, so the tool
   // is weakest exactly where reading pays best: a paper joining two things you
@@ -1105,6 +1112,22 @@ async function openById(id, url) {
   openPanel(0);
 }
 
+/* The map, and the screen a click lands on.
+
+   Three reports, all about the same gap. It is "too overlapping". Clicking a
+   node "does show me some arxiv or maybe the section of what I clicked, but that
+   interaction is not intuitive or transparent enough, so it's hard to know
+   what's going on". And it is "missing like another type of screen that appears
+   when I click a node or edge".
+
+   So: hovering focuses one concept and dims the rest, which is what makes an
+   overlapping graph readable without moving anything; lines are clickable, since
+   the interesting question about two concepts is which papers do both; and a
+   click opens a panel under the map rather than navigating away, so the map and
+   the answer are on screen together and the selection stays visible. */
+
+const mapState = { selected: null, pair: null };
+
 function mapSvg(data) {
   const wrap = el('div', 'mapwrap');
   const size = 620;
@@ -1120,26 +1143,49 @@ function mapSvg(data) {
   const biggest = Math.max(...data.nodes.map((n) => n.papers), 1);
   const radiusOf = (n) => 11 + Math.sqrt(n.papers / biggest) * 26;
 
+  // Who touches whom, so a hover can dim everything else in one pass instead of
+  // re-deriving the neighbourhood per mark.
+  const neighbours = {};
+  data.links.forEach((link) => {
+    (neighbours[link.source] = neighbours[link.source] || new Set()).add(link.target);
+    (neighbours[link.target] = neighbours[link.target] || new Set()).add(link.source);
+  });
+
   const linkLayer = svgEl('g', { class: 'maplinks' });
   data.links.forEach((link) => {
     const a = byName[link.source];
     const b = byName[link.target];
     if (!a || !b) return;
-    const line = svgEl('line', {
-      x1: at(a.x), y1: at(a.y), x2: at(b.x), y2: at(b.y),
+    const g = svgEl('g', {
+      class: 'maplink', tabindex: '0', role: 'button',
+      'data-a': link.source, 'data-b': link.target,
+    });
+    const coords = { x1: at(a.x), y1: at(a.y), x2: at(b.x), y2: at(b.y) };
+    // A wide invisible line under the visible one, because a 1px stroke is not
+    // a hit target and a line you cannot hit is not clickable.
+    g.appendChild(svgEl('line', Object.assign({ class: 'maplink-hit' }, coords)));
+    g.appendChild(svgEl('line', Object.assign({
+      class: 'maplink-ink',
       'stroke-width': (0.6 + link.strength * 4.5).toFixed(2),
       opacity: (0.13 + link.strength * 0.5).toFixed(2),
-    });
+    }, coords)));
     const t = svgEl('title');
-    t.textContent = `${link.papers} papers mention both ${link.source} and ${link.target}`;
-    line.appendChild(t);
-    linkLayer.appendChild(line);
+    t.textContent = `${link.papers} papers mention both ${link.source} and `
+      + `${link.target}. Click for the list.`;
+    g.appendChild(t);
+    const open = () => openMapDetail(link.source, link.target);
+    g.addEventListener('click', open);
+    g.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+    });
+    linkLayer.appendChild(g);
   });
   svg.appendChild(linkLayer);
 
   const nodeLayer = svgEl('g', { class: 'mapnodes' });
   data.nodes.forEach((n) => {
-    const g = svgEl('g', { class: 'mapnode', tabindex: '0', role: 'button' });
+    const g = svgEl('g', { class: 'mapnode', tabindex: '0', role: 'button',
+      'data-concept': n.concept });
     const r = radiusOf(n);
     g.appendChild(svgEl('circle', { cx: at(n.x), cy: at(n.y), r }));
     if (n.saved) {
@@ -1153,24 +1199,39 @@ function mapSvg(data) {
         transform: `rotate(-90 ${at(n.x)} ${at(n.y)})`,
       }));
     }
+
+    /* Labels outside the small circles. Inside, a long concept in a small circle
+       was clipped to "interpretab" with an ellipsis and ran over its neighbours,
+       which is most of what "too overlapping" was about. Only circles with room
+       keep the label inside. */
+    const roomy = r >= 22 && n.concept.length <= 13;
     const label = svgEl('text', {
-      x: at(n.x), y: at(n.y) + 3.5, 'text-anchor': 'middle',
-      'font-size': Math.max(8.5, Math.min(12, r * 0.42)),
+      x: at(n.x), y: roomy ? at(n.y) + 3.5 : at(n.y) + r + 12,
+      'text-anchor': 'middle',
+      class: roomy ? 'maplabel maplabel-in' : 'maplabel maplabel-out',
+      'font-size': roomy ? Math.max(9, Math.min(12, r * 0.42)) : 10.5,
     });
-    label.textContent = n.concept.length > 15 ? n.concept.slice(0, 14) + '…' : n.concept;
+    label.textContent = n.concept;
     g.appendChild(label);
+
     const title = svgEl('title');
     title.textContent = `${n.concept}: ${n.papers} papers, ${n.share}% of your library`
       + (n.saved ? `, ${n.saved} saved` : '')
-      + (n.with.length ? `\nMost often alongside ${n.with.map((w) => w.concept).join(', ')}`
-        : '')
-      + '\nClick to search for it.';
+      + (n.with.length ? `\nMost often alongside ${n.with.map((w) => w.concept).join(', ')}` : '')
+      + '\nClick to see what is in it.';
     g.appendChild(title);
-    const go = () => { $('#q').value = n.concept; runSearch('search'); };
-    g.addEventListener('click', go);
+
+    const open = () => openMapDetail(n.concept, '');
+    g.addEventListener('click', open);
     g.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
     });
+    // Focus on hover. Nothing moves: the unrelated marks just recede, which is
+    // what makes a crowded graph readable without making it unstable.
+    g.addEventListener('mouseenter', () => focusConcept(svg, n.concept, neighbours));
+    g.addEventListener('mouseleave', () => focusConcept(svg, null, neighbours));
+    g.addEventListener('focus', () => focusConcept(svg, n.concept, neighbours));
+    g.addEventListener('blur', () => focusConcept(svg, null, neighbours));
     nodeLayer.appendChild(g);
   });
   svg.appendChild(nodeLayer);
@@ -1180,7 +1241,9 @@ function mapSvg(data) {
   [['Bigger circle', 'more of your papers mention it'],
    ['Thicker line', 'the two turn up together more often'],
    ['Gold arc', 'how much of it you have saved'],
-   ['Click anything', 'searches your library for it']]
+   ['Hover a circle', 'everything unrelated fades back'],
+   ['Click a circle', 'what is in it, and the papers'],
+   ['Click a line', 'the papers that mention both']]
     .forEach(([term, meaning]) => {
       const row = el('div', 'mapkey-row');
       row.appendChild(el('b', null, term));
@@ -1191,13 +1254,312 @@ function mapSvg(data) {
   return wrap;
 }
 
-/* ---------------- trends ---------------- */
+function focusConcept(svg, concept, neighbours) {
+  if (!concept) {
+    svg.classList.remove('focusing');
+    svg.querySelectorAll('.dimmed, .lit').forEach((n) => {
+      n.classList.remove('dimmed');
+      n.classList.remove('lit');
+    });
+    return;
+  }
+  const near = neighbours[concept] || new Set();
+  svg.classList.add('focusing');
+  svg.querySelectorAll('.mapnode').forEach((g) => {
+    const name = g.getAttribute('data-concept');
+    const related = name === concept || near.has(name);
+    g.classList.toggle('dimmed', !related);
+    g.classList.toggle('lit', name === concept);
+  });
+  svg.querySelectorAll('.maplink').forEach((g) => {
+    const touches = g.getAttribute('data-a') === concept
+      || g.getAttribute('data-b') === concept;
+    g.classList.toggle('dimmed', !touches);
+    g.classList.toggle('lit', touches);
+  });
+}
+
+/* The screen a click lands on. Under the map rather than over it, so the thing
+   that was clicked is still visible beside the answer. */
+async function openMapDetail(concept, other) {
+  mapState.selected = concept;
+  mapState.pair = other || null;
+  const host = $('#map-detail');
+  if (!host) return;
+  host.hidden = false;
+  host.textContent = '';
+  host.appendChild(el('p', 'dim', 'Reading your library...'));
+  host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const data = await get('/api/map/detail',
+    other ? { concept, with: other } : { concept }, { timeoutMs: 30000 });
+  host.textContent = '';
+  if (data.status !== 'ok') {
+    host.appendChild(notice('Could not open that', data.message || data.status));
+    return;
+  }
+
+  const card = el('section', 'mapdetail');
+  const head = el('div', 'mapdetail-head');
+  const title = el('h3');
+  title.appendChild(el('span', 'mapdetail-term', concept));
+  if (other) {
+    title.appendChild(el('span', 'mapdetail-plus', 'together with'));
+    title.appendChild(el('span', 'mapdetail-term', other));
+  }
+  head.appendChild(title);
+  const close = el('button', 'panel-x', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Close');
+  close.addEventListener('click', () => {
+    host.hidden = true;
+    host.textContent = '';
+    mapState.selected = null;
+    mapState.pair = null;
+  });
+  head.appendChild(close);
+  card.appendChild(head);
+
+  // The numbers first, each one a count you can get back to.
+  const stats = el('div', 'mapstats');
+  const stat = (n, label) => {
+    const box = el('div', 'mapstat');
+    box.appendChild(el('b', null, n));
+    box.appendChild(el('span', null, label));
+    return box;
+  };
+  stats.appendChild(stat(data.papers.toLocaleString(), 'papers'));
+  stats.appendChild(stat(`${data.share}%`, 'of your library'));
+  stats.appendChild(stat(data.saved.toLocaleString(), 'you saved'));
+  if (other) {
+    stats.appendChild(stat(data.concept_papers.toLocaleString(),
+      `mention ${concept} at all`));
+  }
+  card.appendChild(stats);
+  card.appendChild(el('p', 'mapdetail-how', data.how));
+
+  if (!other && (data.with || []).length) {
+    const near = el('div', 'mapnear');
+    near.appendChild(el('span', 'filter-label', 'Most often alongside'));
+    const row = el('div', 'mapnear-row');
+    data.with.forEach((w) => {
+      const chip = el('button', 'tag tag-live');
+      chip.type = 'button';
+      chip.appendChild(el('span', null, w.concept));
+      chip.appendChild(el('b', null, String(w.papers)));
+      chip.title = `${w.papers} of your ${concept} papers also mention `
+        + `${w.concept}. Click for those papers.`;
+      chip.addEventListener('click', () => openMapDetail(concept, w.concept));
+      row.appendChild(chip);
+    });
+    near.appendChild(row);
+    card.appendChild(near);
+  }
+
+  const list = el('div', 'mappapers');
+  data.results.forEach((p) => {
+    const item = el('article', 'mappaper');
+    item.appendChild(el('div', 'meta',
+      [p.published && humanDate(p.published), p.category].filter(Boolean).join('  ·  ')));
+    const link = el('button', 'linkish mappaper-title', p.title);
+    link.type = 'button';
+    link.addEventListener('click', () => openById(p.id, p.url));
+    item.appendChild(link);
+    if (p.about) item.appendChild(el('p', 'about', p.about));
+    if (p.saved) item.appendChild(el('span', 'mappaper-saved', 'on your shelf'));
+    list.appendChild(item);
+  });
+  card.appendChild(list);
+
+  if (data.more) {
+    const more = el('button', 'btn-ghost',
+      `Search your library for all ${data.papers.toLocaleString()}`);
+    more.type = 'button';
+    more.addEventListener('click', () => {
+      $('#q').value = other ? `${concept} ${other}` : concept;
+      runSearch('search');
+    });
+    card.appendChild(more);
+  }
+  host.appendChild(card);
+}
+
+/* ---------------- trends: the field, and your feed ---------------- */
+
+/* Reported as: "it's based on my local library or download history, but frankly
+   I'm more interested in industry trends. For example from 1 week or 1 month
+   ago, how many papers are being reported on rag or evaluation or memory."
+
+   Those are two different measurements, so they are two views rather than one
+   with a caveat. The field is the default, because it is the question that was
+   being asked. */
+
+const FIELD_WINDOWS = [
+  { id: 'week', label: 'This week vs last week',
+    q: { window: 7, offset: 0, against: 7, against_offset: 7 } },
+  { id: 'month-ago', label: 'This week vs a month ago',
+    q: { window: 7, offset: 0, against: 7, against_offset: 30 } },
+  { id: 'month', label: 'Last 30 days vs the 30 before',
+    q: { window: 30, offset: 0, against: 30, against_offset: 30 } },
+  { id: 'quarter', label: 'Last 30 days vs 60 days ago',
+    q: { window: 30, offset: 0, against: 30, against_offset: 60 } },
+];
+
+const trendState = { scope: 'field', window: 'week' };
 
 async function loadTrends() {
   const out = $('#view-trends');
-  out.textContent = 'Loading…';
-  const data = await get('/api/trends');
   out.textContent = '';
+  const head = el('div', 'view-head');
+  head.appendChild(el('h2', null, trendState.scope === 'field'
+    ? 'What the field is publishing' : 'What moved in your feed'));
+  head.appendChild(el('p', 'sub', trendState.scope === 'field'
+    ? 'Counted across every cs paper arXiv published in each window, not across '
+      + 'your library. Built by streaming arXiv and keeping only the daily counts, '
+      + 'so asking about the whole field costs a few kilobytes.'
+    : 'Counted across the papers your own profile fetched. Useful for seeing what '
+      + 'you are accumulating, and not a measurement of the literature.'));
+  out.appendChild(head);
+
+  const tabs = el('div', 'scopetabs');
+  [['field', 'The field'], ['feed', 'Your feed']].forEach(([id, label]) => {
+    const b = el('button', `scopetab${trendState.scope === id ? ' active' : ''}`, label);
+    b.type = 'button';
+    b.addEventListener('click', () => { trendState.scope = id; loadTrends(); });
+    tabs.appendChild(b);
+  });
+  out.appendChild(tabs);
+
+  const body = el('div');
+  out.appendChild(body);
+  if (trendState.scope === 'field') return renderField(body);
+  return renderFeedTrends(body);
+}
+
+async function renderField(out) {
+  const picker = el('div', 'winpick');
+  picker.appendChild(el('span', 'filter-label', 'Compare'));
+  FIELD_WINDOWS.forEach((w) => {
+    const b = el('button', `chip${trendState.window === w.id ? ' active' : ''}`, w.label);
+    b.type = 'button';
+    b.addEventListener('click', () => { trendState.window = w.id; loadTrends(); });
+    picker.appendChild(b);
+  });
+  out.appendChild(picker);
+
+  const loading = el('p', 'dim', 'Reading the census…');
+  out.appendChild(loading);
+  const chosen = FIELD_WINDOWS.find((w) => w.id === trendState.window) || FIELD_WINDOWS[0];
+  const data = await get('/api/field', chosen.q, { timeoutMs: 30000 });
+  loading.remove();
+
+  if (data.status !== 'ok') {
+    const box = el('div', 'note');
+    box.appendChild(el('b', null, 'The field census is not built yet'));
+    box.appendChild(el('span', null, data.reason || ''));
+    box.appendChild(el('span', null,
+      'It streams arXiv’s harvest feed, counts every paper it sees against a '
+      + 'list of subjects, and keeps only the per-day totals. Your library is not '
+      + 'touched and nothing is downloaded twice.'));
+    const build = el('button', 'btn', 'Count the last 90 days');
+    build.type = 'button';
+    build.addEventListener('click', async () => {
+      build.disabled = true;
+      const started = await get('/api/field/build', { days: 90 }, { timeoutMs: 20000 });
+      if (started.status !== 'ok') {
+        build.disabled = false;
+        return toast(started.message || 'Could not start.', 'bad');
+      }
+      setView('grid');
+      await renderConn('#conn-grid');
+      watchFetch($('#conn-grid').querySelector('.conn-box'));
+      toast('Counting arXiv. Progress is on the Papers tab.');
+    });
+    box.appendChild(build);
+    out.appendChild(box);
+    return;
+  }
+
+  out.appendChild(fieldChart(data));
+
+  const scope = el('div', 'scopebar');
+  scope.appendChild(el('b', null, 'This is arXiv, not your library.'));
+  scope.appendChild(el('span', null, data.scope));
+  out.appendChild(scope);
+
+  const how = el('details', 'method');
+  how.appendChild(el('summary', null, 'How this is counted'));
+  how.appendChild(el('p', null, data.method));
+  const cov = data.coverage || {};
+  how.appendChild(el('p', null,
+    `The census holds ${cov.days} days, ${humanDate(cov.first)} to ${humanDate(cov.last)}, `
+    + `covering ${(cov.papers || 0).toLocaleString()} papers. Those papers were read `
+    + 'and counted, not saved: what is on disk is one row of numbers per day.'));
+  out.appendChild(how);
+}
+
+/* A diverging bar of change in share, sorted.
+
+   The sign is carried three ways on purpose: which side of the zero line the bar
+   sits, the signed number beside it, and the colour. The app's rise and fall
+   tokens are 5.9 apart in OKLab under protanopia, which is below the threshold
+   where colour alone may distinguish two things, so colour here is the last of
+   the three rather than the only one. */
+function fieldChart(data) {
+  const rows = (data.rows || []).filter((r) => r.now || r.before);
+  const wrap = el('section', 'fieldchart');
+  const most = Math.max(0.01, ...rows.map((r) => Math.abs(r.change_pts)));
+
+  const legend = el('div', 'fieldlegend');
+  legend.appendChild(el('span', null,
+    `${humanDate(data.recent.start)} to ${humanDate(data.recent.end)} `
+    + `(${data.recent.papers.toLocaleString()} papers)`));
+  legend.appendChild(el('span', 'dim', 'against'));
+  legend.appendChild(el('span', null,
+    `${humanDate(data.prior.start)} to ${humanDate(data.prior.end)} `
+    + `(${data.prior.papers.toLocaleString()} papers)`));
+  wrap.appendChild(legend);
+
+  rows.forEach((r) => {
+    const row = el('div', 'fieldrow');
+    row.appendChild(el('div', 'fieldterm', r.term));
+
+    const track = el('div', 'fieldtrack');
+    const bar = el('i', r.change_pts >= 0 ? 'up' : 'down');
+    const width = Math.abs(r.change_pts) / most * 50;
+    bar.style.width = `${width}%`;
+    bar.style[r.change_pts >= 0 ? 'left' : 'right'] = '50%';
+    track.appendChild(el('span', 'fieldzero'));
+    track.appendChild(bar);
+    row.appendChild(track);
+
+    const pts = el('div', `fieldpts ${r.change_pts >= 0 ? 'up' : 'down'}`,
+      `${r.change_pts >= 0 ? '+' : ''}${r.change_pts.toFixed(2)} pts`);
+    row.appendChild(pts);
+    row.appendChild(el('div', 'fieldshare',
+      `${r.share_before.toFixed(1)}% to ${r.share_now.toFixed(1)}%`));
+    row.appendChild(el('div', 'fieldcount',
+      `${r.before.toLocaleString()} to ${r.now.toLocaleString()} papers`));
+    row.title = `${r.term}: ${r.now.toLocaleString()} of `
+      + `${r.of_now.toLocaleString()} papers in the recent window `
+      + `(${r.share_now.toFixed(2)}%, ${r.per_day_now} a day), against `
+      + `${r.before.toLocaleString()} of ${r.of_before.toLocaleString()} before `
+      + `(${r.share_before.toFixed(2)}%, ${r.per_day_before} a day).`;
+    wrap.appendChild(row);
+  });
+
+  if (!rows.length) {
+    wrap.appendChild(el('p', 'dim', 'No subject reached either window.'));
+  }
+  return wrap;
+}
+
+async function renderFeedTrends(out) {
+  const data = await get('/api/trends');
+  return renderFeedTrendsWith(out, data);
+}
+
+async function renderFeedTrendsWith(out, data) {
 
   if (data.status !== 'ok') {
     const reason = data.status === 'error'
@@ -1225,13 +1587,10 @@ async function loadTrends() {
   const basis = data.basis || {};
   const thisW = basis.this_week || {};
   const prevW = basis.previous_week || {};
-  const head = el('div', 'view-head');
-  head.appendChild(el('h2', null, 'What moved in your feed'));
-  head.appendChild(el('p', 'sub',
+  out.appendChild(el('p', 'sub',
     `${thisW.papers} papers from ${humanDate(thisW.start)} to ${humanDate(thisW.end)}, `
     + `compared against the ${prevW.papers} from ${humanDate(prevW.start)} to `
     + `${humanDate(prevW.end)}.`));
-  out.appendChild(head);
 
   // The sentence that decides whether any of this is believable. Without it a
   // reader reasonably assumes these counts are arXiv, and "chain-of-thought:

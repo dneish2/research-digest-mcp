@@ -674,6 +674,25 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
   border-radius:var(--radius);padding:12px;box-shadow:var(--shadow-sm)}
 .conceptmap{width:100%;height:auto;display:block;max-height:74vh}
 .maplinks line{stroke:var(--accent)}
+/* A wide transparent line under the visible one. A 1px stroke is not a hit
+   target, and a line you cannot hit is not clickable however much you want it
+   to be. */
+.maplink{cursor:pointer}
+.maplink-hit{stroke:transparent;stroke-width:14}
+.maplink:hover .maplink-ink,.maplink:focus-visible .maplink-ink{
+  stroke:var(--quant);opacity:1!important;stroke-width:3.5}
+.maplink:focus-visible{outline:none}
+/* Focus without motion. Hovering a concept recedes everything unrelated; a
+   force layout would look livelier and move every mark every time the page
+   opened, which is the opposite of what a map is for. */
+.conceptmap .mapnode,.conceptmap .maplink{transition:opacity .13s ease}
+.conceptmap.focusing .dimmed{opacity:.13}
+.conceptmap.focusing .maplink.lit .maplink-ink{stroke:var(--quant);opacity:.95!important}
+.mapnode.lit circle{fill:var(--accent);stroke:var(--accent)}
+.mapnode.lit .maplabel-in{fill:var(--surface)}
+.mapnode.lit .maplabel-out{fill:var(--ink)}
+.maplabel-out{fill:var(--ink-2);font-weight:500;paint-order:stroke;
+  stroke:var(--paper);stroke-width:3.5px;stroke-linejoin:round}
 .mapnode{cursor:pointer}
 .mapnode circle{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.2}
 .mapnode text{fill:var(--accent);font-family:var(--f-body);font-weight:600;
@@ -844,3 +863,78 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
 .spellchip b{color:var(--ink)}
 .spellchip-arrow{color:var(--ink-3)}
 .spellchip-n{font-family:var(--f-mono);font-size:.69rem;color:var(--ink-3)}
+
+/* ---------------- field trends ---------------- */
+/* A diverging bar of change in share. The sign is carried by which side of the
+   zero line the bar sits, by the signed number, and only lastly by colour: the
+   app's rise and fall tokens are 5.9 apart in OKLab under protanopia, below the
+   separation at which colour may carry a distinction on its own. */
+.scopetabs{display:flex;gap:6px;margin:0 0 14px}
+.scopetab{padding:6px 14px;border:1px solid var(--rule-2);background:var(--surface);
+  border-radius:99px;font-size:.82rem;cursor:pointer;color:var(--ink-2);
+  font-family:inherit}
+.scopetab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.winpick{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+
+.fieldchart{background:var(--surface);border:1px solid var(--rule);
+  border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow-sm)}
+.fieldlegend{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+  font-size:.76rem;color:var(--ink-2);padding-bottom:11px;margin-bottom:9px;
+  border-bottom:1px solid var(--rule);font-family:var(--f-mono)}
+.fieldrow{display:grid;grid-template-columns:150px 1fr 92px 120px 140px;gap:10px;
+  align-items:center;padding:4px 0;font-size:.79rem}
+.fieldrow:hover{background:var(--surface-2)}
+.fieldterm{font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.fieldtrack{position:relative;height:13px}
+.fieldzero{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;
+  background:var(--rule-2)}
+/* 4px rounded ends on the data end only, anchored to the zero line. */
+.fieldtrack i{position:absolute;top:1px;height:11px;min-width:2px}
+.fieldtrack i.up{background:var(--rise);border-radius:0 4px 4px 0}
+.fieldtrack i.down{background:var(--fall);border-radius:4px 0 0 4px}
+.fieldpts{font-family:var(--f-mono);font-size:.75rem;text-align:right}
+.fieldpts.up{color:var(--rise)}
+.fieldpts.down{color:var(--fall)}
+.fieldshare,.fieldcount{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-3)}
+
+@media (max-width:760px){
+  .fieldrow{grid-template-columns:1fr 70px;grid-template-areas:
+    'term pts' 'track track' 'share count';gap:3px 8px;padding:8px 0;
+    border-bottom:1px solid var(--rule)}
+  .fieldterm{grid-area:term}
+  .fieldtrack{grid-area:track}
+  .fieldpts{grid-area:pts}
+  .fieldshare{grid-area:share}
+  .fieldcount{grid-area:count;text-align:right}
+  .fieldlegend{flex-direction:column;gap:2px}
+}
+
+/* ---------------- what a click on the map lands on ---------------- */
+.map-detail{margin-top:18px}
+.mapdetail{background:var(--surface);border:1px solid var(--rule);
+  border-left:3px solid var(--quant);border-radius:var(--radius);
+  padding:15px 17px;box-shadow:var(--shadow-md)}
+.mapdetail-head{display:flex;align-items:flex-start;gap:10px}
+.mapdetail-head h3{font-family:var(--f-title);font-size:1.1rem;margin:0;
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mapdetail-term{color:var(--accent)}
+.mapdetail-plus{font-size:.76rem;color:var(--ink-3);font-family:var(--f-body);
+  font-weight:400;font-style:italic}
+.mapdetail-head .panel-x{margin-left:auto}
+.mapstats{display:flex;gap:22px;flex-wrap:wrap;margin:13px 0 0}
+.mapstat{display:flex;flex-direction:column}
+.mapstat b{font-family:var(--f-mono);font-size:1.25rem;color:var(--ink)}
+.mapstat span{font-size:.72rem;color:var(--ink-3)}
+.mapdetail-how{font-size:.79rem;color:var(--ink-2);line-height:1.55;
+  margin:11px 0 0;padding-top:10px;border-top:1px solid var(--rule)}
+.mapnear{margin-top:12px}
+.mapnear-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.mapnear-row .tag{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.mapnear-row .tag b{font-family:var(--f-mono);font-size:.7rem;color:var(--ink-3)}
+.mappapers{margin-top:14px;display:flex;flex-direction:column;gap:2px}
+.mappaper{padding:9px 0;border-top:1px solid var(--rule)}
+.mappaper-title{font-family:var(--f-title);font-size:.94rem;text-align:left;
+  display:block;margin:2px 0 3px}
+.mappaper-saved{font-size:.7rem;color:var(--quant);font-family:var(--f-mono)}
+.mapdetail .btn-ghost{margin-top:12px}

@@ -504,6 +504,25 @@ def api(path: str, params: dict) -> dict:
         from .fetchjob import progress
         return {"status": "ok", "progress": progress()}
 
+    if path == "/api/field":
+        # The field, not your feed. Counted by streaming arXiv's harvest and
+        # keeping only the totals, so asking a wider question does not mean
+        # holding a wider library.
+        from .census import compare, coverage
+        result = compare(
+            window=int(one.get("window", 7)),
+            offset=int(one.get("offset", 0)),
+            against=int(one.get("against", one.get("window", 7))),
+            against_offset=int(one.get("against_offset",
+                                       int(one.get("window", 7)))),
+        )
+        result["coverage"] = coverage()
+        return result
+
+    if path == "/api/field/build":
+        from .fetchjob import start_census
+        return start_census(days=max(7, min(int(one.get("days", 90)), 400)))
+
     if path == "/api/fetch/log":
         from .fetchjob import log_days, log_tail
         return {"status": "ok", "runs": log_tail(int(one.get("limit", 20))),
@@ -552,6 +571,18 @@ def api(path: str, params: dict) -> dict:
         result = build(papers, storage.load_saved(), limit=int(one.get("limit", 22)))
         result["bridges"] = bridges(papers)
         return result
+
+    if path == "/api/map/detail":
+        # What is behind one circle, or behind one line. Clicking used to run a
+        # search, which answered on a different screen without ever saying what
+        # had been clicked.
+        from .clusters import detail
+        concept = one.get("concept", "").strip()
+        if not concept:
+            return {"status": "error", "message": "No concept given."}
+        return detail(storage.load_papers(), concept, one.get("with", "").strip(),
+                      storage.load_saved(), storage.load_read(),
+                      limit=int(one.get("limit", 12)))
 
     if path == "/api/categories":
         # The picker. Without this the profile screen is a list of codes you

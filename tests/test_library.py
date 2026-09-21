@@ -456,9 +456,10 @@ class TestMcpProtocol(TempHome):
         tools = handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         names = {t["name"] for t in tools["result"]["tools"]}
         self.assertEqual(names, {
-            "search_papers", "get_similar", "get_trends", "get_saved",
-            "suggest_reading", "save_paper", "get_digest", "library_status",
-            "fetch_papers", "ask_library", "suggest_profile_terms"})
+            "search_papers", "get_similar", "get_trends", "get_field_trends",
+            "get_saved", "suggest_reading", "save_paper", "get_digest",
+            "library_status", "fetch_papers", "ask_library",
+            "suggest_profile_terms"})
 
     def test_every_advertised_tool_has_a_handler(self):
         """A tool in tools/list with no handler is an agent-visible dead end.

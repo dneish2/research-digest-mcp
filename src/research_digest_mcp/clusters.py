@@ -146,6 +146,89 @@ def build(papers: List[Dict[str, Any]], saved: Optional[Dict[str, Any]] = None,
     }
 
 
+def detail(papers: List[Dict[str, Any]], concept: str, other: str = "",
+           saved: Optional[Dict[str, Any]] = None,
+           read: Optional[Dict[str, Any]] = None,
+           limit: int = 12) -> Dict[str, Any]:
+    """Everything behind one circle, or behind one line between two.
+
+    The map could be clicked before this existed and the click ran a search,
+    which threw the reader onto another screen with no statement of what had been
+    clicked or why those results. Reported as: "when I click it, it does show me
+    some arxiv or maybe the section of what I clicked, but that interaction is
+    not intuitive or transparent enough, so it's hard to know what's going on."
+
+    A click now has something to land on: the count, the share, what it sits
+    beside and how often, and the papers themselves. Every number here is a count
+    over the library, so the panel can say where each one came from.
+    """
+    from .scoring import about_sentence, paper_text
+    saved = saved or {}
+    read = read or {}
+    target = concept.lower()
+    partner = (other or "").lower()
+
+    matching: List[Dict[str, Any]] = []
+    with_counts: Dict[str, int] = {}
+    total = 0
+    for paper in papers:
+        found = _concepts_of(paper)
+        if target not in found:
+            continue
+        total += 1
+        for neighbour in found:
+            if neighbour != target:
+                with_counts[neighbour] = with_counts.get(neighbour, 0) + 1
+        if partner and partner not in found:
+            continue
+        matching.append(paper)
+
+    # Newest first. A concept's papers are a reading list, and for a reading list
+    # recency beats a relevance score against a term every one of them contains.
+    matching.sort(key=lambda p: str(p.get("published") or ""), reverse=True)
+
+    rows = []
+    for paper in matching[:limit]:
+        pid = paper.get("id", "")
+        rows.append({
+            "id": pid,
+            "title": paper.get("title", ""),
+            "url": paper.get("url", "") or f"https://arxiv.org/abs/{pid}",
+            "published": paper.get("published", ""),
+            "category": paper.get("primary_category", ""),
+            "about": about_sentence(paper),
+            "concepts": [c for c in _concepts_of(paper)][:6],
+            "saved": pid in saved,
+            "read": pid in read,
+        })
+
+    kept = sum(1 for p in matching if p.get("id") in saved)
+    partners = sorted(with_counts.items(), key=lambda kv: -kv[1])[:8]
+    return {
+        "status": "ok",
+        "concept": target,
+        "pair": partner,
+        "papers": len(matching),
+        "concept_papers": total,
+        "library": len(papers),
+        "share": round(len(matching) / max(1, len(papers)) * 100, 2),
+        "saved": kept,
+        "with": [{"concept": c, "papers": n} for c, n in partners],
+        "results": rows,
+        "more": max(0, len(matching) - len(rows)),
+        "how": (
+            f"{len(matching)} of your {len(papers)} papers mention both "
+            f"“{target}” and “{partner}”. Counted by reading each paper's title, "
+            f"abstract and tags, which is the same count the line's thickness is "
+            f"drawn from."
+            if partner else
+            f"{len(matching)} of your {len(papers)} papers mention “{target}” "
+            f"somewhere in the title, abstract or tags. That is the count the "
+            f"circle's size is drawn from."
+        ),
+    }
+
+
 def bridges(papers: List[Dict[str, Any]], limit: int = 8) -> List[Dict[str, Any]]:
     """Papers sitting between two parts of your library that rarely meet.
 
