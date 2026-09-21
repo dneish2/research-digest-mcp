@@ -326,17 +326,21 @@ class TestServeEncoding(TempHome):
 
 
 class TestTrends(TempHome):
-    def _papers(self, this_week, prev_week):
+    def _papers(self, this_week, prev_week, this_tagged=None, prev_tagged=None):
+        """A two-week library. `*_tagged` is how many of each week's papers
+        carry the concept; by default all of them do."""
         today = date.today()
+        this_tagged = this_week if this_tagged is None else this_tagged
+        prev_tagged = prev_week if prev_tagged is None else prev_tagged
         out = []
         for i in range(this_week):
             out.append({"id": f"a{i}", "title": "x", "abstract": "",
                         "first_seen": (today - timedelta(days=2)).isoformat(),
-                        "concepts": ["agentic"]})
+                        "concepts": ["agentic"] if i < this_tagged else ["diffusion"]})
         for i in range(prev_week):
             out.append({"id": f"b{i}", "title": "x", "abstract": "",
                         "first_seen": (today - timedelta(days=9)).isoformat(),
-                        "concepts": ["agentic"]})
+                        "concepts": ["agentic"] if i < prev_tagged else ["diffusion"]})
         return out
 
     def test_empty_week_is_no_data_not_a_100_percent_decline(self):
@@ -347,12 +351,50 @@ class TestTrends(TempHome):
         self.assertEqual(result["falling"], [])
         self.assertIn("how recently you fetched", result["reason"])
 
-    def test_real_comparison_reports_change(self):
+    def test_a_real_share_increase_is_reported_as_rising(self):
         from research_digest_mcp.trends import compute_trends
-        result = compute_trends(self._papers(20, 8))
+        # 16 of 20 this week (80%), 2 of 8 last week (25%).
+        result = compute_trends(self._papers(20, 8, this_tagged=16, prev_tagged=2))
         self.assertEqual(result["status"], "ok")
         rising = {r["concept"] for r in result["rising"]}
         self.assertIn("agentic", rising)
+
+    def test_fetching_more_papers_is_not_a_rising_concept(self):
+        """The bug the count-based view had: 20 papers this week all tagged
+        "agentic" against 8 last week all tagged "agentic" was reported as
+        +150% rising. Nothing rose. The fetch got bigger, and every concept in
+        it inherited the increase. Shares of each week's papers are immune to
+        this; raw counts never were."""
+        from research_digest_mcp.trends import compute_trends
+        result = compute_trends(self._papers(20, 8))
+        self.assertEqual(result["status"], "ok")
+        self.assertNotIn("agentic", {r["concept"] for r in result["rising"]})
+        self.assertIn("agentic", {r["concept"] for r in result["steady"]})
+
+    def test_a_concept_below_the_evidence_bar_is_shown_but_not_called(self):
+        """One group posting twice reads as "+100%, rising", and a reader has
+        no way to tell that from a real shift. It goes in its own bucket with
+        its counts, rather than being claimed or hidden."""
+        from research_digest_mcp.trends import compute_trends
+        result = compute_trends(self._papers(20, 20, this_tagged=2, prev_tagged=1))
+        called = {r["concept"] for r in
+                  result["rising"] + result["falling"] + result["steady"]}
+        self.assertNotIn("agentic", called)
+        thin = {r["concept"] for r in result["too_few"]}
+        self.assertIn("agentic", thin)
+
+    def test_every_row_carries_the_denominator_it_was_computed_from(self):
+        """"1 to 2, +100%" is three claims and no denominator."""
+        from research_digest_mcp.trends import compute_trends
+        result = compute_trends(self._papers(20, 8, this_tagged=16, prev_tagged=2))
+        row = next(r for r in result["rising"] if r["concept"] == "agentic")
+        self.assertEqual((row["current"], row["of_current"]), (16, 20))
+        self.assertEqual((row["previous"], row["of_previous"]), (2, 8))
+        self.assertEqual(row["share_now"], 80.0)
+        self.assertEqual(row["share_previous"], 25.0)
+        basis = result["basis"]
+        self.assertEqual(basis["this_week"]["papers"], 20)
+        self.assertTrue(basis["this_week"]["start"] < basis["this_week"]["end"])
 
 
 class TestEmbeddingStore(TempHome):
@@ -415,7 +457,23 @@ class TestMcpProtocol(TempHome):
         names = {t["name"] for t in tools["result"]["tools"]}
         self.assertEqual(names, {
             "search_papers", "get_similar", "get_trends", "get_saved",
-            "suggest_reading", "save_paper", "get_digest", "library_status"})
+            "suggest_reading", "save_paper", "get_digest", "library_status",
+            "fetch_papers", "ask_library", "suggest_profile_terms"})
+
+    def test_every_advertised_tool_has_a_handler(self):
+        """A tool in tools/list with no handler is an agent-visible dead end.
+
+        The client sees the tool, offers it, calls it, and gets -32601 back
+        mid-conversation. Advertising and implementing are two lists in two
+        places, so nothing but a test keeps them in step.
+        """
+        from research_digest_mcp.mcp import HANDLERS, TOOLS
+        advertised = {t["name"] for t in TOOLS}
+        self.assertEqual(advertised, set(HANDLERS),
+                         "tools/list and HANDLERS disagree")
+        for tool in TOOLS:
+            self.assertTrue(tool.get("description", "").strip(), tool["name"])
+            self.assertEqual(tool["inputSchema"]["type"], "object", tool["name"])
 
     def test_empty_library_explains_itself(self):
         """An empty library must say so, not return [] as if nothing matched."""

@@ -2,11 +2,11 @@
   "summary": {
     "current": {
       "p@5": 0.7692,
-      "p@10": 0.4692
+      "p@10": 0.4731
     },
     "old_buggy": {
-      "p@5": 0.4077,
-      "p@10": 0.3115
+      "p@5": 0.4154,
+      "p@10": 0.3154
     },
     "recency": {
       "p@5": 0.0308,
@@ -87,8 +87,8 @@
         "Optimal Rates for Agentic Networked Information Aggregation",
         "Robust PAC Learning of Concurrent Stochastic Games",
         "Praxist: From Experimental Artifacts to Solution Lineages",
-        "DART-SD: Diamond-topology Aware Retrieval and Tuning for Self-Distillation of Multi-Turn T",
-        "Exploiting Particle Swarm Optimization in Multiple Faults Fuzzy Detection"
+        "Exploiting Particle Swarm Optimization in Multiple Faults Fuzzy Detection",
+        "Random Drift Particle Swarm Optimization"
       ],
       "current_top5_is_positive": [
         true,
@@ -423,9 +423,9 @@
       "current_top5_titles": [
         "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress",
         "Does Your Agent's Memory Survive a Model Upgrade? A Controlled Study of Memory Portability",
-        "Evidence Blindness in Direct Corpus Interaction: Persistent Navigation with AtlasNav",
         "Deepchecks: Evaluating Retrieval-Augmented Generation (RAG)",
-        "Evaluating Modern RAG: Textual, Multimodal, Dense, and Late Interaction Pipelines"
+        "TechGraphRAG: An Agentic Graph-Augmented RAG Framework for Technical Literature Reasoning",
+        "Evidence Blindness in Direct Corpus Interaction: Persistent Navigation with AtlasNav"
       ],
       "old_buggy_top5_titles": [
         "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress",
@@ -450,55 +450,12 @@
       ]
     },
     {
-      "phrase": "method achieves state-of-the-art performance",
-      "n_positives": 3,
-      "current_p@5": 0.6,
-      "current_p@10": 0.3,
-      "old_buggy_p@5": 0.2,
-      "old_buggy_p@10": 0.3,
-      "recency_p@5": 0.0,
-      "recency_p@10": 0.0,
-      "random_p@5": 0.0,
-      "random_p@10": 0.0,
-      "strict_ordering_ok": true,
-      "positives_in_ranked": 3,
-      "positives_missing_from_ranked": 0,
-      "current_top5_titles": [
-        "Multi-Scale Implicit Transformer with Re-parameterize for Arbitrary-Scale Super-Resolution",
-        "Learning to Cluster Faces via Transformer",
-        "Towards Scale-Aware Low-Light Enhancement via Structure-Guided Transformer Design",
-        "Attention Debiasing for Token Pruning in Vision Language Models",
-        "Bioinfoysis Technical Report"
-      ],
-      "old_buggy_top5_titles": [
-        "VoiceMem: Streaming Dual-Brain Memory for Real-Time Interaction",
-        "Can Large Language Models Anticipate Behavioral Responses to Social Policies? A Case of Pe",
-        "Learning to Cluster Faces via Transformer",
-        "Glance-and-Gaze Vision Transformer",
-        "Visual Attention Network"
-      ],
-      "current_top5_is_positive": [
-        true,
-        true,
-        true,
-        false,
-        false
-      ],
-      "old_buggy_top5_is_positive": [
-        false,
-        false,
-        true,
-        false,
-        false
-      ]
-    },
-    {
       "phrase": "multi-agent reinforcement learning systems",
       "n_positives": 3,
       "current_p@5": 0.6,
       "current_p@10": 0.3,
       "old_buggy_p@5": 0.2,
-      "old_buggy_p@10": 0.2,
+      "old_buggy_p@10": 0.3,
       "recency_p@5": 0.0,
       "recency_p@10": 0.0,
       "random_p@5": 0.0,
@@ -515,10 +472,10 @@
       ],
       "old_buggy_top5_titles": [
         "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning",
-        "Compression Beyond the Uncompressed: A Two-Stage Training Recipe for Soft Context Compress",
-        "Large Language Models for HVAC Operations in Building Energy Systems: A Critical Review of",
         "Deep Reinforcement Learning: An Overview",
-        "Multi-agent Deep Reinforcement Learning with Extremely Noisy Observations"
+        "Multi-agent Deep Reinforcement Learning with Extremely Noisy Observations",
+        "Analysing Factorizations of Action-Value Networks for Cooperative Multi-Agent Reinforcemen",
+        "RLCache: Automated Cache Management Using Reinforcement Learning"
       ],
       "current_top5_is_positive": [
         true,
@@ -530,9 +487,9 @@
       "old_buggy_top5_is_positive": [
         false,
         false,
+        true,
         false,
-        false,
-        true
+        false
       ]
     },
     {
@@ -554,7 +511,7 @@
         "Transformers as Unsupervised Learning Algorithms: A study on Gaussian Mixtures",
         "Decoupled Intelligence: A Multi-Agent LLM Framework for Controllable Traffic Scenario Gene",
         "A Mixed-Reality Testbed for Autonomous Vehicles",
-        "Measuring the Novelty of Biomedical Papers Using the Latent Distances between Knowledge Un"
+        "From Portfolio Optimization to Quantum Blockchain and Security: A Systematic Review of Qua"
       ],
       "old_buggy_top5_titles": [
         "Precision-medicine-toolbox: An open-source python package for facilitation of quantitative",
@@ -708,10 +665,53 @@
       ]
     },
     {
+      "phrase": "method achieves state-of-the-art performance",
+      "n_positives": 3,
+      "current_p@5": 0.6,
+      "current_p@10": 0.3,
+      "old_buggy_p@5": 0.4,
+      "old_buggy_p@10": 0.3,
+      "recency_p@5": 0.0,
+      "recency_p@10": 0.0,
+      "random_p@5": 0.0,
+      "random_p@10": 0.0,
+      "strict_ordering_ok": true,
+      "positives_in_ranked": 3,
+      "positives_missing_from_ranked": 0,
+      "current_top5_titles": [
+        "Multi-Scale Implicit Transformer with Re-parameterize for Arbitrary-Scale Super-Resolution",
+        "Learning to Cluster Faces via Transformer",
+        "Towards Scale-Aware Low-Light Enhancement via Structure-Guided Transformer Design",
+        "Attention Debiasing for Token Pruning in Vision Language Models",
+        "CaMBRAIN: Real-time, Continuous EEG Inference with Causal State Space Models"
+      ],
+      "old_buggy_top5_titles": [
+        "Learning to Cluster Faces via Transformer",
+        "Glance-and-Gaze Vision Transformer",
+        "Visual Attention Network",
+        "First De-Trend then Attend: Rethinking Attention for Time-Series Forecasting",
+        "Multi-Scale Implicit Transformer with Re-parameterize for Arbitrary-Scale Super-Resolution"
+      ],
+      "current_top5_is_positive": [
+        true,
+        true,
+        true,
+        false,
+        false
+      ],
+      "old_buggy_top5_is_positive": [
+        true,
+        false,
+        false,
+        false,
+        true
+      ]
+    },
+    {
       "phrase": "vision language",
       "n_positives": 5,
       "current_p@5": 0.6,
-      "current_p@10": 0.4,
+      "current_p@10": 0.5,
       "old_buggy_p@5": 0.4,
       "old_buggy_p@10": 0.4,
       "recency_p@5": 0.0,
@@ -722,11 +722,11 @@
       "positives_in_ranked": 5,
       "positives_missing_from_ranked": 0,
       "current_top5_titles": [
-        "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu",
-        "Gripper-aware Vision Language Action Models",
-        "What Matters, When? Diagnosing and Improving Conditional Visual Grounding in Visuomotor Im",
         "Domain-adapted large language models for classifying nuclear medicine reports",
-        "SIREN-Bench: Behavior-Driven Generation and Evaluation of Emergency-Vehicle Interactions"
+        "Attention Debiasing for Token Pruning in Vision Language Models",
+        "HapTile: A Haptic-Informed Vision-Tactile-Language-Action Dataset for Contact-Rich Imitati",
+        "BiliVLA: Scene-Aware Vision-Language-Action Model with Reinforcement Learning for Autonomo",
+        "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu"
       ],
       "old_buggy_top5_titles": [
         "Same Trajectory, Contradictory Rewards (ROBORMBENCH): Paraphrase Fragility in Vision Langu",
@@ -739,8 +739,8 @@
         true,
         true,
         false,
-        true,
-        false
+        false,
+        true
       ],
       "old_buggy_top5_is_positive": [
         true,
@@ -897,8 +897,8 @@
         "VideoSeeker: Incentivizing Instance-level Video Understanding via Native Agentic Tool Invo",
         "MemTrace: Tracing and Attributing Errors in Large Language Model Memory Systems",
         "Exploring Autonomous Agentic Data Engineering for Model Specialization",
-        "When LLM Decompilers Recompile More and Preserve Less",
-        "Beyond Code Generation: Reliability, Verification, and Cost Economics in the Agentic Softw"
+        "Degradation-Aware Unfolding Half-Shuffle Transformer for Spectral Compressive Imaging",
+        "Unlocking Dense Metric Depth Estimation in VLMs"
       ],
       "old_buggy_top5_titles": [
         "Degradation-Aware Unfolding Half-Shuffle Transformer for Spectral Compressive Imaging",
@@ -940,15 +940,15 @@
         "A Deep Generative Model for Synthesizing Labeled Wireless Signals",
         "ST-GAN: Spatial Transformer Generative Adversarial Networks for Image Compositing",
         "An overall view of key problems in algorithmic trading and recent progress",
-        "Building a research-software catalog with a coding agent: from hackathon prototype to publ",
-        "Generative Iris Prior Embedded Transformer for Iris Restoration"
+        "Generative Iris Prior Embedded Transformer for Iris Restoration",
+        "Building a research-software catalog with a coding agent: from hackathon prototype to publ"
       ],
       "old_buggy_top5_titles": [
         "A Deep Generative Model for Synthesizing Labeled Wireless Signals",
         "ST-GAN: Spatial Transformer Generative Adversarial Networks for Image Compositing",
         "An overall view of key problems in algorithmic trading and recent progress",
         "Building a research-software catalog with a coding agent: from hackathon prototype to publ",
-        "Trust-Aware Adaptive Disclosure for Inference Privacy Preservation in Multi-Agent Networks"
+        "Generative Iris Prior Embedded Transformer for Iris Restoration"
       ],
       "current_top5_is_positive": [
         true,
@@ -1026,15 +1026,15 @@
         "Online inverse reinforcement learning for nonlinear systems",
         "Online inverse reinforcement learning with unknown disturbances",
         "Online inverse reinforcement learning with limited data",
-        "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning",
-        "Online Observer-Based Inverse Reinforcement Learning"
+        "Online Observer-Based Inverse Reinforcement Learning",
+        "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning"
       ],
       "old_buggy_top5_titles": [
-        "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning",
         "Online inverse reinforcement learning for nonlinear systems",
         "Online inverse reinforcement learning with unknown disturbances",
         "Online inverse reinforcement learning with limited data",
-        "Online Observer-Based Inverse Reinforcement Learning"
+        "Online Observer-Based Inverse Reinforcement Learning",
+        "Online Change-point Detection for Cooperative Multi-Agent Reinforcement Learning"
       ],
       "current_top5_is_positive": [
         true,
@@ -1044,10 +1044,10 @@
         false
       ],
       "old_buggy_top5_is_positive": [
+        true,
+        true,
+        true,
         false,
-        true,
-        true,
-        true,
         false
       ]
     },
@@ -1069,8 +1069,8 @@
         "PQ-Transformer: Jointly Parsing 3D Objects and Layouts from Point Clouds",
         "A Survey on Transformer Compression",
         "MA$^{2}$P: A Meta-Cognitive Autonomous Intelligent Agents Framework for Complex Persuasion",
-        "An Empirical Study on Learning Paths and Gender Dynamics in Scrum Master Roles",
-        "ASTRA: A Scalable Next-Generation ATCO Training Simulator with Autonomous Simpilots"
+        "ASTRA: A Scalable Next-Generation ATCO Training Simulator with Autonomous Simpilots",
+        "An Empirical Study on Learning Paths and Gender Dynamics in Scrum Master Roles"
       ],
       "old_buggy_top5_titles": [
         "PQ-Transformer: Jointly Parsing 3D Objects and Layouts from Point Clouds",
@@ -1113,7 +1113,7 @@
         "Measuring Behavior Portability in Large Language Models",
         "Understanding the (In)Security of Vibe-Coded Applications",
         "Adaptation Needs in Robotic Systems: Assessing Behavior Trees and Their Enhancement",
-        "WearableQA: A Benchmark for Health Reasoning over Real-World Wearable Data"
+        "Refuting \"Debunking the GAMLSS Myth: Simplicity Reigns in Pulmonary Function Diagnostics\""
       ],
       "old_buggy_top5_titles": [
         "Do Agents Need Semantic Metadata? A Comparative Study in Agentic Data Retrieval",

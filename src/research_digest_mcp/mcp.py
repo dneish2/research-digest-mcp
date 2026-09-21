@@ -17,7 +17,9 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 
 from . import storage
-from .config import HOME, force_utf8_streams, load_settings
+from .config import (
+    HOME, force_utf8_streams, load_settings, load_state, ranking_topics,
+    record_fetch)
 from .scoring import (
     about_sentence, explain_sentence, extract_concepts, rank, rank_all, rank_all_query,
     score_paper,
@@ -81,7 +83,7 @@ TOOLS = [
         "name": "suggest_reading",
         "description": (
             "Suggest unread papers on a topic, ranked by the same explainable keyword "
-            "scorer as search_papers. Keyword-based only — it does not use embeddings, "
+            "scorer as search_papers. Keyword-based only: it does not use embeddings, "
             "even when they are built."
         ),
         "inputSchema": {
@@ -96,7 +98,7 @@ TOOLS = [
     {
         "name": "save_paper",
         "description": (
-            "Add a specific paper to the library by arXiv id or URL and bookmark it — "
+            "Add a specific paper to the library by arXiv id or URL and bookmark it, "
             "for the paper your agent found mid-session that a category fetch may never "
             "surface on its own. If the paper is already in the library, just bookmarks it."
         ),
@@ -115,7 +117,7 @@ TOOLS = [
     {
         "name": "get_digest",
         "description": (
-            "Today's top papers against the user's standing topics — a small, dated, "
+            "Today's top papers against the user's standing topics: a small, dated, "
             "reproducible pick (default 5, capped per category), not the full ranked "
             "library. Also written to a markdown file the user can read outside the agent."
         ),
@@ -134,6 +136,58 @@ TOOLS = [
             "whether embeddings exist and are usable, and what is missing."
         ),
         "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "fetch_papers",
+        "description": (
+            "Search arXiv itself, not the user's library, and add what comes back. "
+            "This is the tool that GROWS the shelf: search_papers can only find what "
+            "has already been fetched, so use this when the user asks for something "
+            "their library does not hold, or asks for anything newer than its last "
+            "fetch. Rate-limited by arXiv; one call, not a loop."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string",
+                          "description": "Free text, searched across title and abstract"},
+                "limit": {"type": "integer", "default": 20,
+                          "description": "How many to pull back, max 100"},
+                "save": {"type": "boolean", "default": False,
+                         "description": "Also bookmark everything fetched"},
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "ask_library",
+        "description": (
+            "Ask a question in plain English ('anything on agent evaluation from this "
+            "month?') and get back the query plan plus the matching papers. Use this "
+            "instead of search_papers when the user's words are a question rather than "
+            "keywords. It strips the asking, picks the date window, and reports which "
+            "of their words matched nothing so a typo does not silently cost the answer."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string"},
+                "limit": {"type": "integer", "default": 10},
+            },
+            "required": ["question"],
+        },
+    },
+    {
+        "name": "suggest_profile_terms",
+        "description": (
+            "Read what the user has actually saved and propose topics their fetch "
+            "profile is missing. Answers 'what am I reading that I never told this "
+            "tool to look for'. Proposes only; it never edits settings."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"limit": {"type": "integer", "default": 12}},
+        },
     },
 ]
 
@@ -336,7 +390,7 @@ def tool_save_paper(args: Dict[str, Any]) -> Dict[str, Any]:
 
     message = f"Saved {paper.get('title', '')!r}."
     if not already_had:
-        message += " Added to the library — run 'research-digest embed' to include it in similarity search."
+        message += " Added to the library. Run 'research-digest embed' to include it in similarity search."
     return {
         "status": "ok",
         "id": paper["id"],
@@ -353,7 +407,7 @@ def tool_get_digest(args: Dict[str, Any]) -> Dict[str, Any]:
         return _no_library()
     from .digest import build_digest, write_digest
     settings = load_settings()
-    result = build_digest(papers, settings["topics"],
+    result = build_digest(papers, ranking_topics(settings),
                            for_date=args.get("date"), size=int(args.get("size", 5)))
     if not result["picks"]:
         return {"status": "no_match",
@@ -369,23 +423,62 @@ def tool_get_digest(args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def tool_library_status(args: Dict[str, Any]) -> Dict[str, Any]:
+    import sys
+    from pathlib import Path
+
+    from . import __version__
+
     papers = storage.load_papers()
     settings = load_settings()
     status: Dict[str, Any] = {
-        "status": "ok",
+        # An empty library answering "ok" is how an agent concludes that a
+        # library with nothing in it is fine. Every other tool here names its
+        # own failure; the one used to orient should too.
+        "status": "ok" if papers else "empty_library",
         "home": str(HOME),
         "papers": len(papers),
         "saved": len(storage.load_saved()),
         "read": len(storage.load_read()),
         "categories": settings["categories"],
         "topics": settings["topics"],
+        # Which copy of the package answered. Two installs at different commits
+        # on one machine, with no way to tell them apart from any output, is a
+        # whole afternoon of debugging the wrong code.
+        "version": __version__,
+        "interpreter": sys.executable,
+        "package_path": str(Path(__file__).resolve().parent),
     }
+    if not papers:
+        status["message"] = ("The library is empty. Run 'research-digest fetch' "
+                             "to pull papers from arXiv.")
     days = sorted(str(p.get("first_seen") or p.get("published") or "")[:10]
                   for p in papers if p.get("first_seen") or p.get("published"))
     if days:
         status["earliest"] = days[0]
         status["latest"] = days[-1]
     status["runs"] = storage.load_archive().get("runs", [])[-10:]
+
+    # The exact moment of the last fetch, not just its date. Absent for a
+    # library last fetched by a version that only wrote the date -- reported as
+    # absent rather than back-filled from a file mtime, because a guessed
+    # timestamp is indistinguishable from a real one once it is on screen.
+    state = load_state()
+    status["last_fetch_at"] = state.get("last_fetch_at") or ""
+    status["last_fetch_source"] = state.get("last_fetch_source") or ""
+    status["last_added"] = state.get("last_added")
+
+    # What the library is missing, which every other surface hides. A search
+    # over a library with a month-shaped hole in it still answers confidently.
+    coverage = storage.month_coverage(papers)
+    status["coverage"] = coverage
+    if coverage["gaps"]:
+        status["coverage_warning"] = (
+            f"You hold no papers published in {', '.join(coverage['gaps'][:4])}"
+            + (f" and {len(coverage['gaps']) - 4} other months"
+               if len(coverage["gaps"]) > 4 else "")
+            + f". A search cannot find what was never fetched. Run "
+              f"'research-digest fetch --since {coverage['gaps'][0]}-01' to fill it in."
+        )
 
     try:
         from .similarity import EmbeddingStore
@@ -407,8 +500,144 @@ def tool_library_status(args: Dict[str, Any]) -> Dict[str, Any]:
     return status
 
 
+def tool_fetch_papers(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Search arXiv live and merge the results into the library.
+
+    The reviews kept calling this "live search", but the useful framing is
+    narrower: every other tool here reads a shelf, and this is the only one
+    that puts something on it. A library tool whose search cannot reach past
+    what it already holds will answer "nothing found" for a paper that exists,
+    which is the worst answer a research tool can give.
+    """
+    query = str(args.get("query", "")).strip()
+    if not query:
+        return {"status": "error", "message": "Give me something to search arXiv for."}
+    limit = max(1, min(int(args.get("limit", 20) or 20), 100))
+
+    from .fetchers import ArxivUnavailable, cooldown_detail
+    from .fetchers import search as arxiv_search
+    try:
+        found = arxiv_search(query, limit)
+    except ArxivUnavailable as exc:
+        # Kept distinct from "nothing matched" on purpose. They look the same
+        # on screen and mean opposite things: one says the paper is not out
+        # there, the other says we were not allowed to look.
+        return {"status": "unavailable", "message": str(exc), "results": [],
+                "blocked": True, "cooldown": cooldown_detail(),
+                "what_now": ("This is a limit on how often this machine may ask "
+                             "arXiv, not a problem with your search. Your library "
+                             "is unaffected and nothing was lost. arxiv.org itself "
+                             "still works in a browser.")}
+    if not found:
+        return {"status": "no_match",
+                "message": (f"arXiv answered, and has nothing matching {query!r}. "
+                            f"That is arXiv's answer, not a failure to reach it."),
+                "results": []}
+
+    for paper in found:
+        paper["concepts"] = extract_concepts(paper)
+    stats = storage.merge_papers(found, date.today().isoformat())
+    record_fetch(stats["added"], stats["total"], source="arxiv_search")
+
+    if args.get("save"):
+        for paper in found:
+            storage.save_paper(paper["id"], paper.get("title", ""),
+                               f"from arXiv search: {query}", paper.get("concepts") or [])
+
+    return {
+        "status": "ok",
+        "query": query,
+        "fetched": len(found),
+        "added": stats["added"],
+        "already_held": len(found) - stats["added"],
+        "library_total": stats["total"],
+        "message": (f"Pulled {len(found)} from arXiv, {stats['added']} new to the "
+                    f"library (now {stats['total']})."
+                    + (" Re-run 'research-digest embed' to include them in "
+                       "similarity search." if stats["added"] else "")),
+        "results": [_summary(p, abstract=True) for p in found],
+    }
+
+
+def tool_ask_library(args: Dict[str, Any]) -> Dict[str, Any]:
+    """A question in English, answered from the library.
+
+    Delegates to ask.answer, which is the same code the browser's question box
+    runs. The tool's job here is only to say it in an agent's vocabulary.
+    """
+    from .ask import answer
+
+    question = str(args.get("question", "")).strip()
+    if not question:
+        return {"status": "error", "message": "Ask me something."}
+
+    result = answer(question, load_settings(), limit=int(args.get("limit", 10)))
+    result["how"] = (
+        "The question was read into search terms by rule (and by a local model "
+        "if one is configured), then ranked by the same arithmetic scorer as "
+        "search_papers. No model orders these results."
+    )
+    if result.get("status") in ("ok", "no_match"):
+        result["next_step"] = (
+            "Nothing in the library matched. fetch_papers searches arXiv itself "
+            "and can add what is missing."
+            if not result.get("results") else
+            "fetch_papers searches arXiv itself if the user wants more than the "
+            "library holds."
+        )
+    return result
+
+
+def tool_suggest_profile_terms(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Terms common in what the user saved that their fetch profile never asks for.
+
+    The gap between what someone bookmarks and what their profile requests is
+    the profile's blind spot, and it is invisible from either side on its own.
+    """
+    saved = storage.load_saved()
+    if not saved:
+        return {"status": "empty",
+                "message": "Nothing saved yet, so there is nothing to learn from.",
+                "results": []}
+
+    by_id = {p["id"]: p for p in storage.load_papers()}
+    known = {t.lower() for t in ranking_topics()}
+    counts: Dict[str, int] = {}
+    examples: Dict[str, List[str]] = {}
+    for pid, entry in saved.items():
+        paper = by_id.get(pid, {})
+        title = entry.get("title") or paper.get("title", "")
+        for concept in set((entry.get("concepts") or []) + (paper.get("concepts") or [])):
+            term = str(concept).lower().strip()
+            if not term or term in known or len(term) < 4:
+                continue
+            counts[term] = counts.get(term, 0) + 1
+            examples.setdefault(term, []).append(title)
+
+    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    # One occurrence is a coincidence, not a pattern worth changing a profile for.
+    ranked = [(t, n) for t, n in ranked if n >= 2] or ranked[:3]
+    limit = int(args.get("limit", 12))
+    return {
+        "status": "ok" if ranked else "no_gap",
+        "saved_count": len(saved),
+        "profile_topics": len(known),
+        "how": ("Concepts tagged on papers you saved, minus the topics your profile "
+                "already asks arXiv for. Ranked by how many saved papers carry each."),
+        "message": ("Your profile already covers everything your saved papers are about."
+                    if not ranked else
+                    f"{len(ranked)} concepts show up in what you save but are not in "
+                    f"your fetch profile."),
+        "results": [{"term": term, "saved_papers": n,
+                     "examples": examples[term][:3]} for term, n in ranked[:limit]],
+    }
+
+
 HANDLERS = {
     "search_papers": tool_search_papers,
+    "fetch_papers": tool_fetch_papers,
+    "ask_library": tool_ask_library,
+    "suggest_profile_terms": tool_suggest_profile_terms,
     "get_similar": tool_get_similar,
     "get_trends": tool_get_trends,
     "get_saved": tool_get_saved,

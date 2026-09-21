@@ -28,6 +28,11 @@ BOILERPLATE = {
     "data", "training", "train", "method", "methods", "approach", "framework",
     "system", "systems", "task", "tasks", "performance", "results", "novel",
     "language", "large", "based", "using", "study", "analysis", "problem",
+    # Field labels, not subjects. A search for "finance ai" was led by a paper
+    # on healthcare workforce readiness, because "ai" carried the same weight
+    # as "finance" and appears in roughly half this corpus. Matching one of
+    # these says only that the paper is in computer science.
+    "ai", "llm", "llms", "ml", "nlp", "artificial", "intelligence", "machine",
 }
 
 # Plain English function words. BOILERPLATE is deliberately about this field's
@@ -48,16 +53,64 @@ STOPWORDS = {
 }
 
 
-def _significant(terms: List[str]) -> List[str]:
+def term_groups(terms: List[str]) -> List[Dict[str, Any]]:
+    """Each query word as a unit that has to be satisfied as a whole.
+
+    A hyphenated word is one idea, not several. Opening "nvidia-labs" into two
+    independent terms meant a paper containing only "labs" counted as a third
+    of the query and came back as a result: a search for NVIDIA-labs returned a
+    paper on animal welfare in travel agents, because it says "labs" somewhere.
+
+    So a compound matches if the paper has it written that way, OR has all of
+    its parts. Either is the idea; one part is not. The searcher still does not
+    have to guess the author's hyphenation, which is what the splitting was for
+    in the first place.
+    """
+    groups: List[Dict[str, Any]] = []
+    seen = set()
+    for term in terms:
+        text = term.lower().strip().strip(".,;:!?")
+        if not text or text in STOPWORDS or text in seen:
+            continue
+        seen.add(text)
+        parts = [p for p in text.split("-") if p and p not in STOPWORDS] \
+            if "-" in text else []
+        groups.append({"term": text, "parts": parts if len(parts) > 1 else []})
+    return groups
+
+
+def group_matches(group: Dict[str, Any], words: set) -> bool:
+    """Is this query word satisfied by the paper's vocabulary?"""
+    if group["term"] in words:
+        return True
+    return bool(group["parts"]) and all(p in words for p in group["parts"])
+
+
+def _significant(terms: List[str], split_compounds: bool = False) -> List[str]:
     """Query/topic words worth matching against — lowercased, deduped in
-    order, with plain English function words dropped."""
+    order, with plain English function words dropped.
+
+    A hyphenated term is split into its parts as well as kept whole, because
+    the searcher should not have to guess the author's hyphenation. _match_set
+    already opens compounds up on the *text* side, so "chain of thought"
+    reached a paper writing "chain-of-thought"; the reverse did not hold, and
+    a search for "LLM-as-judge" matched only the papers that spell it with
+    both hyphens — 8 of a library that holds well over a hundred on the
+    subject. Both sides are now normalised the same way.
+    """
     seen, out = set(), []
     for term in terms:
-        t = term.lower().strip()
-        if not t or t in STOPWORDS or t in seen:
+        t = term.lower().strip().strip(".,;:!?")
+        if not t or t in STOPWORDS:
             continue
-        seen.add(t)
-        out.append(t)
+        # Splitting is for matching, not for display: a suggestion chip reading
+        # "multi-agent, multi, agent" is three chips for one idea.
+        pieces = [t] + t.split("-") if (split_compounds and "-" in t) else [t]
+        for piece in pieces:
+            if not piece or piece in STOPWORDS or piece in seen:
+                continue
+            seen.add(piece)
+            out.append(piece)
     return out
 
 PHRASE_HIT = 1.0
@@ -91,8 +144,24 @@ _ABOUT_MAX_CHARS = 220
 
 
 def paper_text(paper: Dict[str, Any]) -> str:
+    """Everything a search is allowed to look at.
+
+    Authors were not in here, which meant author search did not exist: an
+    author with five papers in the library returned one result, and that one
+    was a coincidental word match. The names were stored on 1,182 of 1,443
+    papers the whole time and simply never read.
+
+    Affiliation, comment and journal_ref are here for the same reason and were
+    not even being parsed out of the feed. Affiliation is the only field that
+    can answer "papers out of NVIDIA"; comment is where "Accepted at NeurIPS
+    2026" lives, which is a thing people genuinely want to filter on.
+    """
     parts = [paper.get("title", ""), paper.get("abstract", "")]
     parts.extend(paper.get("concepts", []) or [])
+    parts.extend(paper.get("authors", []) or [])
+    parts.extend(paper.get("affiliations", []) or [])
+    parts.append(paper.get("comment", "") or "")
+    parts.append(paper.get("journal_ref", "") or "")
     return " ".join(str(p) for p in parts).lower()
 
 
@@ -199,8 +268,8 @@ def score_query(paper: Dict[str, Any], terms: List[str],
     "did not match this query" apart from "matched, but weakly".
     """
     raw = [t.lower().strip() for t in terms if t.strip()]
-    terms = _significant(terms)
-    if not terms:
+    groups = term_groups(terms)
+    if not groups:
         return None
     text = paper_text(paper)
     words = _match_set(text)
@@ -208,9 +277,10 @@ def score_query(paper: Dict[str, Any], terms: List[str],
     matched: List[Dict[str, Any]] = []
     weighted = 0.0
     occurrences = 0
-    for term in terms:
-        if term not in words:
+    for group in groups:
+        if not group_matches(group, words):
             continue
+        term = group["term"]
         common = term in BOILERPLATE
         credit = COMMON_HIT if common else DISTINCT_HIT
         weighted += credit
@@ -219,10 +289,12 @@ def score_query(paper: Dict[str, Any], terms: List[str],
             "kind": "common word" if common else "distinctive word",
             "credit": credit,
         })
-        occurrences += text.count(term)
+        occurrences += text.count(term) or min(
+            (text.count(p) for p in group["parts"]), default=0)
 
     if not matched:
         return None
+    terms = [g["term"] for g in groups]
 
     # Credit-weighted, like score_paper — not a flat "matched N of M" fraction.
     # Two terms both present is not automatically full marks: a paper matching
@@ -291,19 +363,47 @@ def explain_sentence(why: Dict[str, Any]) -> str:
     """
     matched = why.get("matched", [])
     if not matched:
-        return "No topic matched. It ranks on recency alone."
-    names = ", ".join(f"{m['topic']} ({m['kind']})" for m in matched[:4])
+        return "Matches none of your topics. It is here on how recent it is."
+
+    # Plain words, in the order a person would say them. The old sentence read
+    # "matched agent (distinctive word), evaluation (distinctive word),
+    # learning (common word); +0.30 for spanning 4 topics", which is the
+    # scorer's vocabulary, not anybody's.
+    # The phrase match is reported in its own clause below, so listing it here
+    # too produced "Mentions agent, memory and agent memory".
+    strong = [m["topic"] for m in matched
+              if m["kind"] not in ("common word", "phrase")][:4]
+    weak = [m["topic"] for m in matched if m["kind"] == "common word"][:2]
+
+    def listed(words):
+        if len(words) == 1:
+            return words[0]
+        return ", ".join(words[:-1]) + " and " + words[-1]
+
+    if strong:
+        opening = f"mentions {listed(strong)}"
+        if weak:
+            opening += f", plus {listed(weak)}, which most papers here use"
+    elif weak:
+        opening = (f"only matches {listed(weak)}, which most papers here use, "
+                   f"so this is a weak match")
+    else:
+        opening = "matches your search as a whole phrase"
+
+    bits = [opening]
     comp = why.get("components", {})
-    bits = [f"matched {names}"]
-    if comp.get("breadth_bonus"):
-        bits.append(f"+{comp['breadth_bonus']:.2f} for spanning {why.get('topics_matched')} topics")
     if comp.get("phrase_bonus"):
-        bits.append(f"+{comp['phrase_bonus']:.2f} for matching the exact phrase")
+        bits.append("has your exact phrase in it")
+    if comp.get("breadth_bonus"):
+        bits.append(f"covers {why.get('topics_matched')} of your topics at once")
     if comp.get("tf_bonus"):
-        bits.append(f"+{comp['tf_bonus']:.2f} for how often the terms appear")
+        bits.append("comes back to those words repeatedly rather than in passing")
     if comp.get("recency"):
-        bits.append(f"+{comp['recency']:.2f} for being {why.get('age_days')} days old")
-    return "; ".join(bits) + "."
+        age = why.get("age_days")
+        bits.append("posted today" if age == 0
+                    else "posted yesterday" if age == 1
+                    else f"only {age} days old")
+    return ". ".join(b[0].upper() + b[1:] if b else b for b in bits) + "."
 
 
 def _clip(sentence: str, max_chars: int) -> str:
@@ -359,6 +459,38 @@ def rank(papers: List[Dict[str, Any]], topics: List[str],
          limit: int = 20) -> List[Dict[str, Any]]:
     """The top `limit` matches. Use rank_all when you need the true match count."""
     return rank_all(papers, topics)[:limit]
+
+
+def term_coverage(papers: List[Dict[str, Any]], terms: List[str]) -> Dict[str, int]:
+    """How many papers each term appears in at all.
+
+    A term that appears in zero papers is not a narrow filter, it is noise: it
+    cannot promote anything, and because ranking is by what fraction of the
+    query a paper covers, it drags every real result down by the same amount.
+    That is how a typo silently costs you the answer -- "fidn" matches nothing,
+    so every paper scores 2/3 instead of 2/2 and the ordering flattens.
+
+    Rather than guess at spelling, the caller drops the dead terms and says
+    which ones it dropped. Wrong guesses are visible; silent dilution is not.
+    """
+    groups = term_groups(terms)
+    counts = {g["term"]: 0 for g in groups}
+    if not groups:
+        return counts
+    for paper in papers:
+        words = _match_set(paper_text(paper))
+        for group in groups:
+            if group_matches(group, words):
+                counts[group["term"]] += 1
+    return counts
+
+
+def live_terms(papers: List[Dict[str, Any]], terms: List[str]):
+    """(terms that appear somewhere in the library, terms that appear nowhere)."""
+    counts = term_coverage(papers, terms)
+    live = [t for t, n in counts.items() if n > 0]
+    dead = [t for t, n in counts.items() if n == 0]
+    return live, dead
 
 
 def rank_all_query(papers: List[Dict[str, Any]], terms: List[str]) -> List[Dict[str, Any]]:
