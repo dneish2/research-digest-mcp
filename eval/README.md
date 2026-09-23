@@ -1,7 +1,26 @@
 # eval/
 
-The harness behind [`docs/EVAL.md`](../docs/EVAL.md). Read that document first — it is the
+The harness behind [`docs/EVAL.md`](../docs/EVAL.md). Read that document first, it is the
 argument; this directory is the evidence.
+
+## What `fixtures/` is, and what it is not
+
+`fixtures/corpus.json.gz` is a frozen snapshot of 1,373 arXiv metadata records,
+committed so the ranker's score is reproducible on a machine with no library at
+all. CI runs against it, which is the only reason the number in `docs/EVAL.md`
+means anything: a baseline that reads whatever happens to be on disk is not a
+baseline, and mining the phrase set from a live library once moved the published
+headline from 0.708 to 0.769 with no change to the ranker. The clock was the
+last thing left unfrozen and did the same on its own, 0.7692 to 0.7615 over two
+calendar days, because a recency bonus decays against the real date; the harness
+now scores as of the day after the newest paper in the corpus. The stable figure
+is 0.761.
+
+It is a test fixture and nothing else. Every script here is read-only, none of
+them writes to your library, and the fixture is never merged into it. Cloning
+this repository gives you an **empty** library: what you hold is whatever you
+fetch, and `~/.research-digest` is created on your first fetch and ignored by
+git.
 
 ```bash
 .venv\Scripts\python.exe eval\eval-regression.py   # deterministic, no model, ~30s

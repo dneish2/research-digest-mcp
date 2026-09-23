@@ -505,15 +505,22 @@ def percentile_of(score: float, distribution: Dict[str, Any]) -> float:
     return round(low / len(scores) * 100, 1)
 
 
-def rank_all(papers: List[Dict[str, Any]], topics: List[str]) -> List[Dict[str, Any]]:
+def rank_all(papers: List[Dict[str, Any]], topics: List[str],
+             today: Optional[date] = None) -> List[Dict[str, Any]]:
     """Score every paper, keep the ones that matched at all, best first.
 
     Returns the complete match set. Callers slice it for display, but report
     counts from this list, so "matched" means matched and not "shown".
+
+    `today` exists for the eval. Part of every score is a recency bonus read off
+    the clock, so a frozen corpus scored against the real date drifts on its own:
+    the committed regression number fell from 0.769 to 0.761 over two calendar
+    days with no change to the ranker. A caller measuring a fixed corpus has to
+    be able to fix the date too.
     """
     scored = []
     for paper in papers:
-        result = score_paper(paper, topics)
+        result = score_paper(paper, topics, today=today)
         if not result["why"]["matched"]:
             continue
         record = dict(paper)
@@ -563,12 +570,16 @@ def live_terms(papers: List[Dict[str, Any]], terms: List[str]):
     return live, dead
 
 
-def rank_all_query(papers: List[Dict[str, Any]], terms: List[str]) -> List[Dict[str, Any]]:
+def rank_all_query(papers: List[Dict[str, Any]], terms: List[str],
+                   today: Optional[date] = None) -> List[Dict[str, Any]]:
     """Free-text search over the library. See score_query for how this differs
-    from rank_all, which is calibrated for the standing topic profile."""
+    from rank_all, which is calibrated for the standing topic profile.
+
+    `today` is for measurement, not for the app. See rank_all.
+    """
     scored = []
     for paper in papers:
-        result = score_query(paper, terms)
+        result = score_query(paper, terms, today=today)
         if result is None:
             continue
         record = dict(paper)

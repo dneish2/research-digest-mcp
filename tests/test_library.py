@@ -254,9 +254,20 @@ class TestImport(TempHome):
         dup = [p for p in loaded if storage.base_id(p["id"]) == "2605.30169"][0]
         self.assertEqual(dup["abstract"], "new")
         self.assertEqual(dup["first_seen"], "2026-05-28")
-        # The record keeps its versioned id, so embedding rows and saved entries
-        # written against that id still resolve.
-        self.assertEqual(dup["id"], "2605.30169v2")
+        # The record reports the id it is stored under, and the specific
+        # revision stays nameable beside it.
+        #
+        # This used to assert the opposite, on the reasoning that keeping the
+        # versioned id let existing embedding rows and saved entries resolve.
+        # That reasoning did not survive contact with the second fetch path:
+        # arXiv's search API hands out versioned ids and its harvest feed hands
+        # out bare ones, so a paper first seen through search and later
+        # re-harvested changed id shape underneath anything pointing at it. On a
+        # real library 1,245 of 23,850 records reported a versioned id while the
+        # archive was keyed by the base, and 7 of 30 bookmarks pointed at ids no
+        # lookup could resolve. The base id is the only form both paths produce.
+        self.assertEqual(dup["id"], "2605.30169")
+        self.assertEqual(dup["version_id"], "2605.30169v2")
 
     def test_an_id_with_no_version_suffix_is_left_alone(self):
         from research_digest_mcp import storage
@@ -286,9 +297,12 @@ class TestSavePaper(TempHome):
                                    "note": "for the memory review"})
         self.assertEqual(result["status"], "ok")
         self.assertTrue(result["already_in_library"])
+        # Keyed on the base id, whatever form was passed in, so the bookmark
+        # still resolves after the paper is revised or re-harvested.
         saved = storage.load_saved()
-        self.assertIn("2609.05339v1", saved)
-        self.assertEqual(saved["2609.05339v1"]["note"], "for the memory review")
+        self.assertIn("2609.05339", saved)
+        self.assertEqual(saved["2609.05339"]["note"], "for the memory review")
+        self.assertIn("2609.05339", {p["id"] for p in storage.load_papers()})
 
     def test_an_unparseable_id_is_an_error_not_a_network_call(self):
         from research_digest_mcp.mcp import tool_save_paper

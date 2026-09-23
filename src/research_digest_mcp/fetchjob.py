@@ -154,6 +154,13 @@ def recent_gaps(papers: List[Dict[str, Any]], today: Optional[date] = None,
     today = today or date.today()
     covered = _covered_days(papers)
     newest = _newest_published(papers)
+    # An empty library has neither kind. Without this guard every recent day
+    # fell into `pending`, so someone who had just installed the tool was told
+    # that 22 days were "empty because arXiv has not announced them yet". That
+    # is false, and it reads as the tool being broken before they have fetched
+    # anything at all.
+    if not newest:
+        return {"holes": [], "pending": []}
     holes, pending = [], []
     for offset in range(lookback, -1, -1):
         day = (today - timedelta(days=offset)).isoformat()
@@ -273,6 +280,16 @@ def plan(settings: Optional[Dict[str, Any]] = None, since: str = "",
             "lookback": CATCH_UP_LOOKBACK,
             **recent_gaps(papers, today),
         },
+        # A fresh install is its own state and deserves its own sentence. The
+        # gap and staleness language below is all relative to papers you already
+        # hold, and none of it means anything when you hold none.
+        "first_run": not papers,
+        "first_run_note": (
+            f"Your library is empty, which is where everyone starts. This first "
+            f"fetch asks arXiv for the last {span} days in the categories your "
+            f"profile lists, and nothing else on this page will have much to say "
+            f"until it finishes."
+            if not papers else ""),
         "lag_note": (
             "arXiv announces on a delay, so the newest two or three days are "
             "not available to anyone yet. Measured on one real day of records: "

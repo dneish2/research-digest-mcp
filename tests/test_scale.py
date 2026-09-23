@@ -118,3 +118,50 @@ class TestScale(TempHome):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestScoringIsPinnable(TempHome):
+    """A frozen corpus scored against the real clock is not frozen.
+
+    Found by noticing the committed regression number had moved with nothing
+    committed in between: 0.7692 on 2026-09-21, 0.7615 on 2026-09-23. Part of
+    every score is a recency bonus decaying over 30 days against `date.today()`,
+    so the eval's fixture aged out from under it and one phrase lost a relevant
+    paper from its top five. Left alone it slides until it trips the CI floor and
+    reads as a ranker regression.
+    """
+
+    def test_a_ranking_can_be_asked_to_use_a_fixed_date(self):
+        from datetime import date
+
+        from research_digest_mcp.scoring import rank_all_query
+        papers = [
+            {"id": "old", "title": "Agent memory", "abstract": "agent memory",
+             "published": "2026-01-01"},
+            {"id": "new", "title": "Agent memory", "abstract": "agent memory",
+             "published": "2026-06-01"},
+        ]
+        # As of the day after the newer paper, recency separates them.
+        fresh = rank_all_query(papers, ["agent", "memory"], today=date(2026, 6, 2))
+        self.assertEqual(fresh[0]["id"], "new")
+        self.assertGreater(fresh[0]["score"], fresh[1]["score"])
+
+        # Long after both, recency is worth nothing to either and they tie.
+        later = rank_all_query(papers, ["agent", "memory"], today=date(2027, 6, 2))
+        self.assertEqual(later[0]["score"], later[1]["score"])
+
+    def test_the_eval_pins_its_clock_to_the_corpus(self):
+        """Derived from the corpus so it needs no maintenance: re-freezing the
+        corpus brings its own reference date."""
+        import importlib.util
+        from datetime import date
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parents[1] / "eval" / "eval-regression.py"
+        spec = importlib.util.spec_from_file_location("eval_regression", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertEqual(
+            module.corpus_today([{"published": "2026-09-04"},
+                                 {"published": "2026-08-01"}]),
+            date(2026, 9, 5))

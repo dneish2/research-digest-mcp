@@ -7,12 +7,21 @@ dist/
 .venv/
 venv/
 
-# Local library data must never be committed
+# Local library data must never be committed. This matters even though the
+# library normally lives in ~/.research-digest: RESEARCH_DIGEST_HOME can point
+# anywhere, and pointing it at a clone during development is the obvious thing
+# to try. Nobody else's papers, bookmarks, notes or reading history belong in a
+# clone of this repo.
 *.db
 archive.json
 saved.json
 read.json
 settings.json
+state.json
+census.json
+fetch-log.jsonl
+arxiv-cooldown.json
+digests/
 
 # Editors / OS
 .DS_Store
