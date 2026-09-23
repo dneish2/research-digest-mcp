@@ -1521,15 +1521,54 @@ function fieldChart(data) {
   const wrap = el('section', 'fieldchart');
   const most = Math.max(0.01, ...rows.map((r) => Math.abs(r.change_pts)));
 
+  // How much of each window the census actually holds, said whenever it is not
+  // all of it. The counts already travel with `present` and `asked`, and not
+  // printing them was the same mistake this tab was built to fix: a number that
+  // is correct over a window the reader cannot see the edges of. A 7 day window
+  // holding 5 days against a 30 day window holding 30 is still a fair
+  // comparison of shares, and it is not the comparison it appears to be.
+  const span = (w) => `${humanDate(w.start)} to ${humanDate(w.end)} `
+    + `(${w.papers.toLocaleString()} papers`
+    + (w.present < w.asked ? `, ${w.present} of ${w.asked} days counted` : '')
+    + ')';
+
   const legend = el('div', 'fieldlegend');
-  legend.appendChild(el('span', null,
-    `${humanDate(data.recent.start)} to ${humanDate(data.recent.end)} `
-    + `(${data.recent.papers.toLocaleString()} papers)`));
+  legend.appendChild(el('span', null, span(data.recent)));
   legend.appendChild(el('span', 'dim', 'against'));
-  legend.appendChild(el('span', null,
-    `${humanDate(data.prior.start)} to ${humanDate(data.prior.end)} `
-    + `(${data.prior.papers.toLocaleString()} papers)`));
+  legend.appendChild(el('span', null, span(data.prior)));
   wrap.appendChild(legend);
+
+  // And whether the census itself has fallen behind. It is built by a run, not
+  // by a schedule, so it goes stale quietly and a trend line drawn over the
+  // days it happens to hold looks exactly like one drawn over the days asked for.
+  const cov = data.coverage || {};
+  const thin = data.recent.present < data.recent.asked
+    || data.prior.present < data.prior.asked;
+  if (thin) {
+    const warn = el('div', 'fieldstale');
+    warn.appendChild(el('b', null,
+      `The census stops at ${humanDate(cov.last)}.`));
+    warn.appendChild(el('span', null,
+      'Shares are counted over the days it holds, so the comparison is still '
+      + 'fair, and it is over fewer days than the dates above suggest. Rebuild '
+      + 'it to close the gap.'));
+    const again = el('button', 'btn-ghost', 'Count the newest days');
+    again.type = 'button';
+    again.addEventListener('click', async () => {
+      again.disabled = true;
+      const started = await get('/api/field/build', { days: 30 }, { timeoutMs: 20000 });
+      if (started.status !== 'ok') {
+        again.disabled = false;
+        return toast(started.message || 'Could not start.', 'bad');
+      }
+      setView('grid');
+      await renderConn('#conn-grid');
+      watchFetch($('#conn-grid').querySelector('.conn-box'));
+      toast('Counting arXiv. Progress is on the Papers tab.');
+    });
+    warn.appendChild(again);
+    wrap.appendChild(warn);
+  }
 
   rows.forEach((r) => {
     const row = el('div', 'fieldrow');
