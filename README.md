@@ -13,6 +13,14 @@ from the open web.
 
 Nothing leaves your machine. There is no account, no API key, and no server.
 
+**You start empty.** Installing or cloning this gives you the tool, not a
+library. Your papers, bookmarks, notes and reading history live in
+`~/.research-digest`, which is created on your first fetch, never committed, and
+never shared. Point `RESEARCH_DIGEST_HOME` somewhere else if you would rather it
+lived elsewhere. The only papers in this repository are a frozen 1,373-record
+test fixture under `eval/fixtures/`, which the ranker's CI gate scores against
+and which is never loaded into anybody's library.
+
 ---
 
 ## What it does, in one line each
@@ -335,7 +343,8 @@ For 5 results, precision@5 is how many of them are actually relevant, out of 5.
 Two separate checks, in [`docs/EVAL.md`](docs/EVAL.md):
 
 - **Exact-phrase queries**: 26 queries where "relevant" can be checked by a
-  script (the phrase is in the paper or it is not). Precision@5: **0.769**.
+  script (the phrase is in the paper or it is not). Precision@5: **0.761**, measured
+  with the clock pinned to the corpus so the figure cannot drift as the fixture ages.
   Two baselines on the same queries show this is a real result and not an
   artifact of easy questions: sorting by recency alone gets 0.031, and random
   order gets 0.000.

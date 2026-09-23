@@ -88,7 +88,7 @@ Measured against the **frozen corpus** in `eval/fixtures/` (1,373 papers, sha256
 
 | Ranker | precision@5 | precision@10 | strict ordering |
 |---|---|---|---|
-| **current** | **0.769** | **0.469** | **92.3%** (24/26) |
+| **current** | **0.761** | **0.469** | **92.3%** (24/26) |
 | profile scorer fed query terms | 0.408 | 0.311 | — |
 | recency, restricted to matching papers | 0.031 | 0.027 | — |
 | random over the whole library | 0.000 | 0.000 | — |
@@ -102,7 +102,31 @@ outside a fixed `seed 42` shuffle, so the number is a property of the code and t
 corpus, and re-running reproduces it exactly. That is not true of the judge track
 below, and the difference between the two is the point of running both.
 
-#### Why the number moved: 0.708 → 0.769
+#### The clock was the last thing left unfrozen
+
+Found on 2026-09-23, by noticing the committed number had moved with nothing
+committed in between.
+
+Part of every score is a recency bonus that decays to nothing over 30 days, and
+it was measured against the real date. So the corpus was frozen and the phrase
+set was frozen and the number still drifted: **0.7692 on 2026-09-21, 0.7615 on
+2026-09-23**, with no change to the ranker, the corpus, or the phrases. Two
+calendar days. One phrase, `vision language`, lost a relevant paper out of its
+top five because the fixture's newest papers had aged past the point where
+recency separated them from near-ties.
+
+Left alone this slides downward forever and eventually trips the CI floor, where
+it would read as a ranker regression and send somebody looking for a bug in the
+scorer.
+
+The eval now scores as of **the day after the newest paper in the corpus**,
+derived from the corpus rather than hard-coded, so re-freezing the corpus brings
+its own reference date and nothing needs maintaining. The stable figure is
+**0.761**. The previously published 0.769 was that same ranker measured on one
+particular day, which is the thing this whole document keeps insisting on: a
+baseline that moves with anything other than the code is not a baseline.
+
+#### Why the number moved: 0.708 → 0.761
 
 An earlier version of this document reported **0.708 / 84.6%**. Almost none of the
 difference is the ranker getting better, and saying so plainly matters more than the
@@ -119,7 +143,7 @@ Holding the phrase set fixed separates the two effects:
 |---|---|---|
 | old mined set, pre-dedupe *(the 0.708 that was published)* | 0.708 | 84.6% |
 | pinned set, pre-dedupe | 0.762 | 80.8% |
-| pinned set, post-dedupe **— today** | **0.769** | **92.3%** |
+| pinned set, post-dedupe, clock pinned **— today** | **0.761** | **92.3%** |
 
 So the honest split is: **+0.054 of the p@5 gain is a different ruler**, and only **+0.007
 is the dedupe fix**. What the dedupe genuinely bought is strict ordering — **80.8% →
@@ -213,7 +237,7 @@ restores 0.708 with the stopword fix kept.
 | (d) + hyphen expansion — **the committed ranker** | 0.708 | 84.6% |
 
 Those four rows are all on the old mined phrase set, which is why they are quoted against
-0.708 rather than today's 0.769 — the comparison between them is still like-for-like.
+0.708 rather than today's 0.761, and the comparison between them is still like-for-like.
 Reproduce with `eval\eval-regression.py`; row (d) is the committed code.
 
 The general lesson is not about stopwords. It is that a fix motivated by one eval and
@@ -238,7 +262,7 @@ actually first saw the paper and trends read that field. The record keeps its ve
 tests pin it, all three confirmed to fail without the fix.
 
 Worth noting what found it: not a failing test, and not the metric — precision@5 barely
-moved (0.762 → 0.769). It was reading the qualitative dump the harness prints underneath
+moved (0.762 → 0.769 as measured then). It was reading the qualitative dump the harness prints underneath
 its headline number. The metric that *did* see it was strict ordering, **80.8% → 92.3%**,
 because a duplicate interleaves with its own copy.
 
@@ -294,7 +318,7 @@ The section to read first if you are deciding whether to believe any of the abov
 
 - **Exact-phrase positives reward a lexical matcher by construction.** The regression
   track's ground truth is "contains this string" and the system under test matches
-  strings. 0.769 is evidence against regressions, not evidence of quality.
+  strings. 0.761 is evidence against regressions, not evidence of quality.
 - **Eight queries is not a benchmark.** They were written by the same person who built
   the ranker, after using it. Nothing controls for choosing queries it happens to serve.
 - **There is no held-out set.** Every number here comes from the data that motivated the
@@ -366,7 +390,7 @@ them by default (`--live` is opt-in), and the `eval` job in `.github/workflows/t
 runs it on every push and pull request with `--assert-min 0.75`. Had this existed, state
 (b) in section 4 — a drop to 0.531 — would have failed the build instead of shipping.
 
-The floor is set below the measured 0.769 rather than at it: the run is exact, so the gap
+The floor is set below the measured 0.761 rather than at it: the run is exact, so the gap
 is not noise tolerance, it is room for a deliberate ranker change to land without a docs
 edit in the same commit. A drop of the size that actually shipped clears it by a mile.
 

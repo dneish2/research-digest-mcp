@@ -110,13 +110,32 @@ def load_archive() -> Dict[str, Any]:
 
 
 def load_papers() -> List[Dict[str, Any]]:
-    """Every paper as a list. The id is the dict key and is copied onto the record."""
+    """Every paper as a list, each one carrying the id it is stored under.
+
+    This said `setdefault("id", pid)`, and the docstring said the key was copied
+    onto the record, and those two were not the same thing. Every record already
+    carries an `id` from the fetch, and that one keeps arXiv's version suffix, so
+    setdefault never fired and the archive disagreed with itself: keyed by
+    2609.19128, holding a record that calls itself 2609.19128v1.
+
+    Measured consequence on a real library: 1,245 of 23,850 records reported a
+    versioned id, the shelf saved papers under those ids, and 7 of 30 bookmarks
+    then pointed at ids no lookup could resolve. They still listed on the shelf,
+    because the shelf keeps its own copy of the title, and opening one answered
+    "No paper 2609.05339v1" about a paper sitting in the library.
+
+    So the key wins, unconditionally, and the version-suffixed form is kept
+    beside it for anything that wants to name a specific revision.
+    """
     papers = load_archive()["papers"]
     out = []
     for pid, paper in papers.items():
         if isinstance(paper, dict):
             record = dict(paper)
-            record.setdefault("id", pid)
+            stored = record.get("id")
+            if stored and stored != pid:
+                record["version_id"] = stored
+            record["id"] = pid
             out.append(record)
     return out
 
@@ -290,38 +309,76 @@ def month_coverage(papers: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 # --- saved / read ----------------------------------------------------------
 
+def _rekey_to_base(entries: Dict[str, Any]) -> Dict[str, Any]:
+    """Fold version-suffixed keys onto the base id the archive is keyed by.
+
+    The archive collapses 2609.19128v1 onto 2609.19128, because a revision is
+    the same paper and storing both made two copies compete for the same result
+    slots. The shelf was never given the same treatment, so a paper saved before
+    that change kept its versioned key and pointed at an id the library no
+    longer contains.
+
+    Measured on a real shelf: 7 of 30 saved papers were unreachable this way.
+    They listed on the shelf, because the shelf carries its own copy of the
+    title, and opening one answered "No paper 2609.05339v1" while the paper sat
+    in the library under its base id. A bookmark that silently stops resolving
+    is the worst thing a shelf can do, since the whole point of it is to still
+    be there later.
+
+    Applied on read as well as write, so an old file is repaired by being used
+    rather than by a migration step somebody has to know to run. When both keys
+    are present the richer entry wins: a note you wrote is not discardable.
+    """
+    folded: Dict[str, Any] = {}
+    for key, value in (entries or {}).items():
+        base = base_id(str(key))
+        current = folded.get(base)
+        if current is None:
+            folded[base] = value
+            continue
+        # Prefer whichever entry carries a note, then whichever is newer.
+        def weight(entry):
+            if not isinstance(entry, dict):
+                return (0, str(entry))
+            return (1 if entry.get("note") else 0, str(entry.get("saved_at", "")))
+        folded[base] = max(current, value, key=weight)
+    return folded
+
+
 def load_saved() -> Dict[str, Any]:
-    return read_json(SAVED_PATH, {})
+    return _rekey_to_base(read_json(SAVED_PATH, {}))
 
 
 def save_paper(paper_id: str, title: str, note: str = "", concepts=None) -> Dict[str, Any]:
     from datetime import datetime, timezone
+    pid = base_id(paper_id)
     saved = load_saved()
-    saved[paper_id] = {
+    saved[pid] = {
         "title": title,
         "note": note,
         "concepts": list(concepts or []),
         "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     write_json(SAVED_PATH, saved)
-    return saved[paper_id]
+    return saved[pid]
 
 
 def unsave_paper(paper_id: str) -> bool:
     saved = load_saved()
-    if paper_id in saved:
-        del saved[paper_id]
+    pid = base_id(paper_id)
+    if pid in saved:
+        del saved[pid]
         write_json(SAVED_PATH, saved)
         return True
     return False
 
 
 def load_read() -> Dict[str, Any]:
-    return read_json(READ_PATH, {})
+    return _rekey_to_base(read_json(READ_PATH, {}))
 
 
 def mark_read(paper_id: str) -> None:
     from datetime import datetime, timezone
     entries = load_read()
-    entries[paper_id] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    entries[base_id(paper_id)] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     write_json(READ_PATH, entries)

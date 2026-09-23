@@ -199,12 +199,44 @@ def random_baseline(papers: list, seed: int) -> list:
     return ids
 
 
-def current_ranker(papers: list, terms: list) -> list:
-    return [p["id"] for p in scoring.rank_all_query(papers, terms)]
+def corpus_today(papers: list):
+    """The date this corpus is scored as if it were.
+
+    Part of every score is a recency bonus, decaying to nothing over 30 days and
+    measured against the clock. So a frozen corpus scored on the real date is not
+    actually frozen: as the fixture ages its newest papers lose their bonus, the
+    order among near-ties changes, and the headline drifts downward on its own.
+
+    Measured: the committed number fell from 0.7692 to 0.7615 across two
+    calendar days with no change to the ranker or the corpus. One phrase,
+    "vision language", lost a relevant paper out of its top five purely because
+    the date had moved. Left alone this keeps sliding until it trips the CI floor
+    and reads as a ranker regression.
+
+    Derived from the corpus rather than hard-coded, so it needs no maintenance
+    and a re-frozen corpus brings its own reference date: the day after the
+    newest paper in it.
+    """
+    from datetime import date, datetime, timedelta
+    newest = ""
+    for paper in papers:
+        published = str(paper.get("published") or "")[:10]
+        if published > newest:
+            newest = published
+    if not newest:
+        return date.today()
+    try:
+        return datetime.strptime(newest, "%Y-%m-%d").date() + timedelta(days=1)
+    except ValueError:
+        return date.today()
 
 
-def old_buggy_ranker(papers: list, terms: list) -> list:
-    return [p["id"] for p in scoring.rank_all(papers, terms)]
+def current_ranker(papers: list, terms: list, today=None) -> list:
+    return [p["id"] for p in scoring.rank_all_query(papers, terms, today=today)]
+
+
+def old_buggy_ranker(papers: list, terms: list, today=None) -> list:
+    return [p["id"] for p in scoring.rank_all(papers, terms, today=today)]
 
 
 # --------------------------------------------------------------------------
@@ -269,6 +301,12 @@ def main():
         note = f", {missing} with positives absent from this corpus" if missing else ""
         print(f"Using the pinned phrase set from {PHRASE_FIXTURE.name}{note}.")
 
+    # Pin the clock to the corpus. Without this the recency half of the
+    # score reads the real date, and a frozen corpus quietly scores lower
+    # every day that passes.
+    as_of = corpus_today(papers)
+    print(f"Scoring as of {as_of.isoformat()}, the day after the newest paper "
+          f"in this corpus, so the recency bonus cannot drift with the calendar.")
     print(f"Selected {len(phrases)} eval phrases.\n")
 
     by_id = {p["id"]: p for p in papers}
@@ -286,8 +324,8 @@ def main():
         positive_ids = set(positive_ids)
 
         ranked = {
-            "current": current_ranker(papers, terms),
-            "old_buggy": old_buggy_ranker(papers, terms),
+            "current": current_ranker(papers, terms, today=as_of),
+            "old_buggy": old_buggy_ranker(papers, terms, today=as_of),
             "recency": recency_baseline(papers, terms),
             "random": random_ranked_full,
         }

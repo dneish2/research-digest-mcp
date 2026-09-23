@@ -482,6 +482,7 @@ function connSummary(plan) {
   const lib = plan.library || {};
   const search = plan.endpoints.search;
   const bits = [];
+  if (plan.first_run) return 'your library is empty, press Fetch to fill it';
   if (search.state === 'cooling') {
     bits.push(`search API refusing for ${humanWait(search.remaining)}, `
       + 'harvest feed answering');
@@ -532,6 +533,16 @@ function connectionPanel(plan, collapsed) {
     pills.appendChild(endpointPill(plan.endpoints[name], plan.route === name));
   });
   host.appendChild(pills);
+
+  // A fresh install gets its own sentence. Everything below about gaps and
+  // staleness is relative to papers you already hold, and says nothing useful
+  // when you hold none.
+  if (plan.first_run) {
+    const note = el('div', 'conn-gaps');
+    note.appendChild(el('b', null, 'Nothing here yet.'));
+    note.appendChild(el('span', null, plan.first_run_note));
+    host.appendChild(note);
+  }
 
   // The announcement delay, said once, where the confusion happens. A library
   // whose newest paper is three days old looks broken and is not.

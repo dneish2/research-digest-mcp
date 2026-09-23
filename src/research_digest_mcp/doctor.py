@@ -198,9 +198,13 @@ def run(check_network: bool = False) -> int:
                     "" if tiered else
                     "Add a 'profile' block with core/complementary/stretch tiers to "
                     "fetch outside your own subject. See 'research-digest profile'.")
+        # Only meaningful once something has been fetched. On a fresh install
+        # every category holds nothing, and telling a new reader that their
+        # categories are "not delivering" and offering to drop them is advice
+        # against the one thing they have not done yet.
         empty = [c for c in profile["all_categories"]
                  if not any(p.get("primary_category") == c for p in papers)]
-        if empty:
+        if empty and papers:
             report.line(WARN, f"{len(empty)} categories hold no papers",
                         ", ".join(empty),
                         "Configured and not delivering. Try "
