@@ -162,3 +162,46 @@ class TestComparing(TempHome):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWindowArithmetic(TempHome):
+    """The windows have to be adjacent and must not overlap.
+
+    An off-by-one here is invisible: every number still renders, the shares
+    still add up, and the comparison is quietly against the wrong week. Written
+    after checking this by hand against the live census, which is the wrong
+    place to check anything, because the check overwrote it.
+    """
+
+    def seed_one_a_day(self, today, days=60):
+        from research_digest_mcp import census
+        buckets = {}
+        for offset in range(1, days):
+            day = (today - timedelta(days=offset)).isoformat()
+            buckets[day] = {"papers": 1, "terms": {"rag": 1}}
+        census.save({"days": buckets, "terms": ["rag"], "sets": ["cs"],
+                     "updated": today.isoformat()})
+
+    def test_the_two_windows_are_adjacent_and_do_not_overlap(self):
+        from research_digest_mcp.census import compare
+        today = date(2026, 9, 20)
+        self.seed_one_a_day(today)
+        out = compare(window=7, offset=0, against=7, against_offset=7, today=today)
+        recent, prior = out["recent"], out["prior"]
+        self.assertEqual(prior["end"], recent["start"], "adjacent, no gap")
+        self.assertLessEqual(prior["end"], recent["start"], "and no overlap")
+        # One paper a day, so the count is the day count: proof the window is
+        # the width it claims to be.
+        self.assertEqual(recent["papers"], 7)
+        self.assertEqual(prior["papers"], 7)
+
+    def test_a_month_ago_really_is_a_month_ago(self):
+        from research_digest_mcp.census import compare
+        today = date(2026, 9, 20)
+        self.seed_one_a_day(today)
+        out = compare(window=7, offset=0, against=7, against_offset=30, today=today)
+        self.assertEqual(out["prior"]["end"], "2026-08-18")
+        self.assertEqual(out["prior"]["papers"], 7)
+        # 30 days back from the recent window's end, which is itself held back
+        # by the reporting lag.
+        self.assertEqual(out["recent"]["end"], "2026-09-17")

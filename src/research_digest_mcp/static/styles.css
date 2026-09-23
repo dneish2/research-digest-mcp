@@ -970,3 +970,8 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
 .scalecell b{font-family:var(--f-mono);font-size:.72rem;color:var(--ink-2)}
 .scalecell span{font-size:.63rem;color:var(--ink-3);white-space:nowrap}
 .scale-note{font-size:.76rem;color:var(--ink-3);line-height:1.55;margin:11px 0 0}
+.fieldstale{margin-top:12px;padding:10px 12px;background:var(--warn-soft);
+  border:1px solid var(--warn);border-radius:9px;font-size:.78rem;line-height:1.5}
+.fieldstale b{display:block;margin-bottom:3px}
+.fieldstale span{color:var(--ink-2)}
+.fieldstale .btn-ghost{margin-top:8px}
