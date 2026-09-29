@@ -524,3 +524,34 @@ class TestMcpProtocol(TempHome):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestConceptMapLayout(unittest.TestCase):
+    """The map drew as one pile: every concept co-occurs with every other, and
+    the pull toward partners collapsed all of them onto the middle."""
+
+    def test_no_two_circles_overlap_even_when_everything_co_occurs(self):
+        import math
+        from research_digest_mcp import clusters
+        from research_digest_mcp.scoring import CONCEPT_PATTERNS
+        concepts = list(CONCEPT_PATTERNS)[:22]
+        # Every paper mentions every concept: the worst case for the pull.
+        text = " ".join(concepts)
+        papers = [{"id": f"p{i}", "title": text, "abstract": text} for i in range(40)]
+        data = clusters.build(papers)
+        nodes = data["nodes"]
+        self.assertGreater(len(nodes), 10)
+        biggest = max(n["papers"] for n in nodes)
+        r = {n["concept"]: (clusters.NODE_MIN_PX + math.sqrt(n["papers"] / biggest)
+                            * clusters.NODE_SPAN_PX) / clusters.PX_PER_UNIT for n in nodes}
+        for i, a in enumerate(nodes):
+            for b in nodes[i + 1:]:
+                gap = math.hypot(a["x"] - b["x"], a["y"] - b["y"]) - r[a["concept"]] - r[b["concept"]]
+                self.assertGreater(gap, 0, f"{a['concept']} overlaps {b['concept']}")
+
+    def test_the_same_library_draws_the_same_map(self):
+        from research_digest_mcp import clusters
+        from research_digest_mcp.scoring import CONCEPT_PATTERNS
+        text = " ".join(list(CONCEPT_PATTERNS)[:15])
+        papers = [{"id": f"p{i}", "title": text, "abstract": text} for i in range(20)]
+        self.assertEqual(clusters.build(papers)["nodes"], clusters.build(papers)["nodes"])

@@ -1152,7 +1152,23 @@ function mapSvg(data) {
   const byName = {};
   data.nodes.forEach((n) => { byName[n.concept] = n; });
   const biggest = Math.max(...data.nodes.map((n) => n.papers), 1);
+  // clusters.py separates nodes using this same radius, so keep them in step.
   const radiusOf = (n) => 11 + Math.sqrt(n.papers / biggest) * 26;
+
+  // Frame whatever the layout needs. The server spreads circles until none
+  // overlap, which can reach past the old fixed 620 square; a fixed box would
+  // crop them, and shrinking the layout to fit would overlap them again.
+  // Labels under small circles run wider than the circle, hence the margins.
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  data.nodes.forEach((n) => {
+    const r = radiusOf(n);
+    x0 = Math.min(x0, at(n.x) - Math.max(r, 64));
+    x1 = Math.max(x1, at(n.x) + Math.max(r, 64));
+    y0 = Math.min(y0, at(n.y) - r - 8);
+    y1 = Math.max(y1, at(n.y) + r + 22);
+  });
+  svg.setAttribute('viewBox', `${x0.toFixed(1)} ${y0.toFixed(1)} `
+    + `${(x1 - x0).toFixed(1)} ${(y1 - y0).toFixed(1)}`);
 
   // Who touches whom, so a hover can dim everything else in one pass instead of
   // re-deriving the neighbourhood per mark.

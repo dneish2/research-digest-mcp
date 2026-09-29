@@ -678,7 +678,10 @@ mark{background:var(--quant-soft);color:inherit;padding:0 2px;border-radius:2px}
    target, and a line you cannot hit is not clickable however much you want it
    to be. */
 .maplink{cursor:pointer}
-.maplink-hit{stroke:transparent;stroke-width:14}
+/* Scoped under .maplinks so it outranks ".maplinks line" above. Unscoped, the
+   accent stroke won and every 14px hit line was painted, which drew the map
+   as a solid green mass behind the circles. */
+.maplinks .maplink-hit{stroke:transparent;stroke-width:14}
 .maplink:hover .maplink-ink,.maplink:focus-visible .maplink-ink{
   stroke:var(--quant);opacity:1!important;stroke-width:3.5}
 .maplink:focus-visible{outline:none}
