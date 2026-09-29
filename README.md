@@ -1,15 +1,21 @@
-# research-digest
+# Research Digest
 
 [![tests](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](pyproject.toml)
 
-A personal library of arXiv papers that your AI assistant can read.
+Your own arXiv library. You and your coding agent search the same papers, and
+every result says why it ranked where it did.
 
-It fetches papers in the categories you care about, ranks them against your
-topics, and exposes the result to any MCP client. Claude Code can then answer
-"what have I read about evaluation harnesses" from your own library instead of
-from the open web.
+arXiv publishes thousands of papers a week. Research Digest keeps the ones in
+the subjects you follow, on your machine, and lets you find them again: from a
+search box in your browser, from the terminal, or by asking Claude Code (or any
+MCP client) "what have I read about evaluation harnesses?" and getting an answer
+from your library instead of from the open web.
+
+The names, once: the product is Research Digest, the command you type is
+`research-digest`, the Python package is `research_digest_mcp`, and the repo is
+`research-digest-mcp`.
 
 Nothing leaves your machine. There is no account, no API key, and no server.
 
