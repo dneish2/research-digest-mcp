@@ -265,7 +265,7 @@ Check it responds, before blaming your agent:
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python -m research_digest_mcp mcp
 ```
 
-A JSON line listing the eleven tools means the server is fine and anything still
+A JSON line listing the twelve tools below means the server is fine and anything still
 broken is in the client config.
 
 ---

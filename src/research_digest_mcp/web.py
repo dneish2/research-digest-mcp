@@ -19,7 +19,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import storage
-from .config import HOME, load_settings, load_state, ranking_topics, save_settings
+from .config import (EXTRAS_INSTALL, HOME, load_settings, load_state, ranking_topics,
+                     save_settings)
 from .scoring import (BOILERPLATE, about_sentence, explain_sentence, rank_all,
                       rank_all_query, score_paper, score_query)
 from .trends import compute_trends, cross_pollination
@@ -27,9 +28,8 @@ from .trends import compute_trends, cross_pollination
 STATIC = Path(__file__).parent / "static"
 
 
-NEEDS_EXTRA = ("Similarity search is an optional extra. Install it with "
-               "'pip install research-digest-mcp[embeddings]', then run "
-               "'research-digest embed'.")
+NEEDS_EXTRA = (f"Similarity search is an optional extra. Install it with "
+               f"'{EXTRAS_INSTALL}', then run 'research-digest embed'.")
 
 
 def _similar(paper_id: str, limit: int):

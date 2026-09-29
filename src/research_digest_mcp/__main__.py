@@ -28,7 +28,7 @@ from datetime import date
 
 from . import storage
 from .config import (
-    HOME, force_utf8_streams, load_settings, load_state, ranking_topics,
+    HOME, embed_hint, force_utf8_streams, load_settings, load_state, ranking_topics,
     record_fetch, save_settings, save_state)
 
 
@@ -79,7 +79,7 @@ def cmd_fetch(args) -> int:
                  next_offset=result["next_offset"])
 
     if stats["added"]:
-        print("Run 'research-digest embed' to include them in similarity search.")
+        print(embed_hint())
     return 0
 
 
@@ -161,7 +161,7 @@ def cmd_import(args) -> int:
           f"(from {len(cleaned)} papers in {path.name}). "
           f"Library now holds {stats['total']} papers.")
     if stats["added"]:
-        print("Run 'research-digest embed' to rebuild similarity search over the full library.")
+        print(embed_hint("rebuild similarity search over the full library"))
     return 0
 
 
@@ -188,7 +188,7 @@ def cmd_status(args) -> int:
         if emb.get("warning"):
             print(f"             {emb['warning']}")
     else:
-        print("Embeddings   none yet. Run 'research-digest embed'.")
+        print("Embeddings   none yet. " + embed_hint("build them"))
     return 0
 
 
@@ -278,7 +278,7 @@ def cmd_harvest(args) -> int:
     print(f"\nScanned {result['seen']}, kept {result['kept']} in your categories, "
           f"{stats['added']} new. Library now holds {stats['total']}.")
     if stats["added"]:
-        print("Run 'research-digest embed' to include them in similarity search.")
+        print(embed_hint())
     record_fetch(stats["added"], stats["total"], source="harvest")
     return 0
 

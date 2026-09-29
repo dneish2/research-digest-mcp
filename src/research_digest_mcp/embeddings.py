@@ -17,6 +17,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, List, Tuple
 
+from .config import EXTRAS_INSTALL
+
 TARGET_DIMS = 384
 
 

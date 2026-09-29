@@ -261,3 +261,20 @@ def save_state(state: dict) -> None:
             json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
     except OSError:
         pass          # bookkeeping we cannot persist is not worth failing a fetch over
+
+
+#: The similarity extra, as a command that works. The package is not on PyPI,
+#: so the bare 'pip install research-digest-mcp[embeddings]' every message used
+#: to print fails for anyone who copies it.
+EXTRAS_INSTALL = ('pip install "research-digest-mcp[embeddings] @ '
+                  'git+https://github.com/dneish2/research-digest-mcp"')
+
+
+def embed_hint(action: str = "include them in similarity search") -> str:
+    """What to run next for similarity search: embed, or first the extra that
+    embed needs. Telling a base install to run embed only earns it an error."""
+    try:
+        import sklearn  # noqa: F401
+    except ImportError:
+        return f"Similarity search is optional: {EXTRAS_INSTALL}, then 'research-digest embed'."
+    return f"Run 'research-digest embed' to {action}."

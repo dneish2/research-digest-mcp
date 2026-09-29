@@ -1466,10 +1466,13 @@ async function renderField(out) {
 
   if (data.status !== 'ok') {
     const box = el('div', 'note');
-    box.appendChild(el('b', null, 'The field census is not built yet'));
-    box.appendChild(el('span', null, data.reason || ''));
-    box.appendChild(el('span', null,
-      'It streams arXiv’s harvest feed, counts every paper it sees against a '
+    const built = data.coverage && data.coverage.days;
+    box.appendChild(el('b', null, built ? 'Not enough of this window is counted'
+                                        : 'The field census is not built yet'));
+    // The server's reason already explains the census. Adding a second copy
+    // here printed the same idea twice, run together with no space between.
+    box.appendChild(el('p', null, data.reason
+      || 'It streams arXiv’s harvest feed, counts every paper it sees against a '
       + 'list of subjects, and keeps only the per-day totals. Your library is not '
       + 'touched and nothing is downloaded twice.'));
     const build = el('button', 'btn', 'Count the last 90 days');
