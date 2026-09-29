@@ -127,3 +127,51 @@ class TestSearchBehaviour(TempHome):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestEverySurfaceAgrees(TempHome):
+    """The browser corrected typos; the shell and the agent did not. Found by
+    following the README on a fresh install."""
+
+    def test_the_agent_search_repairs_a_query_of_only_typos(self):
+        from research_digest_mcp.mcp import tool_search_papers
+        self.library()
+        result = tool_search_papers({"query": "memroy"})
+        self.assertEqual(result["corrected_from"], "memroy")
+        self.assertEqual(result["searched_for"], "memory")
+        self.assertGreater(result["matched"], 0)
+        self.assertIn("showing results for memory", result["note"])
+
+    def test_the_agent_search_offers_rather_than_replaces_when_something_matched(self):
+        from research_digest_mcp.mcp import tool_search_papers
+        self.library()
+        result = tool_search_papers({"query": "agent memroy"})
+        self.assertEqual(result["corrected_from"], "")
+        self.assertIn("Did you mean memory", result["note"])
+
+    def test_exact_keeps_the_honest_zero(self):
+        from research_digest_mcp.mcp import tool_search_papers
+        self.library()
+        result = tool_search_papers({"query": "memroy", "exact": True})
+        self.assertEqual(result["matched"], 0)
+
+    def test_a_model_that_drops_the_typo_cannot_hide_it(self):
+        """With a local model the plan's terms came from the model, which left
+        'memroy' out, and the reading line said nothing about it."""
+        from unittest import mock
+        from research_digest_mcp import ask
+        self.library()
+        model_plan = {"terms": ["agent"], "scope": "library", "source": "llm",
+                      "model": "test-model", "extra_terms": []}
+        with mock.patch.object(ask, "build_plan", return_value=model_plan):
+            result = ask.answer("papers on agent memroy", {}, use_llm=True)
+        self.assertIn("memroy", result["ignored_terms"])
+        self.assertIn("did you mean memory", result["reading"])
+
+    def test_ask_repairs_a_question_whose_only_subject_is_a_typo(self):
+        from research_digest_mcp import ask
+        self.library()
+        result = ask.answer("memroy", {}, use_llm=False)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["corrected_from"], ["memroy"])
+        self.assertIn("read memroy as memory", result["reading"])

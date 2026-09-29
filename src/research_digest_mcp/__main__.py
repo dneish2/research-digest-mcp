@@ -198,6 +198,8 @@ def cmd_search(args) -> int:
     if result.get("status") != "ok":
         print(result.get("message", result.get("status")), file=sys.stderr)
         return 1
+    if result.get("note"):
+        print(result["note"] + "\n")
     print(f"{result['matched']} of {result['searched']} papers matched.\n")
     for i, paper in enumerate(result["results"], 1):
         print(f"{i}. [{paper['score']:.3f}] {paper['title']}")

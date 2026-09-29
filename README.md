@@ -187,7 +187,7 @@ research-digest web                        # browser interface on localhost
 sentence first, and tells you what it decided before it shows you anything:
 
 ```
-read as: Searched your library for agent, memory; ignored memroy (in no paper you hold).
+read as: Searched your library for agent; ignored memroy (in no paper you hold; did you mean memory, in 31 papers?).
 ```
 
 That line is the point. When an answer looks wrong you need to know whether the
@@ -201,7 +201,7 @@ are offered the nearest word the library does contain, with the number of papers
 it will return:
 
 ```
-Nothing matched "memroy", so this is showing results for memory.
+Nothing in your library matched 'memroy', so this is showing results for memory.
 ```
 
 The suggestion comes from your own papers and nowhere else, so it is never a

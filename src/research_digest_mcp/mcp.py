@@ -44,6 +44,10 @@ TOOLS = [
             "properties": {
                 "query": {"type": "string", "description": "Words or a phrase to look for"},
                 "limit": {"type": "integer", "description": "How many to return", "default": 10},
+                "exact": {"type": "boolean", "default": False,
+                          "description": ("Search the words exactly as given. By default a "
+                                          "word no paper contains is repaired to the nearest "
+                                          "one the library holds, and the reply says so.")},
             },
             "required": ["query"],
         },
@@ -259,13 +263,19 @@ def tool_search_papers(args: Dict[str, Any]) -> Dict[str, Any]:
     if not papers:
         return _no_library()
 
+    from .spelling import correction_note, search_with_repair
     terms = [t for t in query.lower().split() if t]
     limit = int(args.get("limit", 10))
-    every = rank_all_query(papers, terms)
+    found = search_with_repair(papers, terms, exact=bool(args.get("exact")))
+    every = found["ranked"]
     ranked = every[:limit]
     return {
         "status": "ok",
         "query": query,
+        "searched_for": " ".join(found["terms"]),
+        "corrected_from": " ".join(found["corrected_from"]),
+        "corrections": found["corrections"],
+        "note": correction_note(found),
         "searched": len(papers),
         "matched": len(every),
         "showing": len(ranked),

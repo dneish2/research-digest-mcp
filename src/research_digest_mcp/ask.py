@@ -174,6 +174,20 @@ def answer(question: str, settings: Dict[str, Any], limit: int = 25,
         }
 
     live, dead = live_terms(papers, candidates)
+    # A model that rewrites the question may leave a misspelled word out, and
+    # then the typo vanished without a word: "agent memroy" read as "agent".
+    # What the asker typed is checked too, so the reading line can say so.
+    if plan.get("source") == "llm":
+        _typed_live, typed_dead = live_terms(papers, rule_plan(question)["terms"])
+        dead += [t for t in typed_dead if t not in dead]
+    from .spelling import corrections
+    fixes = corrections(dead, papers) if dead else []
+    corrected_from: List[str] = []
+    if not live and fixes:
+        # Nothing the question named is in the library, but the nearest words
+        # are: search those, and say so. Same rule as the search box.
+        corrected_from = [fix["term"] for fix in fixes]
+        live = [fix["suggestion"] for fix in fixes]
     if not live:
         return {
             "status": "no_subject",
@@ -200,19 +214,23 @@ def answer(question: str, settings: Dict[str, Any], limit: int = 25,
         "plan": plan,
         "terms": live,
         "ignored_terms": dead,
+        "corrections": fixes,
+        "corrected_from": corrected_from,
         "scope": plan["scope"],
         "since": plan.get("since"),
         "workspace": scope["detail"],
         "searched": len(papers),
         "matched": len(ranked),
-        "reading": reading_of(plan, live, dead, scope["detail"]),
+        "reading": reading_of(plan, live, dead, scope["detail"], fixes, corrected_from),
         "related": [t for t in (plan.get("extra_terms") or []) if t not in live][:6],
         "results": [_row(p, saved, read, tiers) for p in ranked[:limit]],
     }
 
 
 def reading_of(plan: Dict[str, Any], terms: List[str], dead: List[str],
-               workspace: Optional[Dict[str, Any]]) -> str:
+               workspace: Optional[Dict[str, Any]],
+               fixes: Optional[List[Dict[str, Any]]] = None,
+               corrected_from: Optional[List[str]] = None) -> str:
     """One sentence saying what the question was taken to mean.
 
     This is the part that makes an English search box trustworthy rather than
@@ -230,8 +248,16 @@ def reading_of(plan: Dict[str, Any], terms: List[str], dead: List[str],
         bits.append(f"Searched your library for {', '.join(terms)}")
     if plan.get("since"):
         bits.append(f"published on or after {plan['since']}")
-    if dead:
-        bits.append(f"ignored {', '.join(dead)} (in no paper you hold)")
+    offer = {fix["term"]: fix for fix in (fixes or [])}
+    for term in dead:
+        fix = offer.get(term)
+        if term in (corrected_from or []):
+            bits.append(f"read {term} as {fix['suggestion']} (no paper you hold says {term})")
+        elif fix:
+            bits.append(f"ignored {term} (in no paper you hold; did you mean "
+                        f"{fix['suggestion']}, in {fix['papers']} papers?)")
+        else:
+            bits.append(f"ignored {term} (in no paper you hold)")
     if plan.get("source") == "llm":
         bits.append(f"terms suggested by {plan.get('model', 'a local model')}, "
                     f"ranking by the usual arithmetic")
