@@ -19,7 +19,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import storage
-from .config import HOME, load_settings, load_state, ranking_topics, save_settings
+from .config import (EXTRAS_INSTALL, HOME, load_settings, load_state, ranking_topics,
+                     save_settings)
 from .scoring import (BOILERPLATE, about_sentence, explain_sentence, rank_all,
                       rank_all_query, score_paper, score_query)
 from .trends import compute_trends, cross_pollination
@@ -27,9 +28,8 @@ from .trends import compute_trends, cross_pollination
 STATIC = Path(__file__).parent / "static"
 
 
-NEEDS_EXTRA = ("Similarity search is an optional extra. Install it with "
-               "'pip install research-digest-mcp[embeddings]', then run "
-               "'research-digest embed'.")
+NEEDS_EXTRA = (f"Similarity search is an optional extra. Install it with "
+               f"'{EXTRAS_INSTALL}', then run 'research-digest embed'.")
 
 
 def _similar(paper_id: str, limit: int):
@@ -280,33 +280,24 @@ def api(path: str, params: dict) -> dict:
         saved = storage.load_saved()
         read = storage.load_read()
         tiers = tier_index(load_profile())
-        # Normalised the same way the scorer will normalise them, so the terms
-        # the response reports are the terms it actually searched for -- the
-        # highlighting on the cards reads this list.
-        terms = _significant(query.lower().split())
-        every = rank_all_query(papers, query.lower().split())
         limit = int(one.get("limit", 25))
 
         # A typo used to be reported and then left with the reader: "ignored
         # memroy (in no paper you hold)" is honest and it is still a dead end.
-        # The suggestion is drawn from the library's own vocabulary, so anything
-        # offered is a word that will return papers, and it carries the count.
-        from .scoring import live_terms
-        from .spelling import corrections, repair
-        _live, dead = live_terms(papers, query.lower().split())
-        fixes = corrections(dead, papers) if dead else []
-        corrected_from = ""
-        # `exact` is how the reader insists. Sometimes the word that matches
-        # nothing is the right word, and the answer is that this library does
-        # not hold it yet, which is a different and more useful fact.
-        if fixes and not every and one.get("exact") != "1":
-            # Nothing at all matched, so there is no result to protect and the
-            # corrected query is simply the better answer. Run it, and say so
-            # rather than quietly showing results for a query nobody typed.
-            fixed = repair(query.lower().split(), fixes)
-            corrected_from, query = query, " ".join(fixed)
-            terms = _significant(fixed)
-            every = rank_all_query(papers, fixed)
+        # The rule lives in spelling.search_with_repair so the shell and the
+        # agent get the same answer as this page. `exact` is how the reader
+        # insists on their own spelling.
+        from .spelling import search_with_repair
+        found = search_with_repair(papers, query.lower().split(),
+                                   exact=one.get("exact") == "1")
+        every, fixes = found["ranked"], found["corrections"]
+        corrected_from = query if found["corrected_from"] else ""
+        if corrected_from:
+            query = " ".join(found["terms"])
+        # Normalised the same way the scorer will normalise them, so the terms
+        # the response reports are the terms it actually searched for -- the
+        # highlighting on the cards reads this list.
+        terms = _significant(found["terms"])
 
         # Say when the answer is thin. Nine papers each matching a third of the
         # query were presented exactly like nine good hits, and a search for

@@ -36,6 +36,53 @@ def _concepts_of(paper: Dict[str, Any]) -> List[str]:
     return [c for c in CONCEPT_PATTERNS if c in text]
 
 
+#: The page draws a node at radius NODE_MIN_PX + sqrt(papers / biggest) *
+#: NODE_SPAN_PX in a 620-unit viewBox where one layout unit is 236 px
+#: (app.js mapSvg). Separation is done in the same units, so "not overlapping"
+#: here means not overlapping on screen.
+NODE_MIN_PX, NODE_SPAN_PX, PX_PER_UNIT = 11.0, 26.0, 236.0
+#: Room between two circles for the label drawn under a small one.
+LABEL_GAP_PX = 32.0
+
+
+def _separate(order: List[str], positions: Dict[str, Tuple[float, float]],
+              counts: Dict[str, int], rounds: int = 400) -> Dict[str, Tuple[float, float]]:
+    """Push overlapping circles apart until none overlap.
+
+    Deterministic: pairs are visited in a fixed order and coincident nodes
+    are split along an angle taken from their rank, so the same library draws
+    the same map every time.
+    """
+    biggest = max(counts[c] for c in order) or 1
+    radius = {c: (NODE_MIN_PX + math.sqrt(counts[c] / biggest) * NODE_SPAN_PX) / PX_PER_UNIT
+              for c in order}
+    gap = LABEL_GAP_PX / PX_PER_UNIT
+    pos = {c: list(positions[c]) for c in order}
+    for _ in range(rounds):
+        clear = True
+        for i, a in enumerate(order):
+            for j in range(i + 1, len(order)):
+                b = order[j]
+                dx, dy = pos[b][0] - pos[a][0], pos[b][1] - pos[a][1]
+                dist = math.hypot(dx, dy)
+                need = radius[a] + radius[b] + gap
+                if dist >= need:
+                    continue
+                clear = False
+                if dist < 1e-9:
+                    angle = 2 * math.pi * j / len(order)
+                    dx, dy, dist = math.cos(angle), math.sin(angle), 1.0
+                push = (need - dist) / 2
+                ux, uy = dx / dist, dy / dist
+                pos[a][0] -= ux * push
+                pos[a][1] -= uy * push
+                pos[b][0] += ux * push
+                pos[b][1] += uy * push
+        if clear:
+            break
+    return {c: (pos[c][0], pos[c][1]) for c in order}
+
+
 def build(papers: List[Dict[str, Any]], saved: Optional[Dict[str, Any]] = None,
           limit: int = 22) -> Dict[str, Any]:
     """Concepts as nodes, co-occurrence as links, laid out on a circle.
@@ -99,7 +146,11 @@ def build(papers: List[Dict[str, Any]], saved: Optional[Dict[str, Any]] = None,
         radius = 1.0 - 0.45 * (counts[concept] / counts[top[0]])
         positions[concept] = (math.cos(angle) * radius, math.sin(angle) * radius)
 
-    for _ in range(3):
+    # Each node leans toward its strongest partners. Lightly: in a library
+    # where nearly every concept co-occurs with every other, three rounds at a
+    # quarter weight pulled all 22 onto the centroid and the map drew as one
+    # pile of circles (dogfooded at 249 papers and at 26,001).
+    for _ in range(2):
         moved: Dict[str, Tuple[float, float]] = {}
         for concept in top:
             x, y = positions[concept]
@@ -111,10 +162,12 @@ def build(papers: List[Dict[str, Any]], saved: Optional[Dict[str, Any]] = None,
                 wx = sum(positions[p][0] * s for p, s in partners)
                 wy = sum(positions[p][1] * s for p, s in partners)
                 total = sum(s for _p, s in partners) or 1
-                x = x * 0.75 + (wx / total) * 0.25
-                y = y * 0.75 + (wy / total) * 0.25
+                x = x * 0.88 + (wx / total) * 0.12
+                y = y * 0.88 + (wy / total) * 0.12
             moved[concept] = (x, y)
         positions = moved
+
+    positions = _separate(top, positions, counts)
 
     nodes = []
     for concept in top:

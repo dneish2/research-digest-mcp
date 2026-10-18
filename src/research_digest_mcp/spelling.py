@@ -176,3 +176,44 @@ def repair(terms: List[str], fixes: List[Dict[str, Any]]) -> List[str]:
     """The query with each dead word replaced by its suggestion."""
     swap = {fix["term"]: fix["suggestion"] for fix in fixes}
     return [swap.get(term, term) for term in terms]
+
+
+def search_with_repair(papers: List[Dict[str, Any]], terms: List[str],
+                       exact: bool = False) -> Dict[str, Any]:
+    """Rank a query, repairing it when a typo leaves nothing to show.
+
+    One rule for every surface (browser, shell, agent), because they used to
+    disagree: the browser offered "memory" for "memroy" and the shell printed
+    "0 of 249 papers matched" and stopped.
+
+    - Nothing matched and a word has a suggestion: search the repaired query,
+      and name what was typed so the reader can go back to it.
+    - Something matched: search as typed, and offer the suggestion.
+    - `exact`: never repair. Sometimes the word that matches nothing is the
+      right word, and the honest answer is that the library lacks it.
+    """
+    from .scoring import live_terms, rank_all_query
+
+    _live, dead = live_terms(papers, terms)
+    fixes = corrections(dead, papers) if dead else []
+    ranked = rank_all_query(papers, terms)
+    corrected_from: List[str] = []
+    if fixes and not ranked and not exact:
+        corrected_from, terms = terms, repair(terms, fixes)
+        ranked = rank_all_query(papers, terms)
+    return {"terms": terms, "ranked": ranked, "dead": dead,
+            "corrections": fixes, "corrected_from": corrected_from}
+
+
+def correction_note(result: Dict[str, Any]) -> str:
+    """The sentence a reader sees about their spelling, or '' if none."""
+    if result["corrected_from"]:
+        typed = " ".join(result["corrected_from"])
+        return (f"Nothing in your library matched {typed!r}, so this is showing "
+                f"results for {' '.join(result['terms'])}.")
+    offers = [f"{fix['suggestion']} ({fix['papers']} papers)"
+              for fix in result["corrections"]]
+    if offers:
+        dead = ", ".join(fix["term"] for fix in result["corrections"])
+        return f"{dead} is in no paper you hold. Did you mean {', '.join(offers)}?"
+    return ""

@@ -1,15 +1,21 @@
-# research-digest
+# Research Digest
 
 [![tests](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](pyproject.toml)
 
-A personal library of arXiv papers that your AI assistant can read.
+Your own arXiv library. You and your coding agent search the same papers, and
+every result says why it ranked where it did.
 
-It fetches papers in the categories you care about, ranks them against your
-topics, and exposes the result to any MCP client. Claude Code can then answer
-"what have I read about evaluation harnesses" from your own library instead of
-from the open web.
+arXiv publishes thousands of papers a week. Research Digest keeps the ones in
+the subjects you follow, on your machine, and lets you find them again: from a
+search box in your browser, from the terminal, or by asking Claude Code (or any
+MCP client) "what have I read about evaluation harnesses?" and getting an answer
+from your library instead of from the open web.
+
+The names, once: the product is Research Digest, the command you type is
+`research-digest`, the Python package is `research_digest_mcp`, and the repo is
+`research-digest-mcp`.
 
 Nothing leaves your machine. There is no account, no API key, and no server.
 
@@ -187,7 +193,7 @@ research-digest web                        # browser interface on localhost
 sentence first, and tells you what it decided before it shows you anything:
 
 ```
-read as: Searched your library for agent, memory; ignored memroy (in no paper you hold).
+read as: Searched your library for agent; ignored memroy (in no paper you hold; did you mean memory, in 31 papers?).
 ```
 
 That line is the point. When an answer looks wrong you need to know whether the
@@ -201,7 +207,7 @@ are offered the nearest word the library does contain, with the number of papers
 it will return:
 
 ```
-Nothing matched "memroy", so this is showing results for memory.
+Nothing in your library matched 'memroy', so this is showing results for memory.
 ```
 
 The suggestion comes from your own papers and nowhere else, so it is never a
@@ -265,7 +271,7 @@ Check it responds, before blaming your agent:
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python -m research_digest_mcp mcp
 ```
 
-A JSON line listing the eleven tools means the server is fine and anything still
+A JSON line listing the twelve tools below means the server is fine and anything still
 broken is in the client config.
 
 ---

@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 
 from . import storage
 from .config import (
-    HOME, force_utf8_streams, load_settings, load_state, ranking_topics,
+    EXTRAS_INSTALL, HOME, embed_hint, force_utf8_streams, load_settings, load_state, ranking_topics,
     record_fetch)
 from .scoring import (
     about_sentence, explain_sentence, extract_concepts, rank, rank_all, rank_all_query,
@@ -44,6 +44,10 @@ TOOLS = [
             "properties": {
                 "query": {"type": "string", "description": "Words or a phrase to look for"},
                 "limit": {"type": "integer", "description": "How many to return", "default": 10},
+                "exact": {"type": "boolean", "default": False,
+                          "description": ("Search the words exactly as given. By default a "
+                                          "word no paper contains is repaired to the nearest "
+                                          "one the library holds, and the reply says so.")},
             },
             "required": ["query"],
         },
@@ -259,13 +263,19 @@ def tool_search_papers(args: Dict[str, Any]) -> Dict[str, Any]:
     if not papers:
         return _no_library()
 
+    from .spelling import correction_note, search_with_repair
     terms = [t for t in query.lower().split() if t]
     limit = int(args.get("limit", 10))
-    every = rank_all_query(papers, terms)
+    found = search_with_repair(papers, terms, exact=bool(args.get("exact")))
+    every = found["ranked"]
     ranked = every[:limit]
     return {
         "status": "ok",
         "query": query,
+        "searched_for": " ".join(found["terms"]),
+        "corrected_from": " ".join(found["corrected_from"]),
+        "corrections": found["corrections"],
+        "note": correction_note(found),
         "searched": len(papers),
         "matched": len(every),
         "showing": len(ranked),
@@ -287,7 +297,7 @@ def tool_get_similar(args: Dict[str, Any]) -> Dict[str, Any]:
         from .similarity import MixedBasis, SimilaritySearch
     except ImportError:
         return {"status": "unavailable",
-                "message": "Similarity needs numpy: pip install 'research-digest-mcp[embeddings]'"}
+                "message": f"Similarity needs numpy: {EXTRAS_INSTALL}"}
     try:
         search = SimilaritySearch()
         hits = search.find_similar(paper_id, int(args.get("limit", 5)))
@@ -295,7 +305,7 @@ def tool_get_similar(args: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "needs_rebuild", "message": str(exc)}
     except ImportError:
         return {"status": "unavailable",
-                "message": "Similarity needs numpy: pip install 'research-digest-mcp[embeddings]'"}
+                "message": f"Similarity needs numpy: {EXTRAS_INSTALL}"}
 
     if not hits:
         store_count = 0
@@ -435,7 +445,7 @@ def tool_save_paper(args: Dict[str, Any]) -> Dict[str, Any]:
 
     message = f"Saved {paper.get('title', '')!r}."
     if not already_had:
-        message += " Added to the library. Run 'research-digest embed' to include it in similarity search."
+        message += " Added to the library. " + embed_hint("include it in similarity search")
     return {
         "status": "ok",
         "id": paper["id"],
@@ -538,7 +548,7 @@ def tool_library_status(args: Dict[str, Any]) -> Dict[str, Any]:
             status["embeddings"]["warning"] = (
                 "More than one fit present. Similarity is disabled until you re-embed.")
         elif not bases:
-            status["embeddings"]["hint"] = "No vectors yet. Run 'research-digest embed'."
+            status["embeddings"]["hint"] = "No vectors yet. " + embed_hint("build them")
     except ImportError:
         status["embeddings"] = {"available": False,
                                 "hint": "pip install 'research-digest-mcp[embeddings]'"}

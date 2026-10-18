@@ -109,12 +109,14 @@ def run(check_network: bool = False) -> int:
     report.line(OK, f"python {platform.python_version()} on {platform.system()}",
                 sys.executable)
     kind = _install_kind()
-    level = WARN if kind.startswith("frozen") else OK
-    report.line(level, f"research_digest_mcp {__version__}: {kind}",
+    # A pip install from GitHub is the install the README tells people to do,
+    # so it is not a warning. It only matters to someone editing a clone, and
+    # for them it is a hint: their edits will not reach this copy.
+    report.line(OK, f"research_digest_mcp {__version__}: {kind}",
                 str(Path(__file__).resolve().parent),
-                "This is a copy, not your working tree. Edits to the repo will not "
-                "take effect here: reinstall with 'pip install -e .'"
-                if level == WARN else "")
+                "Working on the code? Edits to a clone reach this copy only after "
+                "'pip install -e .' in that clone."
+                if kind.startswith("frozen") else "")
 
     # 2. Is the short command reachable, and if not, exactly where is it.
     from shutil import which
@@ -190,14 +192,15 @@ def run(check_network: bool = False) -> int:
     if settings:
         profile = load_profile(settings)
         tiered = bool(settings.get("profile"))
-        shape = "three tiers" if tiered else "flat legacy shape (core tier only)"
-        report.line(OK if tiered else WARN,
+        # Core only is the default a first fetch writes, and a fine profile.
+        shape = "three tiers" if tiered else "core tier only"
+        report.line(OK,
                     f"{len(profile['all_categories'])} categories, "
                     f"{len(profile['all_topics'])} topics, {shape}",
                     str(SETTINGS_PATH),
                     "" if tiered else
-                    "Add a 'profile' block with core/complementary/stretch tiers to "
-                    "fetch outside your own subject. See 'research-digest profile'.")
+                    "Optional: add complementary and stretch tiers to also fetch "
+                    "outside your own subject. See 'research-digest profile'.")
         # Only meaningful once something has been fetched. On a fresh install
         # every category holds nothing, and telling a new reader that their
         # categories are "not delivering" and offering to drop them is advice
