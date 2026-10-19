@@ -95,7 +95,7 @@ class TestOnlyThisPageCanCallTheServer(TempHome):
         return resp.status, data
 
     def test_the_page_itself_still_works(self):
-        status, _ = self.request("GET", "/api/status", {"Sec-Fetch-Site": "same-origin"})
+        status, _ = self.request("GET", "/api/settings", {"Sec-Fetch-Site": "same-origin"})
         self.assertEqual(status, 200)
         status, _ = self.request("GET", "/")
         self.assertEqual(status, 200)
@@ -159,6 +159,20 @@ class TestSimilarAcceptsEitherIdForm(TempHome):
         hits = versioned.find_similar("2610.1", 2)
         self.assertEqual(len(hits), 2)
         self.assertNotIn("2610.1v2", [pid for pid, _ in hits])
+
+
+class TestToolsSayWhatTheyTouch(unittest.TestCase):
+    def test_exactly_the_three_writing_tools_are_marked_as_writing(self):
+        from research_digest_mcp.mcp import TOOLS
+        writing = sorted(t["name"] for t in TOOLS if not t["annotations"]["readOnlyHint"])
+        self.assertEqual(writing, ["fetch_papers", "get_digest", "save_paper"])
+        self.assertFalse(any(t["annotations"].get("destructiveHint") for t in TOOLS))
+
+    def test_a_huge_or_junk_limit_is_kept_in_range(self):
+        from research_digest_mcp.mcp import _limit
+        self.assertEqual(_limit({"limit": 10**9}, 10), 100)
+        self.assertEqual(_limit({"limit": -5}, 10), 1)
+        self.assertEqual(_limit({"limit": "lots"}, 10), 10)
 
 
 if __name__ == "__main__":
