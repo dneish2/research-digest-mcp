@@ -61,7 +61,8 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "paper_id": {"type": "string", "description": "arXiv id, for example 2605.15040v1"},
+                "paper_id": {"type": "string",
+                             "description": "arXiv id, for example 2605.15040. A version suffix (v1) is fine."},
                 "limit": {"type": "integer", "default": 5},
             },
             "required": ["paper_id"],
@@ -324,10 +325,11 @@ def tool_get_similar(args: Dict[str, Any]) -> Dict[str, Any]:
     by_id = {p["id"]: p for p in storage.load_papers()}
     return {
         "status": "ok",
-        "paper_id": paper_id,
+        "paper_id": storage.base_id(paper_id),
         "how": "Cosine similarity between TF-IDF+SVD vectors fitted over the whole library.",
         "results": [
-            {**_summary(by_id.get(pid, {"id": pid, "title": pid})), "similarity": score}
+            {**_summary(by_id.get(storage.base_id(pid), {"id": pid, "title": pid})),
+             "similarity": score}
             for pid, score in hits
         ],
     }
@@ -462,8 +464,11 @@ def tool_get_digest(args: Dict[str, Any]) -> Dict[str, Any]:
         return _no_library()
     from .digest import build_digest, write_digest
     settings = load_settings()
-    result = build_digest(papers, ranking_topics(settings),
-                           for_date=args.get("date"), size=int(args.get("size", 5)))
+    try:
+        result = build_digest(papers, ranking_topics(settings), for_date=args.get("date"),
+                              size=max(1, min(int(args.get("size", 5) or 5), 50)))
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
     if not result["picks"]:
         return {"status": "no_match",
                 "message": "Nothing in the library matched your topics today.", "results": []}

@@ -64,10 +64,10 @@ def _similar(paper_id: str, limit: int):
                 "results": []}
     by_id = {p["id"]: p for p in storage.load_papers()}
     return {"status": "ok", "results": [
-        {"id": pid, "similarity": s,
-         "title": by_id.get(pid, {}).get("title", pid),
-         "url": by_id.get(pid, {}).get("url", ""),
-         "concepts": by_id.get(pid, {}).get("concepts", [])[:5]}
+        {"id": storage.base_id(pid), "similarity": s,
+         "title": by_id.get(storage.base_id(pid), {}).get("title", pid),
+         "url": by_id.get(storage.base_id(pid), {}).get("url", ""),
+         "concepts": by_id.get(storage.base_id(pid), {}).get("concepts", [])[:5]}
         for pid, s in hits]}
 
 
@@ -431,7 +431,10 @@ def api(path: str, params: dict) -> dict:
         if not papers:
             return {"status": "error", "message": "No papers yet. Fetch first."}
         settings = load_settings()
-        result = build_digest(papers, ranking_topics(settings), for_date=one.get("date"))
+        try:
+            result = build_digest(papers, ranking_topics(settings), for_date=one.get("date"))
+        except ValueError as exc:
+            return {"status": "error", "message": str(exc)}
         digest_path = write_digest(result)
         from .fetchjob import log_days, plan
         return {
@@ -671,7 +674,14 @@ def api(path: str, params: dict) -> dict:
         } for p in pool[:12]]}
 
     if path == "/api/settings":
-        return {"status": "ok", "home": str(HOME), **load_settings()}
+        # The key stays on disk. The page only needs to know there is one, and
+        # a reply that carries it is one bug away from being read by a stranger.
+        settings = load_settings()
+        if isinstance(settings.get("llm"), dict):
+            llm_block = dict(settings["llm"])
+            llm_block["has_key"] = bool(llm_block.pop("api_key", ""))
+            settings["llm"] = llm_block
+        return {"status": "ok", "home": str(HOME), **settings}
 
     if path == "/api/profile":
         # What the tool believes you are interested in, and what that belief
@@ -938,28 +948,54 @@ class Handler(BaseHTTPRequestHandler):
         self._send(code, json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                    "application/json; charset=utf-8")
 
+    def _refused(self, api: bool) -> bool:
+        """Turn away anything that did not come from this page on this machine.
+
+        Binding to localhost is not enough on its own. A page in another tab can
+        still send requests here: an <img src> fires a GET with no Origin at
+        all, and a DNS-rebinding page arrives with its own hostname in Host, so
+        "Origin matches Host" passed it. Three checks, all needed:
+
+        - Host must name this machine. That ends rebinding.
+        - Sec-Fetch-Site, which browsers set and pages cannot, must not say
+          cross-site. That ends the <img> and form tricks on GET endpoints that
+          save, fetch or write a digest.
+        - An Origin, when present, must be this server.
+        """
+        port = self.server.server_address[1]
+        host = (self.headers.get("Host") or "").strip().lower()
+        if host not in {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}",
+                        "127.0.0.1", "localhost", "[::1]"}:
+            self._send_json({"status": "error",
+                             "message": f"Unknown host {host!r}. Open http://127.0.0.1:{port}/."}, 403)
+            return True
+        if not api:
+            return False
+        site = (self.headers.get("Sec-Fetch-Site") or "").lower()
+        origin = self.headers.get("Origin")
+        if site in ("cross-site", "same-site") or (
+                origin and origin not in (f"http://127.0.0.1:{port}",
+                                          f"http://localhost:{port}",
+                                          f"http://[::1]:{port}")):
+            self._send_json({"status": "error",
+                             "message": "Requests from other sites are refused."}, 403)
+            return True
+        return False
+
     def do_POST(self):
         """Writes. Settings are edited here, so the profile stops being read-only.
-
-        Two guards, both against the same thing -- a page in another tab quietly
-        rewriting this library's config. The server binds to localhost, but a
-        localhost bind does not stop a website you are visiting from POSTing to
-        it, so: no CORS headers are ever sent (so no cross-origin page can read
-        a reply), and a request carrying an Origin from anywhere but this server
-        is refused outright.
-        """
+        No CORS headers are ever sent, so no other page can read a reply, and
+        `_refused` turns away requests that did not come from this page."""
         parsed = urlparse(self.path)
-        origin = self.headers.get("Origin")
-        if origin and origin not in (f"http://{self.headers.get('Host', '')}",
-                                     f"http://127.0.0.1:{self.server.server_address[1]}",
-                                     f"http://localhost:{self.server.server_address[1]}"):
-            self._send_json({"status": "error",
-                             "message": "Cross-origin writes are refused."}, 403)
+        if self._refused(api=True):
             return
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             length = 0
+        if length < 0:
+            self._send_json({"status": "error", "message": "Bad Content-Length."}, 400)
+            return
         if length > 2_000_000:
             self._send_json({"status": "error", "message": "Payload too large."}, 413)
             return
@@ -980,6 +1016,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+        if self._refused(api=path.startswith("/api/")):
+            return
 
         if path.startswith("/api/"):
             try:
