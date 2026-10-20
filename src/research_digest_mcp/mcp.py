@@ -584,7 +584,7 @@ def tool_library_status(args: Dict[str, Any]) -> Dict[str, Any]:
             status["embeddings"]["hint"] = "No vectors yet. " + embed_hint("build them")
     except ImportError:
         status["embeddings"] = {"available": False,
-                                "hint": "pip install 'research-digest-mcp[embeddings]'"}
+                                "hint": EXTRAS_INSTALL}
     return status
 
 

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.dneish2/research-digest",
+  "title": "Research Digest",
+  "description": "Your own arXiv library, shared with your coding agent. Every result says why it ranked.",
+  "repository": {
+    "url": "https://github.com/dneish2/research-digest-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "research-digest-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "RESEARCH_DIGEST_HOME",
+          "description": "Folder that holds the library. Defaults to ~/.research-digest.",
+          "isRequired": false
+        }
+      ]
+    }
+  ]
+}
