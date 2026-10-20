@@ -9,7 +9,7 @@ description = "A personal arXiv library your AI assistant can read, over MCP"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
-authors = [{ name = "dneish2" }]
+authors = [{ name = "David Neish" }]
 keywords = ["mcp", "arxiv", "research", "claude", "ai-agents"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -34,8 +34,13 @@ dev = ["research-digest-mcp[embeddings]"]
 
 [project.scripts]
 research-digest = "research_digest_mcp.__main__:main"
+# Same command under the package name, so `uvx research-digest-mcp mcp` works
+# without --from. MCP clients and the registry launch it this way.
+research-digest-mcp = "research_digest_mcp.__main__:main"
 
 [project.urls]
+Documentation = "https://github.com/dneish2/research-digest-mcp#readme"
+Changelog = "https://github.com/dneish2/research-digest-mcp/blob/main/CHANGELOG.md"
 Repository = "https://github.com/dneish2/research-digest-mcp"
 Issues = "https://github.com/dneish2/research-digest-mcp/issues"
 

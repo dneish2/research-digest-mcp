@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use Research Digest in your work, please cite it like this."
+title: "Research Digest: a personal arXiv library for you and your coding agent"
+type: software
+authors:
+  - family-names: Neish
+    given-names: David
+repository-code: "https://github.com/dneish2/research-digest-mcp"
+license: MIT
+version: 1.0.0
+keywords:
+  - arXiv
+  - information retrieval
+  - Model Context Protocol
+  - explainable ranking

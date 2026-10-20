@@ -45,9 +45,11 @@ TOOLS = [
                 "query": {"type": "string", "description": "Words or a phrase to look for"},
                 "limit": {"type": "integer", "description": "How many to return", "default": 10},
                 "exact": {"type": "boolean", "default": False,
-                          "description": ("Search the words exactly as given. By default a "
-                                          "word no paper contains is repaired to the nearest "
-                                          "one the library holds, and the reply says so.")},
+                          "description": ("Search the words exactly as given. By default, when "
+                                          "nothing matches, a misspelled word is replaced with "
+                                          "the nearest word the library holds. When other words "
+                                          "do match, the search runs as typed and the reply "
+                                          "suggests the spelling in `corrections`; retry with it.")},
             },
             "required": ["query"],
         },
@@ -61,7 +63,8 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "paper_id": {"type": "string", "description": "arXiv id, for example 2605.15040v1"},
+                "paper_id": {"type": "string",
+                             "description": "arXiv id, for example 2605.15040. A version suffix (v1) is fine."},
                 "limit": {"type": "integer", "default": 5},
             },
             "required": ["paper_id"],
@@ -223,6 +226,32 @@ TOOLS = [
 ]
 
 
+# Clients use these to decide what to run without asking. Nine tools only read
+# the library. Three write: save_paper and fetch_papers add to it (and reach
+# arXiv), get_digest writes the day's markdown file. None deletes anything.
+_WRITES = {
+    "save_paper": {"readOnlyHint": False, "destructiveHint": False,
+                   "idempotentHint": True, "openWorldHint": True},
+    "fetch_papers": {"readOnlyHint": False, "destructiveHint": False,
+                     "idempotentHint": False, "openWorldHint": True},
+    "get_digest": {"readOnlyHint": False, "destructiveHint": False,
+                   "idempotentHint": True, "openWorldHint": False},
+}
+for _tool in TOOLS:
+    _tool["annotations"] = _WRITES.get(_tool["name"], {"readOnlyHint": True,
+                                                      "openWorldHint": False})
+
+
+def _limit(args: Dict[str, Any], default: int, most: int = 100) -> int:
+    """A result count the agent asked for, kept between 1 and `most`.
+    Uncapped, one call asking for 10**9 ranked and serialised the whole library."""
+    try:
+        value = int(args.get("limit", default) or default)
+    except (TypeError, ValueError):
+        value = default
+    return max(1, min(value, most))
+
+
 def _summary(paper: Dict[str, Any], abstract: bool = False) -> Dict[str, Any]:
     out = {
         "id": paper.get("id", ""),
@@ -265,7 +294,7 @@ def tool_search_papers(args: Dict[str, Any]) -> Dict[str, Any]:
 
     from .spelling import correction_note, search_with_repair
     terms = [t for t in query.lower().split() if t]
-    limit = int(args.get("limit", 10))
+    limit = _limit(args, 10)
     found = search_with_repair(papers, terms, exact=bool(args.get("exact")))
     every = found["ranked"]
     ranked = every[:limit]
@@ -300,7 +329,7 @@ def tool_get_similar(args: Dict[str, Any]) -> Dict[str, Any]:
                 "message": f"Similarity needs numpy: {EXTRAS_INSTALL}"}
     try:
         search = SimilaritySearch()
-        hits = search.find_similar(paper_id, int(args.get("limit", 5)))
+        hits = search.find_similar(paper_id, _limit(args, 5))
     except MixedBasis as exc:
         return {"status": "needs_rebuild", "message": str(exc)}
     except ImportError:
@@ -324,10 +353,11 @@ def tool_get_similar(args: Dict[str, Any]) -> Dict[str, Any]:
     by_id = {p["id"]: p for p in storage.load_papers()}
     return {
         "status": "ok",
-        "paper_id": paper_id,
+        "paper_id": storage.base_id(paper_id),
         "how": "Cosine similarity between TF-IDF+SVD vectors fitted over the whole library.",
         "results": [
-            {**_summary(by_id.get(pid, {"id": pid, "title": pid})), "similarity": score}
+            {**_summary(by_id.get(storage.base_id(pid), {"id": pid, "title": pid})),
+             "similarity": score}
             for pid, score in hits
         ],
     }
@@ -376,7 +406,7 @@ def tool_get_saved(args: Dict[str, Any]) -> Dict[str, Any]:
         })
     items.sort(key=lambda e: e.get("saved_at", ""), reverse=True)
     return {"status": "ok", "saved_count": len(items),
-            "results": items[: int(args.get("limit", 50))]}
+            "results": items[: _limit(args, 50, most=500)]}
 
 
 def tool_suggest_reading(args: Dict[str, Any]) -> Dict[str, Any]:
@@ -387,7 +417,7 @@ def tool_suggest_reading(args: Dict[str, Any]) -> Dict[str, Any]:
     if not papers:
         return _no_library()
 
-    limit = int(args.get("limit", 5))
+    limit = _limit(args, 5)
     read = set(storage.load_read())
     candidates = [p for p in papers if p["id"] not in read]
     every = rank_all_query(candidates, topic.lower().split())
@@ -462,8 +492,11 @@ def tool_get_digest(args: Dict[str, Any]) -> Dict[str, Any]:
         return _no_library()
     from .digest import build_digest, write_digest
     settings = load_settings()
-    result = build_digest(papers, ranking_topics(settings),
-                           for_date=args.get("date"), size=int(args.get("size", 5)))
+    try:
+        result = build_digest(papers, ranking_topics(settings), for_date=args.get("date"),
+                              size=max(1, min(int(args.get("size", 5) or 5), 50)))
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
     if not result["picks"]:
         return {"status": "no_match",
                 "message": "Nothing in the library matched your topics today.", "results": []}
@@ -551,7 +584,7 @@ def tool_library_status(args: Dict[str, Any]) -> Dict[str, Any]:
             status["embeddings"]["hint"] = "No vectors yet. " + embed_hint("build them")
     except ImportError:
         status["embeddings"] = {"available": False,
-                                "hint": "pip install 'research-digest-mcp[embeddings]'"}
+                                "hint": EXTRAS_INSTALL}
     return status
 
 
@@ -626,7 +659,7 @@ def tool_ask_library(args: Dict[str, Any]) -> Dict[str, Any]:
     if not question:
         return {"status": "error", "message": "Ask me something."}
 
-    result = answer(question, load_settings(), limit=int(args.get("limit", 10)))
+    result = answer(question, load_settings(), limit=_limit(args, 10))
     result["how"] = (
         "The question was read into search terms by rule (and by a local model "
         "if one is configured), then ranked by the same arithmetic scorer as "
@@ -672,7 +705,7 @@ def tool_suggest_profile_terms(args: Dict[str, Any]) -> Dict[str, Any]:
     ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
     # One occurrence is a coincidence, not a pattern worth changing a profile for.
     ranked = [(t, n) for t, n in ranked if n >= 2] or ranked[:3]
-    limit = int(args.get("limit", 12))
+    limit = _limit(args, 12)
     return {
         "status": "ok" if ranked else "no_gap",
         "saved_count": len(saved),

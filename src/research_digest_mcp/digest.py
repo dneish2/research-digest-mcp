@@ -11,6 +11,7 @@ generator, so running it twice does not reshuffle what you already skimmed.
 """
 from __future__ import annotations
 
+import re
 from datetime import date as _date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -25,6 +26,22 @@ DEFAULT_SIZE = 5
 # category (there is always one) cannot fill every slot. A cheap stand-in for
 # the bridge's category-diversity pass, without a second axis to configure.
 PER_CATEGORY_CAP = 2
+
+_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def check_date(value: Optional[str]) -> str:
+    """The digest date as YYYY-MM-DD, or ValueError.
+
+    The date becomes a filename, and it arrives from a URL and from an agent's
+    tool call. Unchecked, `date=../../notes` wrote a markdown file anywhere on
+    disk, and a web page open in another tab could trigger it with an <img> tag.
+    """
+    value = (value or "").strip() or _date.today().isoformat()
+    if not _DATE.match(value):
+        raise ValueError(f"{value!r} is not a date. Use YYYY-MM-DD, for example 2026-10-18.")
+    _date.fromisoformat(value)  # rejects 2026-13-40
+    return value
 
 
 def _pick(ranked: List[Dict[str, Any]], size: int) -> List[Dict[str, Any]]:
@@ -47,7 +64,7 @@ def build_digest(papers: List[Dict[str, Any]], topics: List[str],
     per category. Every pick carries its `about` line and its `pick_reason` (the
     same explain_sentence used everywhere else), so the digest is self-contained
     — it does not need the live app to make sense of a pick a week later."""
-    for_date = for_date or _date.today().isoformat()
+    for_date = check_date(for_date)
     ranked = rank_all(papers, topics)
     picks = _pick(ranked, max(size, 0))
     for paper in picks:
@@ -90,6 +107,6 @@ def render_markdown(digest: Dict[str, Any]) -> str:
 
 def write_digest(digest: Dict[str, Any]) -> Path:
     DIGESTS_DIR.mkdir(parents=True, exist_ok=True)
-    path = DIGESTS_DIR / f"{digest['date']}.md"
+    path = DIGESTS_DIR / f"{check_date(digest['date'])}.md"
     path.write_text(render_markdown(digest), encoding="utf-8")
     return path

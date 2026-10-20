@@ -47,7 +47,7 @@ def _encode_tfidf(texts: List[str]) -> Tuple[Any, int]:
     except ImportError as exc:
         raise EncoderUnavailable(
             "The tfidf-svd engine needs scikit-learn. Install the extra:\n"
-            "    pip install 'research-digest-mcp[embeddings]'"
+            f"    {EXTRAS_INSTALL}"
         ) from exc
     import numpy as np
 
