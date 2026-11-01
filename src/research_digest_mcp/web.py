@@ -263,6 +263,14 @@ def _export(what: str, fmt: str) -> dict:
             "body": json.dumps(payload, indent=1, ensure_ascii=False)}
 
 
+NO_ENDPOINT = "No such endpoint"
+
+
+def _code_for(payload: dict) -> int:
+    """404 for a path that is not an endpoint, so it does not look like success."""
+    return 404 if str(payload.get("message", "")).startswith(NO_ENDPOINT) else 200
+
+
 def api(path: str, params: dict) -> dict:
     one = {k: v[0] for k, v in params.items()}
 
@@ -772,7 +780,7 @@ def api(path: str, params: dict) -> dict:
                 key=lambda row: -row["held"]),
         }
 
-    return {"status": "error", "message": f"No such endpoint: {path}"}
+    return {"status": "error", "message": f"{NO_ENDPOINT}: {path}"}
 
 
 # --- writes ----------------------------------------------------------------
@@ -927,7 +935,7 @@ def api_write(path: str, payload: dict) -> dict:
         return _write_llm(payload)
     if path == "/api/settings":
         return _write_profile(payload)
-    return {"status": "error", "message": f"No such endpoint: {path}"}
+    return {"status": "error", "message": f"{NO_ENDPOINT}: {path}"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1008,7 +1016,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"status": "error", "message": f"Bad JSON: {exc}"}, 400)
             return
         try:
-            self._send_json(api_write(parsed.path, payload))
+            reply = api_write(parsed.path, payload)
+            self._send_json(reply, _code_for(reply))
         except Exception as exc:
             self._send_json({"status": "error",
                              "message": f"{type(exc).__name__}: {exc}"}, 500)
@@ -1022,7 +1031,7 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             try:
                 payload = api(path, parse_qs(parsed.query))
-                code = 200
+                code = _code_for(payload)
             except Exception as exc:
                 payload = {"status": "error", "message": f"{type(exc).__name__}: {exc}"}
                 code = 500

@@ -31,3 +31,13 @@ here, in short:
   rejects any Host that is not this machine (DNS rebinding).
 - `/api/settings` no longer returns the LLM API key.
 - `get_similar` accepts both `2610.22280` and `2610.22280v1`.
+- An imported library can no longer carry a `javascript:` link into the page.
+- `settings.json` is readable only by you on macOS and Linux, since it can hold
+  an API key.
+
+**Smaller fixes**
+- `doctor` run through uvx prints a uvx config, instead of a path into uv's
+  cache that breaks when the cache is cleaned.
+- A harvest no longer crashes when arXiv sends Retry-After as a date.
+- Unknown `/api/` paths return 404 instead of 200.
+- "1 categories" reads "1 category".

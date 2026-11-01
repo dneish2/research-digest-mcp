@@ -133,6 +133,47 @@ class TestOnlyThisPageCanCallTheServer(TempHome):
         status, _ = self.request("POST", "/api/profile", {"Content-Length": "-1"})
         self.assertEqual(status, 400)
 
+    def test_a_path_that_is_not_an_endpoint_is_a_404_not_a_success(self):
+        status, _ = self.request("GET", "/api/nope")
+        self.assertEqual(status, 404)
+        status, _ = self.request("POST", "/api/nope", {
+            "Content-Type": "application/json", "Content-Length": "2"}, b"{}")
+        self.assertEqual(status, 404)
+
+
+class TestImportedDataStaysData(TempHome):
+    def test_an_imported_javascript_url_is_dropped(self):
+        from research_digest_mcp import storage
+        storage.import_papers([
+            {"id": "2610.00001", "title": "Planted", "url": "javascript:alert(1)"},
+            {"id": "2610.22280", "url": " JaVaScRiPt:alert(1)"},
+            {"id": "2610.00002", "title": "Fine", "url": "https://arxiv.org/abs/2610.00002"},
+        ])
+        papers = {p["id"]: p for p in storage.load_papers()}
+        self.assertNotIn("url", papers["2610.00001"])
+        self.assertEqual(papers["2610.22280"]["url"], "https://arxiv.org/abs/2610.22280v1")
+        self.assertEqual(papers["2610.00002"]["url"], "https://arxiv.org/abs/2610.00002")
+
+    @unittest.skipUnless(os.name == "posix", "file modes are a POSIX idea")
+    def test_settings_are_readable_only_by_their_owner(self):
+        from research_digest_mcp.config import SETTINGS_PATH, save_settings
+        save_settings({"llm": {"api_key": "sk-test-secret"}})
+        self.assertEqual(SETTINGS_PATH.stat().st_mode & 0o777, 0o600)
+
+
+class TestRetryAfterIsSecondsOrADate(unittest.TestCase):
+    def test_both_forms_and_junk_give_a_bounded_wait(self):
+        from email.utils import formatdate
+        import time
+        from research_digest_mcp.harvest import MAX_RETRY_WAIT, _retry_after
+        self.assertEqual(_retry_after("5"), 5.0)
+        self.assertEqual(_retry_after(None), 20.0)
+        self.assertEqual(_retry_after("soon"), 20.0)
+        self.assertEqual(_retry_after("99999"), MAX_RETRY_WAIT)
+        self.assertEqual(_retry_after(formatdate(time.time() - 60, usegmt=True)), 0.0)
+        wait = _retry_after(formatdate(time.time() + 30, usegmt=True))
+        self.assertTrue(25 <= wait <= 31, wait)
+
 
 class TestSimilarAcceptsEitherIdForm(TempHome):
     def setUp(self):

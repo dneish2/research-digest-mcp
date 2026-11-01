@@ -57,6 +57,26 @@ DEFAULT_INTERVAL = 3.0
 MAX_RETRY_WAIT = 120.0
 MAX_PAGES = 200
 
+
+def _retry_after(value: Optional[str]) -> float:
+    """Seconds to wait from a Retry-After header, capped.
+
+    The header may be a number of seconds or an HTTP date. A date used to reach
+    float() and end the whole harvest with a ValueError.
+    """
+    if not value:
+        return 20.0
+    try:
+        wait = float(value)
+    except ValueError:
+        from email.utils import parsedate_to_datetime
+        try:
+            when = parsedate_to_datetime(value)
+            wait = when.timestamp() - time.time()
+        except (TypeError, ValueError):
+            wait = 20.0
+    return min(max(wait, 0.0), MAX_RETRY_WAIT)
+
 # arXiv's OAI sets are archives, not the fine-grained categories the search API
 # uses. You harvest `cs` and filter to cs.AI yourself; there is no cs.AI set.
 SET_FOR_ARCHIVE = {
@@ -101,8 +121,7 @@ def _request(params: Dict[str, str], timeout: int = 90) -> bytes:
             if exc.code == 503:
                 # The documented back-pressure signal. It tells you exactly how
                 # long to wait, so there is no guessing and no backoff to tune.
-                wait = min(float(exc.headers.get("Retry-After") or 20), MAX_RETRY_WAIT)
-                time.sleep(wait)
+                time.sleep(_retry_after(exc.headers.get("Retry-After")))
                 continue
             raise HarvestUnavailable(
                 f"arXiv's harvest endpoint returned HTTP {exc.code}.") from exc
