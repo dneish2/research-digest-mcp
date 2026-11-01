@@ -77,7 +77,54 @@ def _install_kind() -> str:
     return "source checkout"
 
 
+def _count(n: int, one: str, many: str) -> str:
+    return f"{n} {one if n == 1 else many}"
+
+
+def _uvx_source() -> str:
+    """What to pass to `uvx --from`, or "" when this is not a uvx run.
+
+    uvx runs the package from an environment inside uv's cache. A config that
+    points at that python breaks the day the cache is cleaned, so a uvx run
+    should be told to configure uvx instead.
+    """
+    if not any(p.lower().startswith("archive-v") for p in Path(sys.prefix).parts):
+        return ""
+    package = Path(__file__).resolve().parent
+    direct = next(package.parent.glob("research_digest_mcp*/direct_url.json"), None)
+    try:
+        info = json.loads(direct.read_text(encoding="utf-8")) if direct else {}
+    except (OSError, ValueError):
+        info = {}
+    url = info.get("url", "")
+    if info.get("vcs_info") and url:
+        return f"git+{url}"
+    if url.startswith("file:"):
+        from urllib.parse import urlparse
+        from urllib.request import url2pathname
+        return str(Path(url2pathname(urlparse(url).path)))
+    return "research-digest-mcp"
+
+
 def _mcp_config_lines() -> str:
+    source = _uvx_source()
+    if source:
+        return (
+            "  Claude Code\n"
+            f'    claude mcp add research-digest -- uvx --from "{source}" research-digest mcp\n'
+            "\n"
+            "  Codex CLI   (~/.codex/config.toml)\n"
+            "    [mcp_servers.research-digest]\n"
+            '    command = "uvx"\n'
+            f'    args = ["--from", {json.dumps(source)}, "research-digest", "mcp"]\n'
+            "\n"
+            "  GitHub Copilot CLI   (~/.copilot/mcp-config.json)\n"
+            '    "research-digest": {\n'
+            '      "command": "uvx",\n'
+            f'      "args": ["--from", {json.dumps(source)}, "research-digest", "mcp"],\n'
+            '      "tools": ["*"]\n'
+            "    }"
+        )
     exe = sys.executable
     toml_exe = exe.replace("\\", "\\\\")
     return (
@@ -195,8 +242,8 @@ def run(check_network: bool = False) -> int:
         # Core only is the default a first fetch writes, and a fine profile.
         shape = "three tiers" if tiered else "core tier only"
         report.line(OK,
-                    f"{len(profile['all_categories'])} categories, "
-                    f"{len(profile['all_topics'])} topics, {shape}",
+                    f"{_count(len(profile['all_categories']), 'category', 'categories')}, "
+                    f"{_count(len(profile['all_topics']), 'topic', 'topics')}, {shape}",
                     str(SETTINGS_PATH),
                     "" if tiered else
                     "Optional: add complementary and stretch tiers to also fetch "
@@ -208,7 +255,8 @@ def run(check_network: bool = False) -> int:
         empty = [c for c in profile["all_categories"]
                  if not any(p.get("primary_category") == c for p in papers)]
         if empty and papers:
-            report.line(WARN, f"{len(empty)} categories hold no papers",
+            report.line(WARN, f"{_count(len(empty), 'category', 'categories')} "
+                        f"{'holds' if len(empty) == 1 else 'hold'} no papers",
                         ", ".join(empty),
                         "Configured and not delivering. Try "
                         "'fetch --since' to backfill, or drop them.")

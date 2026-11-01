@@ -1,6 +1,7 @@
 # Research Digest
 
 [![tests](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/dneish2/research-digest-mcp/actions/workflows/test.yml)
+[![ranking precision@5](https://img.shields.io/badge/ranking%20precision%405-0.761%20(CI%20floor%200.75)-informational)](docs/EVAL.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](pyproject.toml)
 
@@ -13,23 +14,54 @@ search box in your browser, from the terminal, or by asking Claude Code (or any
 MCP client) "what have I read about evaluation harnesses?" and getting an answer
 from your library instead of from the open web.
 
-The names, once: the product is Research Digest, the command you type is
-`research-digest`, the Python package is `research_digest_mcp`, and the repo is
-`research-digest-mcp`.
+<!-- mcp-name: io.github.dneish2/research-digest -->
 
-Nothing leaves your machine. There is no account, no API key, and no server.
+- **Every result shows its arithmetic.** Which words matched, what each was worth, how much recency added. No model decides the order.
+- **The ranking is measured.** Precision@5 is 0.761 on a frozen test set, against 0.031 for newest-first. CI fails any change that drops it below 0.75.
+- **No dependencies, no account, no server.** The core is the Python standard library. Your papers stay in a folder on your machine.
 
-**You start empty.** Installing or cloning this gives you the tool, not a
-library. Your papers, bookmarks, notes and reading history live in
-`~/.research-digest`, which is created on your first fetch, never committed, and
-never shared. Point `RESEARCH_DIGEST_HOME` somewhere else if you would rather it
-lived elsewhere. The only papers in this repository are a frozen 1,373-record
-test fixture under `eval/fixtures/`, which the ranker's CI gate scores against
-and which is never loaded into anybody's library.
+## Quick start
+
+About two minutes, most of it the first fetch.
+
+```bash
+pip install git+https://github.com/dneish2/research-digest-mcp
+research-digest fetch      # pulls a few hundred recent papers into ~/.research-digest
+research-digest search "agent evaluation"
+```
+
+Then connect your agent. For Claude Code:
+
+```bash
+claude mcp add research-digest -- python -m research_digest_mcp mcp
+```
+
+Ask it "what's in my research library about evaluation?". Other clients
+(Claude Desktop, VS Code, Cursor, Codex, OpenCode, Copilot CLI) are under
+[Connect it to your agent](#connect-it-to-your-agent).
+
+**On Linux**, if pip says `externally-managed-environment`, use
+`pipx install git+https://github.com/dneish2/research-digest-mcp` or
+`uv tool install git+https://github.com/dneish2/research-digest-mcp` instead,
+and `python3` wherever this page says `python`. **On Windows**, if
+`research-digest` is "not recognized", see [Troubleshooting](#troubleshooting).
+
+Something off? Run `python -m research_digest_mcp doctor`. It checks the
+install, the PATH, the data folder and the library, makes no network request,
+and ends with the exact agent config line for your machine.
+
+**You start empty.** Installing gives you the tool, not a library. Your papers,
+bookmarks, notes and reading history live in `~/.research-digest`, created on
+your first fetch and never shared. Set `RESEARCH_DIGEST_HOME` to keep it
+somewhere else. The only papers in this repository are a frozen test set under
+`eval/fixtures/` that the ranking check runs against.
 
 ---
 
 ## What it does, in one line each
+
+These are the views in the browser interface (`research-digest web`). Map and
+Trends are browser-only; everything else is also a command and an agent tool.
 
 | | |
 |---|---|
@@ -45,100 +77,42 @@ Two things it does that are worth knowing about up front:
 
 **It uses both of arXiv's services.** arXiv runs a search API and a bulk
 harvest feed on separate hosts. Search rate-limits on reputation and will refuse
-one machine for an hour at a time, so fetching goes through the harvest feed and
-falls back to search rather than the other way around. Whichever one is
-answering, the screen says so.
+one machine for an hour at a time, so the browser's Fetch button goes through
+the harvest feed and falls back to search rather than the other way around, and
+says which one answered. From the terminal, `research-digest harvest` uses the
+feed and `research-digest fetch` uses search.
 
 **It measures the field without downloading it.** The Trends tab counts every cs
 paper arXiv published, by streaming the harvest feed and keeping only the daily
 totals. Three months of the whole field is a few kilobytes on disk, and your
 library is not touched.
 
+
 ---
 
-## Install
+## Install options
 
 ```bash
 pip install git+https://github.com/dneish2/research-digest-mcp
 ```
 
-No clone. That gives you search, saved papers, trends and the web interface
-with no third-party dependencies at all.
-
-Similarity search ("find papers like this one") needs numpy and scikit-learn:
+That gives you search, saved papers, trends and the web interface with no
+third-party packages. Similarity search ("find papers like this one") needs
+numpy and scikit-learn:
 
 ```bash
 pip install "research-digest-mcp[embeddings] @ git+https://github.com/dneish2/research-digest-mcp"
 ```
 
-Rather try it without installing anything? [uv](https://docs.astral.sh/uv/)
-can run it straight from GitHub:
+To try it without installing anything, [uv](https://docs.astral.sh/uv/) runs it
+straight from GitHub:
 
 ```bash
 uvx --from git+https://github.com/dneish2/research-digest-mcp research-digest fetch
 ```
 
-Working on the code itself, not just using it? See
-[Development](#development) below. An editable install needs a local clone.
-
-### Check the install
-
-```bash
-python -m research_digest_mcp doctor
-```
-
-It names which Python answered and whether that is your working tree or a
-frozen copy, whether the command is on PATH and where it is if not, whether the
-data directory is writable, how many papers you hold and when the library last
-grew, and it ends with the exact MCP config line to paste, built from the
-interpreter you just ran it with. It makes no network request unless you pass
-`--network`, so it cannot itself trip arXiv's rate limit.
-
-Exit code is 0 when everything is green, 1 when it is usable with warnings, and
-2 when something is broken, so a scheduled task can gate on it.
-
-### If `research-digest` is "not recognized" or "command not found"
-
-The install worked. Your shell just cannot see it.
-
-`pip` puts the `research-digest` launcher in a per-user scripts folder that is
-often missing from `PATH`, especially on Windows and with the Microsoft Store
-build of Python. pip prints a warning about this, but it scrolls past in the
-middle of the install output:
-
-```
-WARNING: The script research-digest.exe is installed in
-'...\local-packages\Python313\Scripts' which is not on PATH.
-```
-
-Every command in this README also works in this form, which does not depend on
-`PATH` at all:
-
-```bash
-python -m research_digest_mcp web       # instead of: research-digest web
-python -m research_digest_mcp fetch
-python -m research_digest_mcp status
-```
-
-Note the underscores: `research_digest_mcp` is the Python package, while
-`research-digest` is the shortcut command. If `python` is not the right name on
-your system, use `python3` or `py -3`.
-
-Prefer the short command? Add the folder pip named in its warning to `PATH`:
-
-```powershell
-# Windows, PowerShell. Paste the path from YOUR pip warning.
-$dir = "$env:LOCALAPPDATA\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts"
-[Environment]::SetEnvironmentVariable(
-    "PATH", [Environment]::GetEnvironmentVariable("PATH", "User") + ";$dir", "User")
-```
-
-```bash
-# macOS and Linux, then reopen the shell
-echo 'export PATH="$(python3 -m site --user-base)/bin:$PATH"' >> ~/.zshrc
-```
-
-Open a new terminal afterwards. The old one keeps the old `PATH`.
+`doctor` exits 0 when everything is green, 1 when it is usable with warnings,
+and 2 when something is broken, so a scheduled task can gate on it.
 
 ## Build your library
 
@@ -149,18 +123,18 @@ research-digest status     # see what you have
 research-digest profile    # what it fetches for you, and the query it sends
 ```
 
-Missed a stretch of days? `fetch` finds them itself. It starts at the oldest
+Missed a stretch of days? The browser's Fetch button finds them itself. It starts at the oldest
 recent day you hold nothing from, rather than at your newest paper, because
 anchoring to the newest paper steps over every hole behind it. For anything
 older than three weeks, give it a window:
 
 ```bash
-research-digest fetch --since 2026-07-01 --until 2026-07-31
+research-digest harvest --since 2026-07-01 --until 2026-07-31
 ```
 
-Both go through arXiv's harvest feed, which takes a date range directly and is
-provisioned separately from the search API, so a search rate limit does not stop
-a fetch.
+`harvest` goes through arXiv's bulk feed, which takes a date range directly and
+is provisioned separately from the search API, so a search rate limit does not
+stop it.
 
 `fetch` is safe to run daily. It only adds papers you have not seen, and arXiv
 hands back roughly the same recent batch each time, so the library grows a few
@@ -178,6 +152,7 @@ research-digest import ~/old-library/archive.json
 Safe to run more than once: papers already present are updated, not
 duplicated, and stale scoring output from whatever wrote the file is dropped
 rather than carried in, since the running code recomputes it on every read.
+
 
 ## Use it
 
@@ -223,21 +198,76 @@ Nothing ranks your results except arithmetic you can read.
 A full walkthrough of every command and screen is in
 [docs/RUNNING.md](docs/RUNNING.md).
 
+
 ## Connect it to your agent
 
-These use `python -m research_digest_mcp` rather than the short
-`research-digest` command on purpose. Your agent starts this server itself, and
-it often does so with a different `PATH` than your terminal has, so the short
-command can fail there even when it works when you type it. Use `python3` or
-`py -3` if that is what Python is called on your machine.
+These start the server with `python -m research_digest_mcp mcp` rather than the
+short `research-digest` command. Your agent launches the server itself, often
+with a different `PATH` than your terminal, so the short command can fail there
+even when it works when you type it. `doctor` prints the same line with the full
+path to your Python, which is the most reliable form on Windows.
+
+If you keep your library somewhere other than `~/.research-digest`, pass
+`RESEARCH_DIGEST_HOME` in the server's environment, as the Claude examples
+show. Setting it in your shell does not reach a server your agent starts, and
+without it the agent reads the default folder, which may be a different, empty
+library.
 
 **Claude Code**
 
 ```bash
 claude mcp add research-digest -- python -m research_digest_mcp mcp
+# with a library folder of your own:
+claude mcp add research-digest -e RESEARCH_DIGEST_HOME=/path/to/library -- python -m research_digest_mcp mcp
 ```
 
-**Codex CLI**, add to `~/.codex/config.toml`:
+**Claude Desktop**, in `claude_desktop_config.json` (Settings, Developer, Edit Config):
+
+```json
+{
+  "mcpServers": {
+    "research-digest": {
+      "command": "python",
+      "args": ["-m", "research_digest_mcp", "mcp"],
+      "env": { "RESEARCH_DIGEST_HOME": "/path/to/library" }
+    }
+  }
+}
+```
+
+Leave out `env` if you use the default folder. Claude Desktop does not read your
+shell's `PATH`, so if it cannot start the server, replace `python` with the full
+path `doctor` prints.
+
+**VS Code (Copilot)**, in `.vscode/mcp.json` or your user `mcp.json`. The
+top-level key is `servers`, not `mcpServers`:
+
+```json
+{
+  "servers": {
+    "research-digest": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "research_digest_mcp", "mcp"]
+    }
+  }
+}
+```
+
+**Cursor**, in `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "research-digest": {
+      "command": "python",
+      "args": ["-m", "research_digest_mcp", "mcp"]
+    }
+  }
+}
+```
+
+**Codex CLI**, in `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.research-digest]
@@ -245,12 +275,32 @@ command = "python"
 args = ["-m", "research_digest_mcp", "mcp"]
 ```
 
-**GitHub Copilot CLI**, add to `~/.copilot/mcp-config.json`:
+`codex exec` (non-interactive) refuses tool calls it cannot ask you about. Add
+`default_tools_approval_mode = "approve"` under the server, or use Codex
+interactively.
+
+**OpenCode**, in `opencode.json`. The command is a single array, and
+environment variables go under `environment`, not `env`:
+
+```json
+{
+  "mcp": {
+    "research-digest": {
+      "type": "local",
+      "command": ["python", "-m", "research_digest_mcp", "mcp"],
+      "enabled": true
+    }
+  }
+}
+```
+
+**GitHub Copilot CLI**, in `~/.copilot/mcp-config.json`:
 
 ```json
 {
   "mcpServers": {
     "research-digest": {
+      "type": "local",
       "command": "python",
       "args": ["-m", "research_digest_mcp", "mcp"],
       "tools": ["*"]
@@ -259,13 +309,13 @@ args = ["-m", "research_digest_mcp", "mcp"]
 }
 ```
 
-Any other MCP client takes the same two fields: a command, and the arguments
-that make it run this package with `mcp`.
+Any other MCP client takes the same two things: a command, and arguments that
+run this package with `mcp`.
 
 Then ask in normal language: "search my library for retrieval papers", "what
-have I saved about multi-agent systems".
+have I saved about multi-agent systems", "find papers like 2610.22280".
 
-Check it responds, before blaming your agent:
+Check the server responds before blaming your agent:
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python -m research_digest_mcp mcp
@@ -273,6 +323,11 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | python -m research_diges
 
 A JSON line listing the twelve tools below means the server is fine and anything still
 broken is in the client config.
+
+Nine of the tools only read. `save_paper` and `fetch_papers` add papers to the
+library, and `get_digest` writes the day's digest file. Each tool declares
+which it is, so a client can run the readers without asking. None deletes
+anything.
 
 ---
 
@@ -362,6 +417,12 @@ The 26-query number is the one to trust day to day: it runs in CI on every
 push, against a corpus frozen so the score cannot drift out from under a
 change to the ranker. The 8-query number is directional. Eight queries is not
 a benchmark, and there is no held-out set behind it.
+
+Reproduce the CI number from a clone, with no library of your own:
+
+```bash
+python eval/eval-regression.py --assert-min 0.75
+```
 
 Read the limitations section in `docs/EVAL.md` before leaning on either number.
 Exact-phrase positives reward a keyword matcher by construction. It also walks
@@ -454,6 +515,10 @@ That downloads about 90 MB the first time.
 
 ## Development
 
+The names: the product is Research Digest, the command you type is
+`research-digest`, the Python package is `research_digest_mcp`, and the repo is
+`research-digest-mcp`.
+
 ```bash
 uv venv && uv pip install -e ".[dev]"
 python -m unittest discover -s tests -v
@@ -465,6 +530,75 @@ install without uv.
 The MCP server is plain JSON-RPC over stdin and stdout, about 350 lines, with no
 SDK. One JSON object per line each way, which makes it easy to drive from a
 shell script when something looks wrong.
+
+## Troubleshooting
+
+### `research-digest` is "not recognized" or "command not found"
+
+The install worked. Your shell just cannot see it.
+
+`pip` puts the `research-digest` launcher in a per-user scripts folder that is
+often missing from `PATH`, especially on Windows and with the Microsoft Store
+build of Python. pip prints a warning about this, but it scrolls past in the
+middle of the install output:
+
+```
+WARNING: The script research-digest.exe is installed in
+'...\local-packages\Python313\Scripts' which is not on PATH.
+```
+
+Every command in this README also works in this form, which does not depend on
+`PATH` at all:
+
+```bash
+python -m research_digest_mcp web       # instead of: research-digest web
+python -m research_digest_mcp fetch
+python -m research_digest_mcp status
+```
+
+Note the underscores: `research_digest_mcp` is the Python package, while
+`research-digest` is the shortcut command. If `python` is not the right name on
+your system, use `python3`.
+
+Prefer the short command? Add the folder pip named in its warning to `PATH`:
+
+```powershell
+# Windows, PowerShell. Paste the path from YOUR pip warning.
+$dir = "$env:LOCALAPPDATA\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\Scripts"
+[Environment]::SetEnvironmentVariable(
+    "PATH", [Environment]::GetEnvironmentVariable("PATH", "User") + ";$dir", "User")
+```
+
+```bash
+# macOS and Linux, then reopen the shell
+echo 'export PATH="$(python3 -m site --user-base)/bin:$PATH"' >> ~/.zshrc
+```
+
+Open a new terminal afterwards. The old one keeps the old `PATH`.
+
+### The agent sees an empty library
+
+The server reads `~/.research-digest` unless `RESEARCH_DIGEST_HOME` is set in
+its own environment. Add it to the client config as shown above, or ask the
+agent to call `library_status`, which names the folder it is reading.
+
+### arXiv answers 429 or 406
+
+arXiv rate-limits its search service per machine, sometimes for an hour. Its
+bulk harvest feed is separate and usually still answers:
+
+```bash
+research-digest harvest --since 2026-10-15   # a date a few days back
+```
+
+---
+
+## Security
+
+The web interface listens on 127.0.0.1 only and refuses requests from other
+sites. Paper titles and abstracts come from arXiv and are untrusted text, and
+none of the tools an agent can call deletes anything. To report a problem, see
+[SECURITY.md](SECURITY.md).
 
 ## License
 

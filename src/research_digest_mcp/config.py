@@ -210,6 +210,10 @@ def save_settings(settings: dict) -> None:
     ensure_home()
     SETTINGS_PATH.write_text(
         json.dumps(settings, indent=2, ensure_ascii=False), encoding="utf-8")
+    # It can hold an LLM API key, so only the owner may read it. A no-op on
+    # Windows, where the user profile is already private.
+    if os.name == "posix":
+        os.chmod(SETTINGS_PATH, 0o600)
 
 
 def now_stamp() -> str:

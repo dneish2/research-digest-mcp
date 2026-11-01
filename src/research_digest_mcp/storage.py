@@ -188,11 +188,16 @@ def import_papers(new_papers: List[Dict[str, Any]], run_dates=None) -> Dict[str,
         if not pid:
             continue
         key = base_id(pid)
+        paper = dict(paper)
+        # The page puts this url in a link. An import file is someone else's
+        # data, so a javascript: url in it would run when the link is clicked.
+        url = str(paper.get("url") or "")
+        if url and not url.lower().startswith(("https://", "http://")):
+            paper.pop("url")
         if key in papers:
             papers[key].update({k: v for k, v in paper.items() if k != "first_seen"})
             updated += 1
         else:
-            paper = dict(paper)
             paper.setdefault("first_seen", str(paper.get("published") or "")[:10] or None)
             papers[key] = paper
             added += 1

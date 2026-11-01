@@ -126,6 +126,7 @@ class SimilaritySearch:
         self._matrix = None
         self._ids: List[str] = []
         self._unit = None
+        self._by_base: Optional[Dict[str, int]] = None
 
     def _ensure(self) -> bool:
         if self._matrix is not None:
@@ -139,16 +140,31 @@ class SimilaritySearch:
         self._matrix, self._ids, self._unit = matrix, ids, matrix / norms
         return True
 
+    def _index_of(self, paper_id: str) -> Optional[int]:
+        """Find a paper whichever id form the caller has.
+
+        A URL, the tool's own example and an older store all carry arXiv's
+        version suffix (2610.22280v1); the library keys on the bare id. Asking
+        with one form for a paper stored under the other answered "not in the
+        vector store" about a paper that was.
+        """
+        from .storage import base_id
+        if self._by_base is None:
+            self._by_base = {base_id(pid): i for i, pid in enumerate(self._ids)}
+        return self._by_base.get(base_id(paper_id))
+
     def find_similar(self, paper_id: str, k: int = 5) -> List[Tuple[str, float]]:
-        if not self._ensure() or paper_id not in self._ids:
+        if not self._ensure():
+            return []
+        idx = self._index_of(paper_id)
+        if idx is None:
             return []
         import numpy as np
-        idx = self._ids.index(paper_id)
         scores = self._unit @ self._unit[idx]
         order = np.argsort(scores)[::-1]
         out = []
         for i in order:
-            if self._ids[i] == paper_id:
+            if i == idx:
                 continue
             out.append((self._ids[i], round(float(scores[i]), 4)))
             if len(out) >= k:
@@ -160,16 +176,16 @@ class SimilaritySearch:
         if not self._ensure():
             return []
         import numpy as np
-        idxs = [self._ids.index(p) for p in paper_ids if p in self._ids]
+        idxs = [i for i in (self._index_of(p) for p in paper_ids) if i is not None]
         if not idxs:
             return []
         centroid = self._unit[idxs].mean(axis=0)
         norm = np.linalg.norm(centroid) or 1.0
         scores = self._unit @ (centroid / norm)
-        exclude = set(paper_ids)
+        exclude = set(idxs)
         out = []
         for i in np.argsort(scores)[::-1]:
-            if self._ids[i] in exclude:
+            if i in exclude:
                 continue
             out.append((self._ids[i], round(float(scores[i]), 4)))
             if len(out) >= k:

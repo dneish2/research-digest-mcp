@@ -179,7 +179,7 @@ The Queue tab and the Profile tab have the same three buttons.
 ## 7. Similarity (optional)
 
 ```
-pip install "research-digest-mcp[embeddings]"
+pip install "research-digest-mcp[embeddings] @ git+https://github.com/dneish2/research-digest-mcp"
 python -m research_digest_mcp embed
 ```
 
