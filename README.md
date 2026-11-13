@@ -14,6 +14,8 @@ search box in your browser, from the terminal, or by asking Claude Code (or any
 MCP client) "what have I read about evaluation harnesses?" and getting an answer
 from your library instead of from the open web.
 
+![A search for "agent evaluation": each result says which words matched and how recent it is](https://raw.githubusercontent.com/dneish2/research-digest-mcp/main/docs/screenshot.png)
+
 <!-- mcp-name: io.github.dneish2/research-digest -->
 
 - **Every result shows its arithmetic.** Which words matched, what each was worth, how much recency added. No model decides the order.
