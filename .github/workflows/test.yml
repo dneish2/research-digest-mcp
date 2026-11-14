@@ -15,6 +15,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.9", "3.12"]
+        # ubuntu-latest became 26.04 in Nov 2026 and setup-python has no 3.9 for it.
+        # 3.9 is still the floor in pyproject, so test it on 24.04 until that floor moves.
+        exclude:
+          - os: ubuntu-latest
+            python: "3.9"
+        include:
+          - os: ubuntu-24.04
+            python: "3.9"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
