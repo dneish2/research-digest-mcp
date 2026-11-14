@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 (unreleased)
+## 1.0.0 (2026-11-11)
 
 The first tagged release. Everything from the first commit (2026-09-07) up to
 here, in short:

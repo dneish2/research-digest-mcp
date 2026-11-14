@@ -8,6 +8,7 @@ authors:
 repository-code: "https://github.com/dneish2/research-digest-mcp"
 license: MIT
 version: 1.0.0
+date-released: 2026-11-11
 keywords:
   - arXiv
   - information retrieval
